@@ -223,6 +223,10 @@ func buildManifest(cfg *config.Config) Manifest {
 		ch := Chain{IPT: ipt, Table: "mangle", Name: chainName}
 		chains = append(chains, ch)
 
+		rules = append(rules,
+			Rule{IPT: ipt, Table: "mangle", Chain: chainName, Action: "I", Spec: []string{"-m", "mark", "--mark", markAccept, "-j", "RETURN"}},
+		)
+
 		tcpSpec := append(
 			[]string{"-p", "tcp", "--dport", "443",
 				"-m", "connbytes", "--connbytes-dir", "original",
@@ -239,8 +243,9 @@ func buildManifest(cfg *config.Config) Manifest {
 		rules = append(rules,
 			Rule{IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: tcpSpec},
 			Rule{IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: udpSpec},
-			Rule{IPT: ipt, Table: "mangle", Chain: "POSTROUTING", Action: "A", Spec: []string{"-j", chainName}},
+			Rule{IPT: ipt, Table: "mangle", Chain: "POSTROUTING", Action: "I", Spec: []string{"-j", chainName}},
 			Rule{IPT: ipt, Table: "mangle", Chain: "OUTPUT", Action: "I", Spec: []string{"-m", "mark", "--mark", markAccept, "-j", "ACCEPT"}},
+			Rule{IPT: ipt, Table: "mangle", Chain: "OUTPUT", Action: "A", Spec: []string{"-j", chainName}},
 		)
 	}
 
