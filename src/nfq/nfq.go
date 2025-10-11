@@ -145,7 +145,7 @@ func (w *Worker) Start() error {
 				if dport == 443 && len(payload) > 0 {
 					k := fmt.Sprintf("%s:%d>%s:%d", src.String(), sport, dst.String(), dport)
 					host, ok := w.feed(k, payload)
-					if ok && host != "" {
+					if ok && w.matcher.Match(host) {
 						log.Infof("TCP: %s %s:%d -> %s:%d", host, src.String(), sport, dst.String(), dport)
 					}
 				}
@@ -156,7 +156,7 @@ func (w *Worker) Start() error {
 					sport := binary.BigEndian.Uint16(udp[0:2])
 					dport := binary.BigEndian.Uint16(udp[2:4])
 					if dport == 443 {
-						if host, ok := sni.ParseQUICClientHelloSNI(payload); ok && host != "" {
+						if host, ok := sni.ParseQUICClientHelloSNI(payload); ok && w.matcher.Match(host) {
 							log.Infof("QUIC: %s %s:%d -> %s:%d", host, src.String(), sport, dst.String(), dport)
 						}
 					}

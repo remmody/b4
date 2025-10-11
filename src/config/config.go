@@ -12,7 +12,6 @@ type Config struct {
 	QueueStartNum  int
 	Mark           uint
 	ConnBytesLimit int
-	Interface      string
 	Logging        Logging
 	SNIDomains     []string
 	Threads        int
@@ -20,8 +19,9 @@ type Config struct {
 	UseConntrack   bool
 	SkipIpTables   bool
 	Mangle         *MangleConfig
-	GeodataPath    string
-	Sites          []string
+	GeoSitePath    string
+	GeoIpPath      string
+	GeoCategories  []string
 }
 
 type MangleConfig struct {
@@ -50,9 +50,9 @@ var DefaultConfig = Config{
 	UseConntrack:   false,
 	UseGSO:         false,
 	SkipIpTables:   false,
-	Interface:      "*",
-	GeodataPath:    "",
-	Sites:          []string{},
+	GeoSitePath:    "",
+	GeoIpPath:      "",
+	GeoCategories:  []string{},
 	Logging: Logging{
 		Level:      InfoLevel,
 		Instaflush: true,
@@ -75,16 +75,13 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 		"Packet mark value")
 	cmd.Flags().IntVar(&c.ConnBytesLimit, "connbytes-limit", c.ConnBytesLimit,
 		"Connection bytes limit")
-	cmd.Flags().StringVar(&c.Interface, "iface", c.Interface,
-		"Network interface (* for all)")
 	cmd.Flags().StringSliceVar(&c.SNIDomains, "sni-domains", c.SNIDomains,
 		"List of SNI domains to match")
 
 	// Geodata and site filtering
-	cmd.Flags().StringVar(&c.GeodataPath, "geodata", c.GeodataPath,
-		"Path to geodata file (e.g., geosite.dat)")
-	cmd.Flags().StringSliceVar(&c.Sites, "site", c.Sites,
-		"Sites to process (e.g., youtube,facebook,amazon)")
+	cmd.Flags().StringVar(&c.GeoSitePath, "geosite", c.GeoSitePath, "Path to geosite file (e.g., geosite.dat)")
+	cmd.Flags().StringVar(&c.GeoIpPath, "geoip", c.GeoIpPath, "Path to geoip file (e.g., geoip.dat)")
+	cmd.Flags().StringSliceVar(&c.GeoCategories, "geo-categories", c.GeoCategories, "Geographic categories to process (e.g., youtube,facebook,amazon)")
 
 	// Feature flags
 	cmd.Flags().BoolVar(&c.UseGSO, "gso", c.UseGSO,
@@ -111,8 +108,8 @@ func (c *Config) ApplyVerbosityFlags(verbose, trace bool) {
 
 func (c *Config) Validate() error {
 	// If sites are specified, geodata path must be provided
-	if len(c.Sites) > 0 && c.GeodataPath == "" {
-		return fmt.Errorf("--geodata must be specified when using --site")
+	if len(c.GeoCategories) > 0 && c.GeoSitePath == "" {
+		return fmt.Errorf("--geosite must be specified when using --geo-categories")
 	}
 
 	if c.Threads < 1 {
@@ -133,5 +130,5 @@ func (c *Config) LogString() string {
 // LoadDomainsFromGeodata loads domains from geodata file for specified sites
 // and returns them as a slice
 func (c *Config) LoadDomainsFromGeodata() ([]string, error) {
-	return geodat.LoadDomainsFromSites(c.GeodataPath, c.Sites)
+	return geodat.LoadDomainsFromSites(c.GeoSitePath, c.GeoCategories)
 }

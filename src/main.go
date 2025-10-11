@@ -63,12 +63,11 @@ func runB4(cmd *cobra.Command, args []string) error {
 	}
 
 	log.Infof("Starting B4 packet processor")
-	fmt.Fprintf(os.Stderr, "[DEBUG] After first log.Infof\n")
 	logConfiguration(&cfg)
 
 	// Load domains from geodata if specified
-	if cfg.GeodataPath != "" && len(cfg.Sites) > 0 {
-		log.Infof("Loading domains from geodata for sites: %v", cfg.Sites)
+	if cfg.GeoSitePath != "" && len(cfg.GeoCategories) > 0 {
+		log.Infof("Loading domains from geodata for categories: %v", cfg.GeoCategories)
 		domains, err := cfg.LoadDomainsFromGeodata()
 		if err != nil {
 			return fmt.Errorf("failed to load geodata domains: %w", err)
@@ -145,15 +144,17 @@ func logConfiguration(cfg *config.Config) {
 	log.Debugf("  Threads: %d", cfg.Threads)
 	log.Debugf("  Mark: %d (0x%x)", cfg.Mark, cfg.Mark)
 	log.Debugf("  ConnBytes limit: %d", cfg.ConnBytesLimit)
-	log.Debugf("  Interface: %s", cfg.Interface)
 	log.Debugf("  GSO: %v", cfg.UseGSO)
 	log.Debugf("  Conntrack: %v", cfg.UseConntrack)
 	log.Debugf("  Skip iptables: %v", cfg.SkipIpTables)
-	if cfg.GeodataPath != "" {
-		log.Debugf("  Geodata: %s", cfg.GeodataPath)
+	if cfg.GeoSitePath != "" {
+		log.Debugf("  Geo Site path: %s", cfg.GeoSitePath)
 	}
-	if len(cfg.Sites) > 0 {
-		log.Debugf("  Sites: %v", cfg.Sites)
+	if cfg.GeoIpPath != "" {
+		log.Debugf("  Geo IP path: %s", cfg.GeoIpPath)
+	}
+	if len(cfg.GeoCategories) > 0 {
+		log.Debugf("  Geo Categories: %v", cfg.GeoCategories)
 	}
 	if len(cfg.SNIDomains) > 0 {
 		log.Debugf("  SNI Domains: %v", cfg.SNIDomains)
