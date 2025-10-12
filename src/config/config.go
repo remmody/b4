@@ -1,14 +1,31 @@
+// path: src/config/config.go
 package config
 
 import (
-	"bufio"
-	"flag"
 	"fmt"
-	"os"
-	"strings"
 
-	"github.com/daniellavrushin/b4/log"
+	"github.com/daniellavrushin/b4/geodat"
+	"github.com/spf13/cobra"
 )
+
+type Config struct {
+	QueueStartNum  int
+	Mark           uint
+	ConnBytesLimit int
+	Logging        Logging
+	SNIDomains     []string
+	Threads        int
+	UseGSO         bool
+	UseConntrack   bool
+	SkipIpTables   bool
+	GeoSitePath    string
+	GeoIpPath      string
+	GeoCategories  []string
+
+	FakeSNI          bool
+	FakeSNISeqLength int
+	FakeSNIType      int
+}
 
 type Logging struct {
 	Level      int
@@ -16,144 +33,105 @@ type Logging struct {
 	Syslog     bool
 }
 
-type Config struct {
-	QueueStartNum  int
-	Mark           uint
-	ConnBytesLimit int
+const (
+	FakePayloadRandom = iota
+	FakePayloadCustom
+	FakePayloadDefault
+)
 
-	Interface    string
-	Logging      Logging
-	SNIDomains   []string
-	Threads      int
-	UseGSO       bool
-	UseConntrack bool
-	SkipIpTables bool
-}
+const (
+	InfoLevel = iota
+	DebugLevel
+	TraceLevel
+)
 
 var DefaultConfig = Config{
 	QueueStartNum:  537,
-	Mark:           1 << 15, // 32768
+	Mark:           1 << 15,
 	Threads:        4,
 	ConnBytesLimit: 19,
 	UseConntrack:   false,
 	UseGSO:         false,
 	SkipIpTables:   false,
-	Interface:      "*",
+	GeoSitePath:    "",
+	GeoIpPath:      "",
+	GeoCategories:  []string{},
+
+	FakeSNI:          true,
+	FakeSNISeqLength: 1,
+	FakeSNIType:      FakePayloadDefault,
+
 	Logging: Logging{
-		Level:      int(log.LevelInfo),
+		Level:      InfoLevel,
 		Instaflush: true,
 		Syslog:     false,
 	},
 }
 
-func (cfg *Config) ParseArgs(args []string) (*Config, error) {
+func (c *Config) BindFlags(cmd *cobra.Command) {
+	// Network configuration
+	cmd.Flags().IntVar(&c.QueueStartNum, "queue-num", c.QueueStartNum,
+		"Netfilter queue number")
+	cmd.Flags().IntVar(&c.Threads, "threads", c.Threads,
+		"Number of worker threads")
+	cmd.Flags().UintVar(&c.Mark, "mark", c.Mark,
+		"Packet mark value")
+	cmd.Flags().IntVar(&c.ConnBytesLimit, "connbytes-limit", c.ConnBytesLimit,
+		"Connection bytes limit")
+	cmd.Flags().StringSliceVar(&c.SNIDomains, "sni-domains", c.SNIDomains,
+		"List of SNI domains to match")
 
-	fs := flag.NewFlagSet("b4", flag.ContinueOnError)
+	// Geodata and site filtering
+	cmd.Flags().StringVar(&c.GeoSitePath, "geosite", c.GeoSitePath, "Path to geosite file (e.g., geosite.dat)")
+	cmd.Flags().StringVar(&c.GeoIpPath, "geoip", c.GeoIpPath, "Path to geoip file (e.g., geoip.dat)")
+	cmd.Flags().StringSliceVar(&c.GeoCategories, "geo-categories", c.GeoCategories, "Geographic categories to process (e.g., youtube,facebook,amazon)")
 
-	fs.BoolVar(&cfg.Logging.Instaflush, "instaflush", cfg.Logging.Instaflush, "Enable instant flushing")
-	fs.BoolVar(&cfg.Logging.Syslog, "syslog", cfg.Logging.Syslog, "Enable syslog")
+	// Feature flags
+	cmd.Flags().BoolVar(&c.UseGSO, "gso", c.UseGSO,
+		"Enable Generic Segmentation Offload")
+	cmd.Flags().BoolVar(&c.UseConntrack, "conntrack", c.UseConntrack,
+		"Enable connection tracking")
+	cmd.Flags().BoolVar(&c.SkipIpTables, "skip-iptables", c.SkipIpTables,
+		"Skip iptables rules setup")
 
-	fs.IntVar(&cfg.Threads, "threads", cfg.Threads, "Set number of threads")
-
-	var (
-		logLevel       = fs.String("log-level", "info", "Set log level")
-		sniDomainsFile = fs.String("sni-domains-file", "", "Set SNI domains file")
-	)
-
-	fs.BoolVar(&cfg.UseConntrack, "conntrack", cfg.UseConntrack, "Enable conntrack")
-	fs.BoolVar(&cfg.UseGSO, "gso", cfg.UseGSO, "Enable GSO")
-	fs.BoolVar(&cfg.SkipIpTables, "skip-iptables", cfg.SkipIpTables, "Skip iptables")
-
-	fs.StringVar(&cfg.Interface, "iface", cfg.Interface, "Set sniffer interface")
-
-	if err := fs.Parse(args); err != nil {
-		return nil, err
-	}
-
-	switch *logLevel {
-	case "info":
-		cfg.Logging.Level = int(log.LevelInfo)
-	case "trace":
-		cfg.Logging.Level = int(log.LevelTrace)
-	case "debug":
-		cfg.Logging.Level = int(log.LevelDebug)
-	default:
-		cfg.Logging.Level = int(log.LevelInfo)
-	}
-
-	log.Tracef("sni domains file: %q", *sniDomainsFile)
-	if err := applyDomainFile(cfg, *sniDomainsFile); err != nil {
-		return nil, fmt.Errorf("domain file error: %w", err)
-	}
-
-	return cfg, nil
+	// Logging configuration
+	cmd.Flags().BoolVarP(&c.Logging.Instaflush, "instaflush", "i", c.Logging.Instaflush,
+		"Flush logs immediately")
+	cmd.Flags().BoolVar(&c.Logging.Syslog, "syslog", c.Logging.Syslog,
+		"Enable syslog output")
 }
 
-func applyDomainFile(cfg *Config, includePath string) error {
-	if includePath != "" {
-		inc, err := readDomainFile(includePath)
-		if err != nil {
-			log.Errorf("read %q: %w", includePath, err)
-			return err
-		}
-		cfg.SNIDomains = append(cfg.SNIDomains, inc...)
+func (c *Config) ApplyVerbosityFlags(verbose, trace bool) {
+	if trace {
+		c.Logging.Level = TraceLevel
+	} else if verbose {
+		c.Logging.Level = DebugLevel
+	}
+}
+
+func (c *Config) Validate() error {
+	// If sites are specified, geodata path must be provided
+	if len(c.GeoCategories) > 0 && c.GeoSitePath == "" {
+		return fmt.Errorf("--geosite must be specified when using --geo-categories")
 	}
 
-	// Normalize + dedupe
-	cfg.SNIDomains = dedupeLower(cfg.SNIDomains)
-	log.Infof("Loaded SNI domains: %v", cfg.SNIDomains)
+	if c.Threads < 1 {
+		return fmt.Errorf("threads must be at least 1")
+	}
+
+	if c.QueueStartNum < 0 || c.QueueStartNum > 65535 {
+		return fmt.Errorf("queue-num must be between 0 and 65535")
+	}
+
 	return nil
 }
 
-func dedupeLower(in []string) []string {
-	seen := make(map[string]struct{}, len(in))
-	out := in[:0]
-	for _, s := range in {
-		s = strings.ToLower(strings.TrimSpace(s))
-		if s == "" {
-			continue
-		}
-		if _, ok := seen[s]; ok {
-			continue
-		}
-		seen[s] = struct{}{}
-		out = append(out, s)
-	}
-	return out
+func (c *Config) LogString() string {
+	return ""
 }
 
-func readDomainFile(path string) ([]string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	var out []string
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if i := strings.IndexAny(line, "#;"); i >= 0 {
-			line = line[:i]
-		}
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		l := strings.ToLower(line)
-		if strings.HasPrefix(l, "full:") {
-			line = strings.TrimSpace(line[len("full:"):])
-		} else if strings.HasPrefix(l, "domain:") {
-			line = strings.TrimSpace(line[len("domain:"):])
-		} else if strings.HasPrefix(l, "regexp:") {
-			continue
-		}
-		if line == "" {
-			continue
-		}
-		out = append(out, strings.ToLower(line))
-	}
-	if err := sc.Err(); err != nil {
-		return nil, err
-	}
-	return out, nil
+// LoadDomainsFromGeodata loads domains from geodata file for specified sites
+// and returns them as a slice
+func (c *Config) LoadDomainsFromGeodata() ([]string, error) {
+	return geodat.LoadDomainsFromSites(c.GeoSitePath, c.GeoCategories)
 }

@@ -3,7 +3,6 @@ package iptables
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -55,14 +54,6 @@ func setSysctlOrProc(name, val string) {
 func getSysctlOrProc(name string) string {
 	out, _ := run("sh", "-c", "sysctl -n "+name+" 2>/dev/null || cat /proc/sys/"+strings.ReplaceAll(name, ".", "/"))
 	return strings.TrimSpace(out)
-}
-
-func qbSpec(start, end int) []string {
-	if end > start {
-		return []string{"-j", "NFQUEUE", "--queue-balance",
-			strconv.Itoa(start) + ":" + strconv.Itoa(end), "--queue-bypass"}
-	}
-	return []string{"-j", "NFQUEUE", "--queue-num", strconv.Itoa(start), "--queue-bypass"}
 }
 
 type Rule struct {
@@ -131,6 +122,15 @@ func saveSysctlSnapshot(m map[string]string) {
 	_ = os.WriteFile(sysctlSnapPath, b, 0600)
 }
 
+func buildNFQSpec(queueStart, threads int) []string {
+	if threads > 1 {
+		start := strconv.Itoa(queueStart)
+		end := strconv.Itoa(queueStart + threads - 1)
+		return []string{"-j", "NFQUEUE", "--queue-balance", start + ":" + end, "--queue-bypass"}
+	}
+	return []string{"-j", "NFQUEUE", "--queue-num", strconv.Itoa(queueStart), "--queue-bypass"}
+}
+
 func (s SysctlSetting) Apply() {
 	snap := loadSysctlSnapshot()
 	if _, ok := snap[s.Name]; !ok {
@@ -195,6 +195,11 @@ func hasBinary(name string) bool {
 	return err == nil
 }
 
+func loadKernelModules() {
+	_, _ = run("sh", "-c", "modprobe xt_connbytes --first-time >/dev/null 2>&1 || true")
+	_, _ = run("sh", "-c", "modprobe xt_NFQUEUE --first-time >/dev/null 2>&1 || true")
+}
+
 func buildManifest(cfg *config.Config) Manifest {
 	var ipts []string
 	if hasBinary("iptables") {
@@ -206,45 +211,42 @@ func buildManifest(cfg *config.Config) Manifest {
 	if len(ipts) == 0 {
 		ipts = []string{"iptables"}
 	}
-	start := cfg.QueueStartNum
-	end := cfg.QueueStartNum + cfg.Threads - 1
-	lanIf := "br0"
-	wanIf := "eth0"
-	markHex := fmt.Sprintf("0x%x/0xffffffff", cfg.Mark)
+	queueNum := cfg.QueueStartNum
+	threads := cfg.Threads
+	chainName := "B4"
+	markAccept := "32768/32768"
 
 	var chains []Chain
 	var rules []Rule
 
 	for _, ipt := range ipts {
-		b4 := Chain{IPT: ipt, Table: "mangle", Name: "B4"}
-		chains = append(chains, b4)
+		ch := Chain{IPT: ipt, Table: "mangle", Name: chainName}
+		chains = append(chains, ch)
 
-		tcpRule := Rule{
-			IPT: ipt, Table: "mangle", Chain: "B4", Action: "A",
-			Spec: append([]string{"-p", "tcp", "--dport", "443", "-m", "mark", "!", "--mark", markHex, "-m", "connbytes", "--connbytes-dir", "original", "--connbytes-mode", "packets", "--connbytes", "0:19"}, qbSpec(start, end)...),
-		}
-		udpRule := Rule{
-			IPT: ipt, Table: "mangle", Chain: "B4", Action: "A",
-			Spec: append([]string{"-p", "udp", "--dport", "443", "-m", "mark", "!", "--mark", markHex, "-m", "connbytes", "--connbytes-dir", "original", "--connbytes-mode", "packets", "--connbytes", "0:8"}, qbSpec(start, end)...),
-		}
+		rules = append(rules,
+			Rule{IPT: ipt, Table: "mangle", Chain: chainName, Action: "I", Spec: []string{"-m", "mark", "--mark", markAccept, "-j", "RETURN"}},
+		)
 
-		jumpPrerouting := Rule{IPT: ipt, Table: "mangle", Chain: "PREROUTING", Action: "A", Spec: []string{"-i", lanIf, "-m", "mark", "!", "--mark", markHex, "-j", "B4"}}
-		jumpPostrouting := Rule{IPT: ipt, Table: "mangle", Chain: "POSTROUTING", Action: "A", Spec: []string{"-o", wanIf, "-m", "mark", "!", "--mark", markHex, "-j", "B4"}}
-		jumpOutputTCP := Rule{IPT: ipt, Table: "mangle", Chain: "OUTPUT", Action: "I", Spec: []string{"-p", "tcp", "--dport", "443", "-m", "mark", "!", "--mark", markHex, "-j", "B4"}}
-		jumpOutputUDP := Rule{IPT: ipt, Table: "mangle", Chain: "OUTPUT", Action: "I", Spec: []string{"-p", "udp", "--dport", "443", "-m", "mark", "!", "--mark", markHex, "-j", "B4"}}
+		tcpSpec := append(
+			[]string{"-p", "tcp", "--dport", "443",
+				"-m", "connbytes", "--connbytes-dir", "original",
+				"--connbytes-mode", "packets", "--connbytes", "0:19"},
+			buildNFQSpec(queueNum, threads)...,
+		)
+		udpSpec := append(
+			[]string{"-p", "udp", "--dport", "443",
+				"-m", "connbytes", "--connbytes-dir", "original",
+				"--connbytes-mode", "packets", "--connbytes", "0:8"},
+			buildNFQSpec(queueNum, threads)...,
+		)
 
-		if existsChain(ipt, "mangle", "DIVERT") {
-			divertReturnHTTPS := Rule{
-				IPT:    ipt,
-				Table:  "mangle",
-				Chain:  "DIVERT",
-				Action: "I",
-				Spec:   []string{"-p", "tcp", "--dport", "443", "-j", "RETURN"},
-			}
-			rules = append(rules, divertReturnHTTPS)
-		}
-
-		rules = append(rules, jumpPrerouting, jumpPostrouting, jumpOutputTCP, jumpOutputUDP, tcpRule, udpRule)
+		rules = append(rules,
+			Rule{IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: tcpSpec},
+			Rule{IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: udpSpec},
+			Rule{IPT: ipt, Table: "mangle", Chain: "POSTROUTING", Action: "I", Spec: []string{"-j", chainName}},
+			Rule{IPT: ipt, Table: "mangle", Chain: "OUTPUT", Action: "I", Spec: []string{"-m", "mark", "--mark", markAccept, "-j", "ACCEPT"}},
+			Rule{IPT: ipt, Table: "mangle", Chain: "OUTPUT", Action: "A", Spec: []string{"-j", chainName}},
+		)
 	}
 
 	sysctls := []SysctlSetting{
@@ -255,30 +257,12 @@ func buildManifest(cfg *config.Config) Manifest {
 	return Manifest{Chains: chains, Rules: rules, Sysctls: sysctls}
 }
 
-func delAnyJumpToB4(ipt, chain string) {
-	out, _ := run(ipt, "-w", "-t", "mangle", "-S", chain)
-	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSpace(line)
-		if !(strings.HasPrefix(line, "-A "+chain+" ") || strings.HasPrefix(line, "-I "+chain+" ")) {
-			continue
-		}
-		if !strings.Contains(line, "-j B4") {
-			continue
-		}
-		fields := strings.Fields(line)
-		if len(fields) < 3 {
-			continue
-		}
-		spec := fields[2:]
-		_, _ = run(append([]string{ipt, "-w", "-t", "mangle", "-D", chain}, spec...)...)
-	}
-}
-
 func AddRules(cfg *config.Config) error {
 	if cfg.SkipIpTables {
 		return nil
 	}
 	log.Infof("IPTABLES: adding rules")
+	loadKernelModules()
 	m := buildManifest(cfg)
 	return m.Apply()
 }
@@ -299,11 +283,6 @@ func ClearRules(cfg *config.Config) error {
 	}
 	m := buildManifest(cfg)
 	m.RemoveRules()
-	for _, ipt := range ipts {
-		delAnyJumpToB4(ipt, "PREROUTING")
-		delAnyJumpToB4(ipt, "POSTROUTING")
-		delAnyJumpToB4(ipt, "OUTPUT")
-	}
 	time.Sleep(30 * time.Millisecond)
 	m.RemoveChains()
 	m.RevertSysctls()

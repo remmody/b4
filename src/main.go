@@ -1,115 +1,163 @@
+// path: src/main.go
 package main
 
 import (
-	"bytes"
-	"net"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/iptables"
 	"github.com/daniellavrushin/b4/log"
-	"github.com/daniellavrushin/b4/sni"
+	"github.com/daniellavrushin/b4/nfq"
+	"github.com/spf13/cobra"
 )
 
-func main() {
-	cfg := config.DefaultConfig
-	if _, err := cfg.ParseArgs(os.Args[1:]); err != nil {
-		os.Exit(1)
-	}
-	initLogging(&cfg)
-	log.Infof("starting B4...")
-	log.Infof("Running with flags: %s", flagsSummary(os.Args[1:]))
+var (
+	cfg         = config.DefaultConfig
+	verboseFlag bool
+	traceFlag   bool
+)
 
-	if !cfg.SkipIpTables {
-		iptables.ClearRules(&cfg)
-		if err := iptables.AddRules(&cfg); err != nil {
-			log.Errorf("failed to add iptables rules: %v", err)
-			os.Exit(1)
-		}
-	}
-
-	var matcher *sni.SuffixSet
-	if len(cfg.SNIDomains) > 0 {
-		matcher = sni.NewSuffixSet(cfg.SNIDomains)
-	}
-
-	var ifaces []string
-	if cfg.Interface == "" || cfg.Interface == "*" {
-		ifs, _ := net.Interfaces()
-		for _, inf := range ifs {
-			if inf.Flags&net.FlagUp == 0 {
-				continue
-			}
-			if inf.Flags&net.FlagLoopback != 0 {
-				continue
-			}
-			ifaces = append(ifaces, inf.Name)
-		}
-	} else {
-		ifaces = []string{cfg.Interface}
-	}
-
-	var sniffers []*sni.Sniffer
-	for _, name := range ifaces {
-		sn, err := sni.NewSniffer(sni.Config{
-			Iface:               name,
-			SnapLen:             96 * 1024,
-			FlowTTL:             10 * time.Second,
-			MaxClientHelloBytes: 8192,
-			Promisc:             true,
-			Matcher:             matcher,
-			OnTLSHost:           func(ft sni.FiveTuple, host string) {},
-			OnQUICHost:          func(ft sni.FiveTuple, host string) {},
-		})
-		if err != nil {
-			log.Errorf("AF_PACKET start failed on %s: %v", name, err)
-			continue
-		}
-		sn.Run()
-		sniffers = append(sniffers, sn)
-		log.Infof("AF_PACKET listening on %s", name)
-	}
-	if len(sniffers) == 0 {
-		log.Errorf("no interfaces to sniff")
-		os.Exit(1)
-	}
-
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	<-sig
-
-	for _, sn := range sniffers {
-		sn.Close()
-	}
-
-	if !cfg.SkipIpTables {
-		if err := iptables.ClearRules(&cfg); err != nil {
-			log.Errorf("failed to clear iptables rules: %v", err)
-		}
-	}
-	log.Infof("bye")
+var rootCmd = &cobra.Command{
+	Use:   "b4",
+	Short: "B4 network packet processor",
+	Long:  `B4 is a netfilter queue based packet processor for DPI circumvention`,
+	RunE:  runB4,
 }
 
-func initLogging(cfg *config.Config) error {
-	log.Init(os.Stderr, log.Level(cfg.Logging.Level), cfg.Logging.Instaflush)
-	if cfg.Logging.Syslog {
-		if err := log.EnableSyslog("b4"); err != nil {
-			log.Errorf("syslog enable failed: %v", err)
+func init() {
+	// Bind all configuration flags
+	cfg.BindFlags(rootCmd)
+
+	// Add verbosity flags separately since they need special handling
+	rootCmd.Flags().BoolVarP(&verboseFlag, "verbose", "v", false, "Enable verbose (debug) logging")
+	rootCmd.Flags().BoolVar(&traceFlag, "trace", false, "Enable trace logging")
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func runB4(cmd *cobra.Command, args []string) error {
+	// Debug output to stderr to see if we're even getting here
+	fmt.Fprintf(os.Stderr, "[DEBUG] runB4 started\n")
+
+	// Apply verbosity settings
+	cfg.ApplyVerbosityFlags(verboseFlag, traceFlag)
+	fmt.Fprintf(os.Stderr, "[DEBUG] Verbosity applied, log level: %d\n", cfg.Logging.Level)
+
+	// Initialize logging first thing
+	if err := initLogging(&cfg); err != nil {
+		return fmt.Errorf("logging initialization failed: %w", err)
+	}
+	fmt.Fprintf(os.Stderr, "[DEBUG] Logging initialized\n")
+
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
+
+	log.Infof("Starting B4 packet processor")
+	logConfiguration(&cfg)
+
+	// Load domains from geodata if specified
+	if cfg.GeoSitePath != "" && len(cfg.GeoCategories) > 0 {
+		log.Infof("Loading domains from geodata for categories: %v", cfg.GeoCategories)
+		domains, err := cfg.LoadDomainsFromGeodata()
+		if err != nil {
+			return fmt.Errorf("failed to load geodata domains: %w", err)
+		}
+
+		// Merge with existing SNI domains
+		cfg.SNIDomains = append(cfg.SNIDomains, domains...)
+		log.Infof("Loaded %d domains from geodata", len(domains))
+	}
+
+	// Setup iptables rules
+	if !cfg.SkipIpTables {
+		log.Infof("Clearing existing iptables rules")
+		iptables.ClearRules(&cfg)
+
+		log.Infof("Adding iptables rules")
+		if err := iptables.AddRules(&cfg); err != nil {
+			return fmt.Errorf("failed to add iptables rules: %w", err)
+		}
+	} else {
+		log.Infof("Skipping iptables setup (--skip-iptables)")
+	}
+
+	// Start netfilter queue pool
+	log.Infof("Starting netfilter queue pool (queue: %d, threads: %d)", cfg.QueueStartNum, cfg.Threads)
+	pool := nfq.NewPool(uint16(cfg.QueueStartNum), cfg.Threads, &cfg)
+	if err := pool.Start(); err != nil {
+		return fmt.Errorf("netfilter queue start failed: %w", err)
+	}
+	defer pool.Stop()
+
+	log.Infof("B4 is running. Press Ctrl+C to stop")
+
+	// Wait for shutdown signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-sigChan
+
+	log.Infof("Received signal: %v, shutting down gracefully", sig)
+
+	// Cleanup iptables rules
+	if !cfg.SkipIpTables {
+		log.Infof("Clearing iptables rules")
+		if err := iptables.ClearRules(&cfg); err != nil {
+			log.Errorf("Failed to clear iptables rules: %v", err)
 		}
 	}
+
+	log.Infof("B4 stopped successfully")
 	return nil
 }
 
-func flagsSummary(args []string) string {
-	var buf bytes.Buffer
-	for i, arg := range args {
-		if i > 0 {
-			buf.WriteString(" ")
+func initLogging(cfg *config.Config) error {
+	// Ensure logging is initialized with stderr output
+	log.Init(os.Stderr, log.Level(cfg.Logging.Level), cfg.Logging.Instaflush)
+
+	// Log that initialization happened
+	fmt.Fprintf(os.Stderr, "[INIT] Logging initialized at level %d\n", cfg.Logging.Level)
+
+	if cfg.Logging.Syslog {
+		if err := log.EnableSyslog("b4"); err != nil {
+			log.Errorf("Failed to enable syslog: %v", err)
+			return err
 		}
-		buf.WriteString(arg)
+		log.Infof("Syslog enabled")
 	}
-	return buf.String()
+
+	return nil
+}
+
+func logConfiguration(cfg *config.Config) {
+	log.Debugf("Configuration:")
+	log.Debugf("  Queue number: %d", cfg.QueueStartNum)
+	log.Debugf("  Threads: %d", cfg.Threads)
+	log.Debugf("  Mark: %d (0x%x)", cfg.Mark, cfg.Mark)
+	log.Debugf("  ConnBytes limit: %d", cfg.ConnBytesLimit)
+	log.Debugf("  GSO: %v", cfg.UseGSO)
+	log.Debugf("  Conntrack: %v", cfg.UseConntrack)
+	log.Debugf("  Skip iptables: %v", cfg.SkipIpTables)
+	if cfg.GeoSitePath != "" {
+		log.Debugf("  Geo Site path: %s", cfg.GeoSitePath)
+	}
+	if cfg.GeoIpPath != "" {
+		log.Debugf("  Geo IP path: %s", cfg.GeoIpPath)
+	}
+	if len(cfg.GeoCategories) > 0 {
+		log.Debugf("  Geo Categories: %v", cfg.GeoCategories)
+	}
+	if len(cfg.SNIDomains) > 0 {
+		log.Debugf("  SNI Domains: %v", cfg.SNIDomains)
+	}
+	log.Debugf("  Logging level: %d", cfg.Logging.Level)
 }
