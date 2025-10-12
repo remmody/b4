@@ -57,8 +57,8 @@ func BuildFakeTCP(original []byte, ttl uint8, strategy FakeStrategy, seqOffset i
 	copy(fake[ipHdrLen+20:], DefaultFakeSNI)
 
 	// Fix checksums
-	fixIPv4Checksum(fake[:ipHdrLen])
-	fixTCPChecksum(fake)
+	FixIPv4Checksum(fake[:ipHdrLen])
+	FixTCPChecksum(fake)
 
 	// Break checksum if needed
 	if strategy == FakeStrategyTCPChecksum {
@@ -69,7 +69,19 @@ func BuildFakeTCP(original []byte, ttl uint8, strategy FakeStrategy, seqOffset i
 	return fake, true
 }
 
-func fixTCPChecksum(packet []byte) {
+func FixIPv4Checksum(ip []byte) {
+	ip[10], ip[11] = 0, 0
+	var sum uint32
+	for i := 0; i < 20; i += 2 {
+		sum += uint32(binary.BigEndian.Uint16(ip[i : i+2]))
+	}
+	for sum > 0xffff {
+		sum = (sum >> 16) + (sum & 0xffff)
+	}
+	binary.BigEndian.PutUint16(ip[10:12], ^uint16(sum))
+}
+
+func FixTCPChecksum(packet []byte) {
 	ipHdrLen := int((packet[0] & 0x0F) * 4)
 	tcpOffset := ipHdrLen
 
