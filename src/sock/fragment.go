@@ -3,13 +3,17 @@ package sock
 import (
 	"errors"
 
+	"github.com/daniellavrushin/b4/log"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 )
 
 type Fragmenter struct {
-	splitPosition int  // Where to split payload (default: 1 byte)
-	reverseOrder  bool // Send second fragment before first
+	SplitPosition int  // Where to split payload (default: 1 byte)
+	ReverseOrder  bool // Send second fragment before first
+	FakeSNI       bool // Whether to fake SNI
+	MiddleSplit   bool // Whether to split in middle of SNI
+	FakeStrategy  FakeStrategy
 }
 
 func (f *Fragmenter) FragmentPacket(original gopacket.Packet, splitPos int) ([][]byte, error) {
@@ -33,10 +37,10 @@ func (f *Fragmenter) FragmentPacket(original gopacket.Packet, splitPos int) ([][
 	fragments := [][]byte{frag1, frag2}
 
 	// Reverse order defeats some DPI systems
-	if f.reverseOrder {
+	if f.ReverseOrder {
 		fragments = [][]byte{frag2, frag1}
 	}
-
+	log.Tracef("Fragmented packet into %d fragments, reverse=%v", len(fragments), f.ReverseOrder)
 	return fragments, nil
 }
 
@@ -92,4 +96,71 @@ func (f *Fragmenter) buildFragment(ip *layers.IPv4, tcp *layers.TCP, data []byte
 	)
 
 	return buf.Bytes()
+}
+
+func FindSNIOffset(packet []byte) int {
+	if len(packet) < 40 {
+		return -1
+	}
+
+	ipHdrLen := int((packet[0] & 0x0F) * 4)
+	if len(packet) < ipHdrLen+20 {
+		return -1
+	}
+
+	tcpHdrLen := int((packet[ipHdrLen+12] >> 4) * 4)
+	payloadStart := ipHdrLen + tcpHdrLen
+
+	if len(packet) <= payloadStart+5 {
+		return -1
+	}
+
+	payload := packet[payloadStart:]
+
+	// Check for TLS handshake
+	if payload[0] != 0x16 || payload[1] != 0x03 {
+		return -1
+	}
+
+	// Skip to extensions in Client Hello
+	if len(payload) < 43 {
+		return -1
+	}
+
+	// Simple SNI search - look for extension type 0x0000
+	for i := 43; i < len(payload)-5; i++ {
+		if payload[i] == 0x00 && payload[i+1] == 0x00 {
+			// Found SNI extension
+			return i
+		}
+	}
+
+	return 1 // Default split at position 1
+}
+
+// Update Fragmenter to support SNI-aware fragmentation
+func (f *Fragmenter) FragmentAtSNI(packet []byte, sniPosOverride int) ([][]byte, error) {
+	sniOffset := FindSNIOffset(packet)
+	log.Tracef("SNI offset found at %d", sniOffset)
+	// Use override if provided
+	if sniPosOverride > 0 {
+		sniOffset = sniPosOverride
+	} else if sniOffset <= 0 {
+		sniOffset = 1 // Fallback
+	}
+
+	// Apply middle split if configured
+	if f.MiddleSplit && sniOffset > 0 {
+		ipHdrLen := int((packet[0] & 0x0F) * 4)
+		tcpHdrLen := int((packet[ipHdrLen+12] >> 4) * 4)
+		payloadStart := ipHdrLen + tcpHdrLen
+
+		if len(packet) > payloadStart+sniOffset+10 {
+			sniOffset += 5 // Move to middle of SNI value
+		}
+	}
+
+	pkt := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
+	log.Tracef("Fragmenting packet at SNI offset %d", sniOffset)
+	return f.FragmentPacket(pkt, sniOffset)
 }

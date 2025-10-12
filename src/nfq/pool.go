@@ -6,6 +6,7 @@ import (
 
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/sni"
+	"github.com/daniellavrushin/b4/sock"
 	"github.com/florianl/go-nfqueue"
 )
 
@@ -21,6 +22,29 @@ func NewWorkerWithQueue(cfg *config.Config, qnum uint16) *Worker {
 	if len(cfg.SNIDomains) > 0 {
 		m = sni.NewSuffixSet(cfg.SNIDomains)
 	}
+
+	var strategy sock.FakeStrategy
+	switch cfg.FakeStrategy {
+	case "ttl":
+		strategy = sock.FakeStrategyTTL
+	case "randseq":
+		strategy = sock.FakeStrategyRandSeq
+	case "pastseq":
+		strategy = sock.FakeStrategyPastSeq
+	case "tcp_check":
+		strategy = sock.FakeStrategyTCPChecksum
+	default:
+		strategy = sock.FakeStrategyTTL
+	}
+
+	fragmenter := &sock.Fragmenter{
+		SplitPosition: cfg.FragSNIPosition,
+		ReverseOrder:  cfg.FragSNIReverse,
+		FakeSNI:       cfg.FakeSNI,
+		MiddleSplit:   cfg.FragMiddleSNI,
+		FakeStrategy:  strategy,
+	}
+
 	return &Worker{
 		cfg:     cfg,
 		qnum:    qnum,
@@ -30,6 +54,7 @@ func NewWorkerWithQueue(cfg *config.Config, qnum uint16) *Worker {
 		ttl:     10 * time.Second,
 		limit:   8192,
 		matcher: m,
+		frag:    fragmenter,
 	}
 }
 

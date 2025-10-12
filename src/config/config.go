@@ -21,8 +21,17 @@ type Config struct {
 	GeoSitePath    string
 	GeoIpPath      string
 	GeoCategories  []string
+	Seg2Delay      int
+
+	FragmentStrategy string
+	FragSNIReverse   bool
+	FragMiddleSNI    bool
+	FragSNIPosition  int
 
 	FakeSNI          bool
+	FakeTTL          uint8
+	FakeStrategy     string
+	FakeSeqOffset    int32
 	FakeSNISeqLength int
 	FakeSNIType      int
 }
@@ -56,10 +65,19 @@ var DefaultConfig = Config{
 	GeoSitePath:    "",
 	GeoIpPath:      "",
 	GeoCategories:  []string{},
+	Seg2Delay:      0,
+
+	FragmentStrategy: "tcp",
+	FragSNIReverse:   true,
+	FragMiddleSNI:    true,
+	FragSNIPosition:  1,
 
 	FakeSNI:          true,
+	FakeTTL:          8,
 	FakeSNISeqLength: 1,
 	FakeSNIType:      FakePayloadDefault,
+	FakeStrategy:     "pastseq",
+	FakeSeqOffset:    10000,
 
 	Logging: Logging{
 		Level:      InfoLevel,
@@ -81,10 +99,25 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSliceVar(&c.SNIDomains, "sni-domains", c.SNIDomains,
 		"List of SNI domains to match")
 
+	cmd.Flags().IntVar(&c.Seg2Delay, "seg2delay", 0, "Delay between segments in ms")
+
 	// Geodata and site filtering
 	cmd.Flags().StringVar(&c.GeoSitePath, "geosite", c.GeoSitePath, "Path to geosite file (e.g., geosite.dat)")
 	cmd.Flags().StringVar(&c.GeoIpPath, "geoip", c.GeoIpPath, "Path to geoip file (e.g., geoip.dat)")
 	cmd.Flags().StringSliceVar(&c.GeoCategories, "geo-categories", c.GeoCategories, "Geographic categories to process (e.g., youtube,facebook,amazon)")
+
+	// Fake SNI and TTL configuration
+	cmd.Flags().StringVar(&c.FragmentStrategy, "frag", "tcp", "Fragmentation strategy (tcp/ip/none)")
+	cmd.Flags().BoolVar(&c.FragSNIReverse, "frag-sni-reverse", true, "Reverse fragment order")
+	cmd.Flags().BoolVar(&c.FragMiddleSNI, "frag-middle-sni", true, "Fragment in middle of SNI")
+	cmd.Flags().IntVar(&c.FragSNIPosition, "frag-sni-pos", 1, "SNI fragment position")
+
+	cmd.Flags().StringVar(&c.FakeStrategy, "fake-strategy", "ttl", "Faking strategy (ttl/randseq/pastseq/tcp_check/md5sum)")
+	cmd.Flags().Uint8Var(&c.FakeTTL, "fake-ttl", 8, "TTL for fake packets")
+	cmd.Flags().Int32Var(&c.FakeSeqOffset, "fake-seq-offset", 10000, "Sequence offset for fake packets")
+	cmd.Flags().BoolVar(&c.FakeSNI, "fake-sni", c.FakeSNI, "Enable fake SNI packets")
+	cmd.Flags().IntVar(&c.FakeSNISeqLength, "fake-sni-len", c.FakeSNISeqLength, "Length of fake SNI sequence")
+	cmd.Flags().IntVar(&c.FakeSNIType, "fake-sni-type", c.FakeSNIType, "Type of fake SNI payload (0=random, 1=custom, 2=default)")
 
 	// Feature flags
 	cmd.Flags().BoolVar(&c.UseGSO, "gso", c.UseGSO,

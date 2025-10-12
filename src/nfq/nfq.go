@@ -114,7 +114,7 @@ func (w *Worker) Start() error {
 					dport := binary.BigEndian.Uint16(udp[2:4])
 					if dport == 443 {
 						if host, ok := sni.ParseQUICClientHelloSNI(payload); ok && w.matcher.Match(host) {
-							log.Infof("QUIC: %s %s:%d -> %s:%d", host, src.String(), sport, dst.String(), dport)
+							log.Infof("UDP: %s %s:%d -> %s:%d", host, src.String(), sport, dst.String(), dport)
 							go w.dropAndInjectQUIC(raw, dst)
 							_ = q.SetVerdict(id, nfqueue.NfDrop)
 							return 0
@@ -151,26 +151,59 @@ func (w *Worker) dropAndInjectQUIC(raw []byte, dst net.IP) {
 		}
 	}
 }
+
 func (w *Worker) dropAndInjectTCP(raw []byte, dst net.IP) {
-	p := gopacket.NewPacket(raw, layers.LayerTypeIPv4, gopacket.NoCopy)
-	ip4 := p.Layer(layers.LayerTypeIPv4)
-	if ip4 == nil {
-		return
-	}
-	fake := buildFakeTTL(p, 8)
-	if len(fake) > 0 {
-		_ = w.sock.SendIPv4(fake, dst)
-		time.Sleep(10 * time.Millisecond)
-	}
-	frags, err := w.frag.FragmentPacket(p, 1)
-	if err != nil {
-		return
-	}
-	for i, f := range frags {
-		_ = w.sock.SendIPv4(f, dst)
-		if i == 0 {
-			time.Sleep(5 * time.Millisecond)
+	// Use configuration from fragmenter
+	if w.cfg.FakeSNI {
+		for i := 0; i < w.cfg.FakeSNISeqLength; i++ {
+			fake, ok := sock.BuildFakeTCP(raw, w.cfg.FakeTTL, w.frag.FakeStrategy, w.cfg.FakeSeqOffset)
+			if ok {
+				_ = w.sock.SendIPv4(fake, dst)
+				time.Sleep(5 * time.Millisecond)
+			}
 		}
+	}
+
+	// Find SNI offset
+	sniOffset := sock.FindSNIOffset(raw)
+	if sniOffset <= 0 {
+		sniOffset = w.cfg.FragSNIPosition
+		if sniOffset <= 0 {
+			sniOffset = 1
+		}
+	}
+
+	// Apply middle split if configured
+	if w.cfg.FragMiddleSNI && sniOffset > 0 {
+		// Get payload start
+		ipHdrLen := int((raw[0] & 0x0F) * 4)
+		tcpHdrLen := int((raw[ipHdrLen+12] >> 4) * 4)
+		payloadStart := ipHdrLen + tcpHdrLen
+
+		// Find middle of SNI value (not just the extension)
+		if len(raw) > payloadStart+sniOffset+10 {
+			sniOffset += 5 // Split in middle of SNI hostname
+		}
+	}
+
+	pkt := gopacket.NewPacket(raw, layers.LayerTypeIPv4, gopacket.Default)
+	frags, err := w.frag.FragmentPacket(pkt, sniOffset)
+	if err != nil {
+		_ = w.sock.SendIPv4(raw, dst)
+		return
+	}
+
+	// Send fragments based on reverse configuration
+	if w.frag.ReverseOrder {
+		// Send second fragment first
+		_ = w.sock.SendIPv4(frags[1], dst)
+		time.Sleep(10 * time.Millisecond) // Delay between fragments
+		_ = w.sock.SendIPv4(frags[0], dst)
+	} else {
+		// Normal order
+		_ = w.sock.SendIPv4(frags[0], dst)
+		time.Sleep(10 * time.Millisecond) // Delay between fragments
+		_ = w.sock.SendIPv4(frags[1], dst)
 	}
 }
 
@@ -200,35 +233,6 @@ func (w *Worker) feed(key string, chunk []byte) (string, bool) {
 		return host, true
 	}
 	return "", false
-}
-
-func buildFakeTTL(pkt gopacket.Packet, ttl uint8) []byte {
-	ip := pkt.Layer(layers.LayerTypeIPv4).(*layers.IPv4)
-	tcp := pkt.Layer(layers.LayerTypeTCP).(*layers.TCP)
-	fip := &layers.IPv4{
-		Version:  4,
-		IHL:      5,
-		TOS:      ip.TOS,
-		Id:       ip.Id + 1,
-		Flags:    ip.Flags,
-		TTL:      ttl,
-		Protocol: layers.IPProtocolTCP,
-		SrcIP:    ip.SrcIP,
-		DstIP:    ip.DstIP,
-	}
-	ftcp := &layers.TCP{
-		SrcPort: tcp.SrcPort,
-		DstPort: tcp.DstPort,
-		Seq:     tcp.Seq,
-		Ack:     tcp.Ack,
-		ACK:     tcp.ACK,
-		Window:  tcp.Window,
-	}
-	ftcp.SetNetworkLayerForChecksum(fip)
-	buf := gopacket.NewSerializeBuffer()
-	opts := gopacket.SerializeOptions{FixLengths: true, ComputeChecksums: true}
-	_ = gopacket.SerializeLayers(buf, opts, fip, ftcp, gopacket.Payload([]byte{0}))
-	return buf.Bytes()
 }
 
 func (w *Worker) Stop() {

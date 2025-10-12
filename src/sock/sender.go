@@ -4,6 +4,7 @@ import (
 	"net"
 	"syscall"
 
+	"github.com/daniellavrushin/b4/log"
 	"golang.org/x/sys/unix"
 )
 
@@ -41,12 +42,14 @@ func NewSender() (*Sender, error) {
 }
 
 func (s *Sender) SendIPv4(packet []byte, destIP net.IP) error {
+	log.Tracef("Sending IPv4 packet to %s, len=%d", destIP.String(), len(packet))
 	addr := syscall.SockaddrInet4{}
 	copy(addr.Addr[:], destIP.To4())
 	return syscall.Sendto(s.fd4, packet, 0, &addr)
 }
 
 func (s *Sender) SendIPv6(packet []byte, destIP net.IP) error {
+	log.Tracef("Sending IPv6 packet to %s, len=%d", destIP.String(), len(packet))
 	addr := syscall.SockaddrInet6{}
 	copy(addr.Addr[:], destIP.To16())
 	return syscall.Sendto(s.fd6, packet, 0, &addr)
