@@ -57,7 +57,8 @@ type Config struct {
 }
 
 type WebServer struct {
-	Port int `json:"port" bson:"port"`
+	Port      int `json:"port" bson:"port"`
+	IsEnabled bool
 }
 
 type Logging struct {
@@ -107,7 +108,8 @@ var DefaultConfig = Config{
 	UDPFilterQUIC:     "parse",
 
 	WebServer: WebServer{
-		Port: 0,
+		Port:      0,
+		IsEnabled: false,
 	},
 
 	Logging: Logging{
@@ -243,6 +245,9 @@ func (cfg *Config) ApplyLogLevel(level string) {
 }
 
 func (c *Config) Validate() error {
+
+	c.WebServer.IsEnabled = c.WebServer.Port < 0 || c.WebServer.Port > 65535
+
 	// If sites are specified, geodata path must be provided
 	if len(c.GeoCategories) > 0 && c.GeoSitePath == "" {
 		return fmt.Errorf("--geosite must be specified when using --geo-categories")

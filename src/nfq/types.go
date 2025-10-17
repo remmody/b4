@@ -19,18 +19,19 @@ type flowState struct {
 }
 
 type Worker struct {
-	cfg     *config.Config
-	qnum    uint16
-	ctx     context.Context
-	cancel  context.CancelFunc
-	q       *nfqueue.Nfqueue
-	wg      sync.WaitGroup
-	mu      sync.Mutex
-	flows   map[string]*flowState
-	ttl     time.Duration
-	limit   int
-	matcher *sni.SuffixSet
-	sock    *sock.Sender
-	frag    *sock.Fragmenter
-	closed  bool
+	cfg              *config.Config
+	qnum             uint16
+	ctx              context.Context
+	cancel           context.CancelFunc
+	q                *nfqueue.Nfqueue
+	wg               sync.WaitGroup
+	mu               sync.Mutex
+	flows            map[string]*flowState
+	ttl              time.Duration
+	limit            int
+	matcher          *sni.SuffixSet
+	sock             *sock.Sender
+	frag             *sock.Fragmenter
+	closed           bool
+	packetsProcessed uint64
 }

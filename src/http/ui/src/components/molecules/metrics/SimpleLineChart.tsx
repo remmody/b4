@@ -59,7 +59,7 @@ export const SimpleLineChart: React.FC<SimpleChartProps> = ({
         />
 
         {/* Line */}
-        <polyline points={points} fill="none" stroke={color} strokeWidth="2" />
+        <polyline points={points} fill="none" stroke={color} strokeWidth=".1" />
       </svg>
 
       {/* Y-axis labels */}

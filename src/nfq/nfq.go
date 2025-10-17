@@ -8,9 +8,11 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
+	"github.com/daniellavrushin/b4/http/handler"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/sni"
 	"github.com/daniellavrushin/b4/sock"
@@ -52,11 +54,24 @@ func (w *Worker) Start(sharedCh chan nfqueue.Attribute) error {
 	go w.gc()
 
 	w.wg.Add(1)
+
+	if w.cfg.WebServer.IsEnabled {
+		metrics := handler.GetMetricsCollector()
+		workers := make([]handler.WorkerHealth, 1)
+		workers[0] = handler.WorkerHealth{
+			ID:        int(w.qnum - uint16(w.cfg.QueueStartNum)),
+			Status:    "active",
+			Processed: 0,
+		}
+		metrics.UpdateWorkerStatus(workers)
+	}
+
 	go func() {
 		pid := os.Getpid()
 		log.Infof("NFQ bound pid=%d queue=%d", pid, w.qnum)
 		defer w.wg.Done()
 		_ = q.RegisterWithErrorFunc(w.ctx, func(a nfqueue.Attribute) int {
+			atomic.AddUint64(&w.packetsProcessed, 1)
 			select {
 			case <-w.ctx.Done():
 				return 0
@@ -127,11 +142,17 @@ func (w *Worker) Start(sharedCh chan nfqueue.Attribute) error {
 					if st, exists := w.flows[k]; exists && st.sniFound {
 						// We already have the SNI for this flow, use it
 						host := st.sni
+
 						w.mu.Unlock()
 
 						matched := w.matcher.Match(host)
 						onlyOnce := markFakeOnce(k, 20*time.Second)
 						target := ""
+
+						metrics := handler.GetMetricsCollector()
+						metrics.RecordConnection("TCP", host, fmt.Sprintf("%s:%d", src, sport), fmt.Sprintf("%s:%d", dst, dport), matched)
+						metrics.RecordPacket(uint64(len(raw)))
+
 						if matched {
 							target = " TARGET"
 						}
@@ -222,9 +243,14 @@ func (w *Worker) Start(sharedCh chan nfqueue.Attribute) error {
 								target = " TARGET"
 							}
 							log.Infof("SNI UDP%v: %s %s:%d -> %s:%d", target, host, src.String(), sport, dst.String(), dport)
+							metrics := handler.GetMetricsCollector()
+							metrics.RecordConnection("UDP", host, fmt.Sprintf("%s:%d", src, sport), fmt.Sprintf("%s:%d", dst, dport), matched)
+							metrics.RecordPacket(uint64(len(raw)))
+
 						} else {
 							log.Infof("UDP: %s:%d -> %s:%d", src.String(), sport, dst.String(), dport)
 						}
+
 						if w.cfg.UDPMode == "drop" {
 							_ = q.SetVerdict(id, nfqueue.NfDrop)
 							return 0
@@ -681,6 +707,22 @@ func (w *Worker) gc() {
 				}
 			}
 			w.mu.Unlock()
+
+			if w.cfg.WebServer.IsEnabled {
+				// Update worker metrics
+				metrics := handler.GetMetricsCollector()
+				processed := atomic.LoadUint64(&w.packetsProcessed)
+				workers := []handler.WorkerHealth{{
+					ID:        int(w.qnum - uint16(w.cfg.QueueStartNum)),
+					Status:    "active",
+					Processed: processed,
+				}}
+				metrics.UpdateWorkerStatus(workers)
+			}
 		}
 	}
+}
+
+func (w *Worker) GetStats() (uint64, string) {
+	return atomic.LoadUint64(&w.packetsProcessed), "active"
 }

@@ -64,15 +64,16 @@ func runB4(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("logging initialization failed: %w", err)
 	}
 
+	log.Infof("Starting B4 packet processor")
+
+	cfg.LoadFromFile(configPath)
+	cfg.SaveToFile(configPath)
+
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
 		return log.Errorf("invalid configuration: %w", err)
 	}
 
-	log.Infof("Starting B4 packet processor")
-
-	cfg.LoadFromFile(configPath)
-	cfg.SaveToFile(configPath)
 	printConfigDefaults(&cfg)
 
 	// Initialize metrics collector early
