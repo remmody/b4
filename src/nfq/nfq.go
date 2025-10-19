@@ -192,10 +192,6 @@ func (w *Worker) Start() error {
 			}
 
 			if proto == 17 && len(raw) >= ihl+8 {
-				if w.cfg.UDPFilterQUIC == "disabled" {
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
-					return 0
-				}
 				udp := raw[ihl:]
 				if len(udp) >= 8 {
 					payload := udp[8:]
@@ -212,54 +208,55 @@ func (w *Worker) Start() error {
 							matchDport = true
 						}
 					}
-					if !matchDport {
-						_ = q.SetVerdict(id, nfqueue.NfAccept)
-						return 0
-					}
 
-					handle := false
-					host := ""
-					switch w.cfg.UDPFilterQUIC {
-					case "all":
-						handle = true
-					case "parse":
-						if h, ok := sni.ParseQUICClientHelloSNI(payload); ok && w.matcher.Match(h) {
+					if matchDport {
+						// Always try to parse SNI and log it
+						host := ""
+						if h, ok := sni.ParseQUICClientHelloSNI(payload); ok {
 							host = h
-							handle = true
-						}
-					}
-
-					if handle {
-
-						if host != "" {
-
 							matched := w.matcher.Match(host)
 							target := ""
 							if matched {
 								target = " TARGET"
 							}
 							log.Infof("SNI UDP%v: %s %s:%d -> %s:%d", target, host, src.String(), sport, dst.String(), dport)
+
 							metrics := handler.GetMetricsCollector()
 							metrics.RecordConnection("UDP", host, fmt.Sprintf("%s:%d", src, sport), fmt.Sprintf("%s:%d", dst, dport), matched)
 							metrics.RecordPacket(uint64(len(raw)))
-
-						} else {
-							log.Infof("UDP: %s:%d -> %s:%d", src.String(), sport, dst.String(), dport)
 						}
 
-						if w.cfg.UDPMode == "drop" {
-							_ = q.SetVerdict(id, nfqueue.NfDrop)
+						// Now check if filtering is disabled
+						if w.cfg.UDPFilterQUIC == "disabled" {
+							_ = q.SetVerdict(id, nfqueue.NfAccept)
 							return 0
 						}
-						if w.cfg.UDPMode == "fake" {
-							w.dropAndInjectQUIC(raw, dst)
-							_ = q.SetVerdict(id, nfqueue.NfDrop)
-							return 0
+
+						// Handle based on configuration
+						handle := false
+						switch w.cfg.UDPFilterQUIC {
+						case "all":
+							handle = true
+						case "parse":
+							if host != "" && w.matcher.Match(host) {
+								handle = true
+							}
+						}
+
+						if handle {
+							if w.cfg.UDPMode == "drop" {
+								_ = q.SetVerdict(id, nfqueue.NfDrop)
+								return 0
+							}
+							if w.cfg.UDPMode == "fake" {
+								w.dropAndInjectQUIC(raw, dst)
+								_ = q.SetVerdict(id, nfqueue.NfDrop)
+								return 0
+							}
 						}
 					}
 				}
 			}
-
 			_ = q.SetVerdict(id, nfqueue.NfAccept)
 			return 0
 		}, func(e error) int {
