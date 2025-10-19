@@ -2,9 +2,11 @@ package nfq
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/daniellavrushin/b4/config"
+	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/sni"
 	"github.com/daniellavrushin/b4/sock"
 )
@@ -75,7 +77,30 @@ func (p *Pool) Start() error {
 }
 
 func (p *Pool) Stop() {
+	// Use goroutines to stop workers in parallel for faster shutdown
+	var wg sync.WaitGroup
 	for _, w := range p.workers {
-		w.Stop()
+		wg.Add(1)
+		worker := w // capture loop variable
+		go func() {
+			defer wg.Done()
+			worker.Stop()
+		}()
+	}
+
+	// Wait for all workers to stop with a timeout
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// All workers stopped successfully
+		log.Infof("All NFQueue workers stopped")
+	case <-time.After(3 * time.Second):
+		// Timeout - some workers didn't stop cleanly
+		log.Errorf("Timeout waiting for NFQueue workers to stop")
 	}
 }
