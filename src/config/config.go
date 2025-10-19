@@ -33,6 +33,7 @@ type Config struct {
 	Seg2Delay      int      `json:"seg2delay" bson:"seg2delay"`
 
 	FragmentStrategy string
+	FragSNIFaked     bool
 	FragSNIReverse   bool
 	FragMiddleSNI    bool
 	FragSNIPosition  int
@@ -89,6 +90,7 @@ var DefaultConfig = Config{
 	FragmentStrategy: "tcp",
 	FragSNIReverse:   true,
 	FragMiddleSNI:    true,
+	FragSNIFaked:     true,
 	FragSNIPosition:  1,
 
 	FakeSNI:           true,

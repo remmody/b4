@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -419,6 +420,121 @@ func (w *Worker) feed(key string, chunk []byte) (string, bool, bool) {
 	return "", false, false
 }
 
+func (w *Worker) sendTCPFragmentsRecursive(packet []byte, dst net.IP, positions []int, dvs int) error {
+	if len(positions) == 0 {
+		// Base case: no more splits, send the packet
+		log.Tracef("sending final fragment of %d bytes with dvs %d", len(packet), dvs)
+
+		// Apply delay for second segment based on config and dvs
+		if w.cfg.Seg2Delay > 0 && ((dvs > 0) != w.cfg.FragSNIReverse) {
+			time.Sleep(time.Duration(w.cfg.Seg2Delay) * time.Millisecond)
+		}
+
+		return w.sock.SendIPv4(packet, dst)
+	}
+
+	// Recursive case: split at first position
+	splitPos := positions[0] - dvs
+	if splitPos <= 0 || splitPos >= len(packet) {
+		// Invalid split position, skip this split
+		return w.sendTCPFragmentsRecursive(packet, dst, positions[1:], dvs)
+	}
+
+	ipHdrLen := int((packet[0] & 0x0F) * 4)
+	tcpHdrLen := int((packet[ipHdrLen+12] >> 4) * 4)
+	totalLen := len(packet)
+	payloadStart := ipHdrLen + tcpHdrLen
+	payloadLen := totalLen - payloadStart
+
+	if splitPos >= payloadLen {
+		splitPos = payloadLen - 1
+	}
+
+	// Create first segment
+	seg1Len := payloadStart + splitPos
+	seg1 := make([]byte, seg1Len)
+	copy(seg1, packet[:seg1Len])
+
+	// Create second segment
+	seg2Len := payloadStart + (payloadLen - splitPos)
+	seg2 := make([]byte, seg2Len)
+	copy(seg2[:payloadStart], packet[:payloadStart])
+	copy(seg2[payloadStart:], packet[payloadStart+splitPos:])
+
+	// Fix first segment headers
+	binary.BigEndian.PutUint16(seg1[2:4], uint16(seg1Len))
+	sock.FixIPv4Checksum(seg1[:ipHdrLen])
+	sock.FixTCPChecksum(seg1)
+
+	// Fix second segment headers
+	seq := binary.BigEndian.Uint32(seg2[ipHdrLen+4 : ipHdrLen+8])
+	binary.BigEndian.PutUint32(seg2[ipHdrLen+4:ipHdrLen+8], seq+uint32(splitPos))
+	id := binary.BigEndian.Uint16(seg1[4:6])
+	binary.BigEndian.PutUint16(seg2[4:6], id+1)
+	binary.BigEndian.PutUint16(seg2[2:4], uint16(seg2Len))
+	sock.FixIPv4Checksum(seg2[:ipHdrLen])
+	sock.FixTCPChecksum(seg2)
+
+	if w.cfg.FragSNIReverse {
+		// Send seg2 first, then recursively process seg1
+		err := w.sendTCPFragmentsRecursive(seg2, dst, positions[1:], positions[0])
+		if err != nil {
+			return err
+		}
+
+		// Inject fake SNI if configured and this is the middle fragment
+		if w.cfg.FragSNIFaked && len(positions) > 1 {
+			w.sendFakeSNIForFragment(seg1, dst, dvs)
+		}
+
+		return w.sendTCPFragmentsRecursive(seg1, dst, nil, 0)
+	} else {
+		// Send seg1 first
+		err := w.sendTCPFragmentsRecursive(seg1, dst, nil, 0)
+		if err != nil {
+			return err
+		}
+
+		// Inject fake SNI if configured
+		if w.cfg.FragSNIFaked && len(positions) > 1 {
+			w.sendFakeSNIForFragment(seg2, dst, dvs)
+		}
+
+		// Then recursively process seg2 with remaining positions
+		return w.sendTCPFragmentsRecursive(seg2, dst, positions[1:], positions[0])
+	}
+}
+
+// Helper method to send fake SNI between fragments
+func (w *Worker) sendFakeSNIForFragment(segment []byte, dst net.IP, dvs int) {
+	if !w.cfg.FakeSNI {
+		return
+	}
+
+	fake := sock.BuildFakeSNIPacket(segment, w.cfg)
+	if fake == nil {
+		return
+	}
+
+	// Adjust sequence based on dvs (delta vs previous split)
+	if w.cfg.FakeStrategy == "pastseq" || w.cfg.FakeStrategy == "randseq" {
+		ipHdrLen := int((fake[0] & 0x0F) * 4)
+		if w.cfg.FakeStrategy == "randseq" && dvs > 0 {
+			// Use dvs as offset for random sequence
+			seq := binary.BigEndian.Uint32(fake[ipHdrLen+4 : ipHdrLen+8])
+			binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], seq-uint32(dvs))
+			sock.FixTCPChecksum(fake)
+		}
+	}
+
+	if w.cfg.Seg2Delay > 0 {
+		time.Sleep(time.Duration(w.cfg.Seg2Delay) * time.Millisecond)
+	}
+
+	_ = w.sock.SendIPv4(fake, dst)
+}
+
+// Update the main sendTCPFragments to use recursive version
 func (w *Worker) sendTCPFragments(packet []byte, dst net.IP) {
 	ipHdrLen := int((packet[0] & 0x0F) * 4)
 	tcpHdrLen := int((packet[ipHdrLen+12] >> 4) * 4)
@@ -431,54 +547,52 @@ func (w *Worker) sendTCPFragments(packet []byte, dst net.IP) {
 		return
 	}
 
-	splitPos := w.cfg.FragSNIPosition
-	payload := packet[payloadStart:]
+	// Build positions array for splits
+	var positions []int
 
+	// Add configured position
+	if w.cfg.FragSNIPosition > 0 && w.cfg.FragSNIPosition < payloadLen {
+		positions = append(positions, w.cfg.FragSNIPosition)
+	}
+
+	// Add middle SNI position if configured
 	if w.cfg.FragMiddleSNI {
+		payload := packet[payloadStart:]
 		if s, e, ok := locateSNI(payload); ok && e-s >= 4 {
-			log.Tracef("SNI found at %d..%d of %d", s, e, payloadLen)
-			splitPos = s + (e-s)/2
-		} else {
-			if splitPos <= 0 || splitPos >= payloadLen {
-				splitPos = 1
+			midPos := s + (e-s)/2
+			// Only add if it's different from the configured position
+			if midPos > 0 && midPos < payloadLen &&
+				(len(positions) == 0 || abs(positions[0]-midPos) > 8) {
+				positions = append(positions, midPos)
 			}
 		}
 	}
 
-	seg1Len := payloadStart + splitPos
-	seg1 := make([]byte, seg1Len)
-	copy(seg1, packet[:seg1Len])
+	// Sort positions for proper ordering
+	sort.Ints(positions)
 
-	seg2Len := payloadStart + (payloadLen - splitPos)
-	seg2 := make([]byte, seg2Len)
-	copy(seg2[:payloadStart], packet[:payloadStart])
-	copy(seg2[payloadStart:], packet[payloadStart+splitPos:])
-
-	binary.BigEndian.PutUint16(seg1[2:4], uint16(seg1Len))
-	sock.FixIPv4Checksum(seg1[:ipHdrLen])
-	sock.FixTCPChecksum(seg1)
-
-	seq := binary.BigEndian.Uint32(seg2[ipHdrLen+4 : ipHdrLen+8])
-	binary.BigEndian.PutUint32(seg2[ipHdrLen+4:ipHdrLen+8], seq+uint32(splitPos))
-	id := binary.BigEndian.Uint16(seg1[4:6])
-	binary.BigEndian.PutUint16(seg2[4:6], id+1)
-	binary.BigEndian.PutUint16(seg2[2:4], uint16(seg2Len))
-	sock.FixIPv4Checksum(seg2[:ipHdrLen])
-	sock.FixTCPChecksum(seg2)
-
-	if w.cfg.FragSNIReverse {
-		_ = w.sock.SendIPv4(seg2, dst)
-		if w.cfg.Seg2Delay > 0 {
-			time.Sleep(time.Duration(w.cfg.Seg2Delay) * time.Millisecond)
-		}
-		_ = w.sock.SendIPv4(seg1, dst)
-	} else {
-		_ = w.sock.SendIPv4(seg1, dst)
-		if w.cfg.Seg2Delay > 0 {
-			time.Sleep(time.Duration(w.cfg.Seg2Delay) * time.Millisecond)
-		}
-		_ = w.sock.SendIPv4(seg2, dst)
+	if len(positions) == 0 {
+		// No valid split positions, use default
+		positions = []int{1}
 	}
+
+	log.Tracef("TCP fragmenting at positions: %v", positions)
+
+	// Start recursive fragmentation
+	err := w.sendTCPFragmentsRecursive(packet, dst, positions, 0)
+	if err != nil {
+		log.Errorf("Failed to send TCP fragments: %v", err)
+		// Fallback: send original packet
+		_ = w.sock.SendIPv4(packet, dst)
+	}
+}
+
+// Add helper function for absolute value
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func (w *Worker) sendIPFragments(packet []byte, dst net.IP) {
@@ -540,21 +654,19 @@ func (w *Worker) sendFakeSNISequence(original []byte, dst net.IP) {
 	for i := 0; i < w.cfg.FakeSNISeqLength; i++ {
 		_ = w.sock.SendIPv4(fake, dst)
 
-		if i+1 < w.cfg.FakeSNISeqLength {
-			id := binary.BigEndian.Uint16(fake[4:6])
-			binary.BigEndian.PutUint16(fake[4:6], id+1)
+		id := binary.BigEndian.Uint16(fake[4:6])
+		binary.BigEndian.PutUint16(fake[4:6], id+1)
 
-			// For non-past/rand strategies, update sequence number
-			if w.cfg.FakeStrategy != "pastseq" && w.cfg.FakeStrategy != "randseq" {
-				payloadLen := len(fake) - (ipHdrLen + tcpHdrLen)
-				seq := binary.BigEndian.Uint32(fake[ipHdrLen+4 : ipHdrLen+8])
-				binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], seq+uint32(payloadLen))
-			}
-
-			// Recalculate checksums after modifications
-			sock.FixIPv4Checksum(fake[:ipHdrLen])
-			sock.FixTCPChecksum(fake)
+		// For non-past/rand strategies, update sequence number
+		if w.cfg.FakeStrategy != "pastseq" && w.cfg.FakeStrategy != "randseq" {
+			payloadLen := len(fake) - (ipHdrLen + tcpHdrLen)
+			seq := binary.BigEndian.Uint32(fake[ipHdrLen+4 : ipHdrLen+8])
+			binary.BigEndian.PutUint32(fake[ipHdrLen+4:ipHdrLen+8], seq+uint32(payloadLen))
 		}
+
+		// Recalculate checksums after modifications
+		sock.FixIPv4Checksum(fake[:ipHdrLen])
+		sock.FixTCPChecksum(fake)
 	}
 }
 
