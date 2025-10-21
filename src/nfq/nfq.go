@@ -199,61 +199,47 @@ func (w *Worker) Start() error {
 					sport := binary.BigEndian.Uint16(udp[0:2])
 					dport := binary.BigEndian.Uint16(udp[2:4])
 
-					matchDport := false
-					if w.cfg.UDPDPortMin > 0 && w.cfg.UDPDPortMax >= w.cfg.UDPDPortMin {
-						if int(dport) >= w.cfg.UDPDPortMin && int(dport) <= w.cfg.UDPDPortMax {
-							matchDport = true
+					host := ""
+					if h, ok := sni.ParseQUICClientHelloSNI(payload); ok {
+						host = h
+						matched := w.matcher.Match(host)
+						target := ""
+						if matched {
+							target = labelTarget
 						}
-					} else {
-						if dport == 443 {
-							matchDport = true
+						log.Infof("SNI UDP%v: %s %s:%d -> %s:%d", target, host, src.String(), sport, dst.String(), dport)
+
+						metrics := handler.GetMetricsCollector()
+						metrics.RecordConnection("UDP", host, fmt.Sprintf("%s:%d", src, sport), fmt.Sprintf("%s:%d", dst, dport), matched)
+						metrics.RecordPacket(uint64(len(raw)))
+					}
+
+					// Now check if filtering is disabled
+					if w.cfg.UDPFilterQUIC == "disabled" {
+						_ = q.SetVerdict(id, nfqueue.NfAccept)
+						return 0
+					}
+
+					// Handle based on configuration
+					handle := false
+					switch w.cfg.UDPFilterQUIC {
+					case "all":
+						handle = true
+					case "parse":
+						if host != "" && w.matcher.Match(host) {
+							handle = true
 						}
 					}
 
-					if matchDport {
-						// Always try to parse SNI and log it
-						host := ""
-						if h, ok := sni.ParseQUICClientHelloSNI(payload); ok {
-							host = h
-							matched := w.matcher.Match(host)
-							target := ""
-							if matched {
-								target = labelTarget
-							}
-							log.Infof("SNI UDP%v: %s %s:%d -> %s:%d", target, host, src.String(), sport, dst.String(), dport)
-
-							metrics := handler.GetMetricsCollector()
-							metrics.RecordConnection("UDP", host, fmt.Sprintf("%s:%d", src, sport), fmt.Sprintf("%s:%d", dst, dport), matched)
-							metrics.RecordPacket(uint64(len(raw)))
-						}
-
-						// Now check if filtering is disabled
-						if w.cfg.UDPFilterQUIC == "disabled" {
-							_ = q.SetVerdict(id, nfqueue.NfAccept)
+					if handle {
+						if w.cfg.UDPMode == "drop" {
+							_ = q.SetVerdict(id, nfqueue.NfDrop)
 							return 0
 						}
-
-						// Handle based on configuration
-						handle := false
-						switch w.cfg.UDPFilterQUIC {
-						case "all":
-							handle = true
-						case "parse":
-							if host != "" && w.matcher.Match(host) {
-								handle = true
-							}
-						}
-
-						if handle {
-							if w.cfg.UDPMode == "drop" {
-								_ = q.SetVerdict(id, nfqueue.NfDrop)
-								return 0
-							}
-							if w.cfg.UDPMode == "fake" {
-								w.dropAndInjectQUIC(raw, dst)
-								_ = q.SetVerdict(id, nfqueue.NfDrop)
-								return 0
-							}
+						if w.cfg.UDPMode == "fake" {
+							w.dropAndInjectQUIC(raw, dst)
+							_ = q.SetVerdict(id, nfqueue.NfDrop)
+							return 0
 						}
 					}
 				}
