@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/daniellavrushin/b4/config"
@@ -47,14 +48,41 @@ func (a *API) updateConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	geositeChanged := needsGeositeReload(a.cfg, &newConfig)
+
+	manualSNIDomains := make([]string, len(newConfig.Domains.SNIDomains))
+	copy(manualSNIDomains, newConfig.Domains.SNIDomains)
+
+	if newConfig.Domains.GeoSitePath != "" && len(newConfig.Domains.GeoSiteCategories) > 0 {
+		log.Infof("Loading domains from geodata for categories: %v", newConfig.Domains.GeoSiteCategories)
+		domains, err := newConfig.LoadDomainsFromGeodata()
+		if err != nil {
+			log.Errorf("Failed to load geodata: %v", err)
+			m := metrics.GetMetricsCollector()
+			m.RecordEvent("error", fmt.Sprintf("Failed to load geodata: %v", err))
+			http.Error(w, fmt.Sprintf("Failed to load geodata: %v", err), http.StatusBadRequest)
+			return
+		}
+		log.Infof("Loaded %d domains from geodata", len(domains))
+
+		newConfig.Domains.SNIDomains = mergeDomains(manualSNIDomains, domains)
+
+		m := metrics.GetMetricsCollector()
+		m.RecordEvent("info", fmt.Sprintf("Loaded %d domains from geodata, total %d domains", len(domains), len(newConfig.Domains.SNIDomains)))
+	}
+
+	if len(newConfig.Domains.SNIDomains) > 0 {
+		log.Infof("Total SNI domains to match: %d", len(newConfig.Domains.SNIDomains))
+	}
+
 	*a.cfg = newConfig
 
 	if globalPool != nil {
 		globalPool.UpdateConfig(&newConfig)
-		log.Infof("Config pushed to all workers")
+		log.Infof("Config pushed to all workers (geosite reload: %v)", geositeChanged)
 	}
 
-	log.Infof("Configuration updated via API")
+	log.Infof("Configuration updated via API (geosite changed: %v)", geositeChanged)
 	m := metrics.GetMetricsCollector()
 	m.RecordEvent("info", "Configuration updated")
 
@@ -62,7 +90,53 @@ func (a *API) updateConfig(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	enc := json.NewEncoder(w)
 	_ = enc.Encode(map[string]interface{}{
-		"success": true,
-		"message": "Configuration updated successfully",
+		"success":       true,
+		"message":       "Configuration updated successfully",
+		"domains_count": len(newConfig.Domains.SNIDomains),
 	})
+}
+
+func needsGeositeReload(oldCfg, newCfg *config.Config) bool {
+	if oldCfg.Domains.GeoSitePath != newCfg.Domains.GeoSitePath {
+		return true
+	}
+
+	if !equalStringSlices(oldCfg.Domains.GeoSiteCategories, newCfg.Domains.GeoSiteCategories) {
+		return true
+	}
+
+	return false
+}
+
+func equalStringSlices(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func mergeDomains(manual, geodata []string) []string {
+	seen := make(map[string]bool)
+	result := make([]string, 0, len(manual)+len(geodata))
+
+	for _, domain := range manual {
+		if !seen[domain] {
+			seen[domain] = true
+			result = append(result, domain)
+		}
+	}
+
+	for _, domain := range geodata {
+		if !seen[domain] {
+			seen[domain] = true
+			result = append(result, domain)
+		}
+	}
+
+	return result
 }
