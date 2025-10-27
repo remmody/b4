@@ -63,15 +63,42 @@ jobs:
       - name: list built files
         run: ls -al out out/assets
 
+      - name: generate checksums
+        working-directory: out/assets
+        run: |
+          echo "Generating SHA256 checksums..."
+          for file in *.tar.gz; do
+            sha256sum "$file" > "$file.sha256"
+            echo "SHA256 for $file:"
+            cat "$file.sha256"
+          done
+
+          echo ""
+          echo "Generating MD5 checksums..."
+          for file in *.tar.gz; do
+            md5sum "$file" > "$file.md5"
+            echo "MD5 for $file:"
+            cat "$file.md5"
+          done
+
+          echo ""
+          echo "Creating combined checksums files..."
+          sha256sum *.tar.gz > SHA256SUMS
+          md5sum *.tar.gz > MD5SUMS
+
+          echo ""
+          echo "All checksums generated:"
+          ls -la *.sha256 *.md5 SHA256SUMS MD5SUMS
+
       - name: export asset list
         id: assets
         run: |
           echo "ASSET_FILES<<EOF" >> $GITHUB_ENV
-          ls out/assets/*.tar.gz >> $GITHUB_ENV
+          ls out/assets/*.tar.gz out/assets/*.sha256 out/assets/*.md5 out/assets/SHA256SUMS out/assets/MD5SUMS >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
           echo "files<<EOF" >> $GITHUB_OUTPUT
-          ls out/assets/*.tar.gz >> $GITHUB_OUTPUT
+          ls out/assets/*.tar.gz out/assets/*.sha256 out/assets/*.md5 out/assets/SHA256SUMS out/assets/MD5SUMS >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: upload files to artifacts
