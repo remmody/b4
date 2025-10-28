@@ -68,12 +68,17 @@ func (a *API) addGeositeDomain(w http.ResponseWriter, r *http.Request) {
 	a.cfg.Domains.SNIDomains = make([]string, len(a.manualDomains))
 	copy(a.cfg.Domains.SNIDomains, a.manualDomains)
 
-	// Prepare all domains for the matcher (manual + geosite)
-	allGeositeDomains := []string{}
-	for _, domains := range a.geositeDomains {
-		allGeositeDomains = append(allGeositeDomains, domains...)
+	// Load all geosite domains for the matcher
+	var allGeositeDomains []string
+	if a.cfg.Domains.GeoSitePath != "" && len(a.cfg.Domains.GeoSiteCategories) > 0 {
+		var err error
+		allGeositeDomains, _, err = a.geodataManager.LoadCategories(a.cfg.Domains.GeoSiteCategories)
+		if err != nil {
+			log.Errorf("Failed to load geosite domains: %v", err)
+		}
 	}
 
+	// Combine all domains for the matcher
 	allDomainsForMatcher := make([]string, 0, len(a.manualDomains)+len(allGeositeDomains))
 	allDomainsForMatcher = append(allDomainsForMatcher, a.manualDomains...)
 	allDomainsForMatcher = append(allDomainsForMatcher, allGeositeDomains...)
@@ -89,7 +94,6 @@ func (a *API) addGeositeDomain(w http.ResponseWriter, r *http.Request) {
 	if a.cfg.ConfigPath != "" {
 		if err := a.cfg.SaveToFile(a.cfg.ConfigPath); err != nil {
 			log.Errorf("Failed to save config after adding domain: %v", err)
-			// Don't return error to client, domain was added successfully
 		} else {
 			log.Infof("Config saved to %s after adding domain", a.cfg.ConfigPath)
 		}
@@ -113,13 +117,13 @@ func (a *API) getGeositeTags(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	enc := json.NewEncoder(w)
 
-	if a.cfg.Domains.GeoSitePath == "" {
+	if !a.geodataManager.IsConfigured() {
 		log.Tracef("Geosite path is not configured")
 		_ = enc.Encode(GeositeResponse{Tags: []string{}})
 		return
 	}
 
-	tags, err := geodat.ListGeoSiteTags(a.cfg.Domains.GeoSitePath)
+	tags, err := geodat.ListGeoSiteTags(a.geodataManager.GetGeositePath())
 	if err != nil {
 		http.Error(w, "Failed to load geosite tags: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -144,12 +148,12 @@ func (a *API) previewGeoCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if a.cfg.Domains.GeoSitePath == "" {
+	if !a.geodataManager.IsConfigured() {
 		http.Error(w, "Geosite path not configured", http.StatusBadRequest)
 		return
 	}
 
-	domains, err := geodat.LoadDomainsFromSites(a.cfg.Domains.GeoSitePath, []string{category})
+	domains, err := a.geodataManager.LoadCategory(category)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to load category: %v", err), http.StatusInternalServerError)
 		return
@@ -172,12 +176,4 @@ func (a *API) previewGeoCategory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	enc := json.NewEncoder(w)
 	_ = enc.Encode(response)
-}
-
-func (a *API) getGeoCategoryBreakdown() map[string]int {
-	breakdown := make(map[string]int)
-	for category, domains := range a.geositeDomains {
-		breakdown[category] = len(domains)
-	}
-	return breakdown
 }

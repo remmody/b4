@@ -4,13 +4,14 @@ import (
 	"net/http"
 
 	"github.com/daniellavrushin/b4/config"
+	"github.com/daniellavrushin/b4/geodat"
 )
 
 type API struct {
 	cfg            *config.Config
 	mux            *http.ServeMux
-	manualDomains  []string            // Track manually added domains
-	geositeDomains map[string][]string // Track geosite category -> domains mapping
+	geodataManager *geodat.GeodataManager
+	manualDomains  []string // Track manually added domains
 }
 
 // Response types for API endpoints

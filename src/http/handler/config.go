@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/daniellavrushin/b4/config"
-	"github.com/daniellavrushin/b4/geodat"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/metrics"
 )
@@ -36,10 +35,11 @@ func (a *API) handleConfig(w http.ResponseWriter, r *http.Request) {
 func (a *API) getConfig(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	// Get all geosite domains count
+	// Get category breakdown from geodata manager (uses cached counts)
+	categoryBreakdown := a.geodataManager.GetCachedCategoryBreakdown()
 	totalGeositeDomains := 0
-	for _, domains := range a.geositeDomains {
-		totalGeositeDomains += len(domains)
+	for _, count := range categoryBreakdown {
+		totalGeositeDomains += count
 	}
 
 	// Create response with stats
@@ -49,8 +49,8 @@ func (a *API) getConfig(w http.ResponseWriter) {
 			ManualDomains:     len(a.manualDomains),
 			GeositeDomains:    totalGeositeDomains,
 			TotalDomains:      len(a.manualDomains) + totalGeositeDomains,
-			GeositeAvailable:  a.cfg.Domains.GeoSitePath != "",
-			CategoryBreakdown: a.getGeoCategoryBreakdown(),
+			GeositeAvailable:  a.geodataManager.IsConfigured(),
+			CategoryBreakdown: categoryBreakdown,
 		},
 	}
 
@@ -84,42 +84,46 @@ func (a *API) updateConfig(w http.ResponseWriter, r *http.Request) {
 	copy(a.manualDomains, newConfig.Domains.SNIDomains)
 	log.Infof("Updated manual domains: %d", len(a.manualDomains))
 
-	// Load geosite domains if needed - but DON'T merge them into SNIDomains
-	categoryStats := make(map[string]int)
+	// Update geodata manager paths if they changed
+	a.geodataManager.UpdatePaths(newConfig.Domains.GeoSitePath, newConfig.Domains.GeoIpPath)
+
+	// Load geosite domains using the manager
 	var allGeositeDomains []string
+	var categoryStats map[string]int
 
 	if newConfig.Domains.GeoSitePath != "" && len(newConfig.Domains.GeoSiteCategories) > 0 {
 		log.Infof("Loading domains from geodata for categories: %v", newConfig.Domains.GeoSiteCategories)
 
-		// Clear previous geosite domains
-		a.geositeDomains = make(map[string][]string)
+		var err error
+		allGeositeDomains, categoryStats, err = a.geodataManager.LoadCategories(newConfig.Domains.GeoSiteCategories)
+		if err != nil {
+			log.Errorf("Failed to load geosite categories: %v", err)
+			http.Error(w, fmt.Sprintf("Failed to load geodata: %v", err), http.StatusInternalServerError)
+			return
+		}
 
-		// Load each category separately for tracking
-		for _, category := range newConfig.Domains.GeoSiteCategories {
-			domains, err := geodat.LoadDomainsFromSites(newConfig.Domains.GeoSitePath, []string{category})
-			if err != nil {
-				log.Errorf("Failed to load category %s: %v", category, err)
-				continue
-			}
-			a.geositeDomains[category] = domains
-			categoryStats[category] = len(domains)
-			log.Infof("Loaded %d domains for category: %s", len(domains), category)
-			allGeositeDomains = append(allGeositeDomains, domains...)
+		log.Infof("Loaded %d total geosite domains from %d categories", len(allGeositeDomains), len(categoryStats))
+		for category, count := range categoryStats {
+			log.Infof("  - %s: %d domains", category, count)
 		}
 
 		m := metrics.GetMetricsCollector()
 		m.RecordEvent("info", fmt.Sprintf("Loaded %d domains from geodata across %d categories",
 			len(allGeositeDomains), len(newConfig.Domains.GeoSiteCategories)))
 	} else if len(newConfig.Domains.GeoSiteCategories) == 0 {
-		// Clear geosite domains if no categories selected
-		a.geositeDomains = make(map[string][]string)
+		// Clear geosite cache if no categories selected
+		a.geodataManager.ClearCache()
+		categoryStats = make(map[string]int)
+		allGeositeDomains = []string{}
 		log.Infof("Cleared all geosite domains")
 	}
 
+	// Config should only contain manual domains
 	newConfig.Domains.SNIDomains = a.manualDomains
 
 	a.updateMainConfig(&newConfig)
 
+	// Combine all domains for the matcher
 	allDomainsForMatcher := make([]string, 0, len(a.manualDomains)+len(allGeositeDomains))
 	allDomainsForMatcher = append(allDomainsForMatcher, a.manualDomains...)
 	allDomainsForMatcher = append(allDomainsForMatcher, allGeositeDomains...)

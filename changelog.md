@@ -5,3 +5,4 @@
 - ADDED: `--clear-iptables` argument to perform a cleanup of iptable rules.
 - ADDED: `IPv6` support.
 - ADDED: `--ipv4` (default is `true`) and `--ipv6` (default is `false`) arguments to control protocol versions.
+- IMPROVED: Handling of geodata domains.

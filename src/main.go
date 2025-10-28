@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/daniellavrushin/b4/config"
+	"github.com/daniellavrushin/b4/geodat"
 	b4http "github.com/daniellavrushin/b4/http"
 	"github.com/daniellavrushin/b4/http/handler"
 	"github.com/daniellavrushin/b4/iptables"
@@ -104,18 +105,26 @@ func runB4(cmd *cobra.Command, args []string) error {
 
 	// Load domains from geodata if specified
 
-	var allDomains []string
+	// Initialize GeodataManager
+	geodataManager := geodat.NewGeodataManager(cfg.Domains.GeoSitePath, cfg.Domains.GeoIpPath)
 
+	var allDomains []string
 	manualDomains := cfg.Domains.SNIDomains // These are the user's manual domains
 
 	if cfg.Domains.GeoSitePath != "" && len(cfg.Domains.GeoSiteCategories) > 0 {
 		log.Infof("Loading domains from geodata for categories: %v", cfg.Domains.GeoSiteCategories)
-		geositeDomains, err := cfg.LoadDomainsFromGeodata()
+
+		geositeDomains, categoryStats, err := geodataManager.LoadCategories(cfg.Domains.GeoSiteCategories)
 		if err != nil {
 			metrics.RecordEvent("error", fmt.Sprintf("Failed to load geodata: %v", err))
 			return fmt.Errorf("failed to load geodata domains: %w", err)
 		}
-		log.Infof("Loaded %d domains from geodata", len(geositeDomains))
+
+		// Log category breakdown
+		log.Tracef("Loaded %d domains from geodata:", len(geositeDomains))
+		for category, count := range categoryStats {
+			log.Tracef("  - %s: %d domains", category, count)
+		}
 		metrics.RecordEvent("info", fmt.Sprintf("Loaded %d domains from geodata", len(geositeDomains)))
 
 		// Combine for matching
