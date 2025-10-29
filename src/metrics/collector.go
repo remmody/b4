@@ -8,34 +8,35 @@ import (
 )
 
 type MetricsCollector struct {
-	TotalConnections    uint64
-	ActiveFlows         uint64
-	PacketsProcessed    uint64
-	BytesProcessed      uint64
-	TCPConnections      uint64
-	UDPConnections      uint64
-	TargetedConnections uint64
-	lastConnCount       uint64
-	lastPacketCount     uint64
-	CurrentCPS          float64
-	CurrentPPS          float64
-	CPUUsage            float64
+	TopDomains          map[string]uint64 `json:"top_domains"`
+	ProtocolDist        map[string]uint64 `json:"protocol_dist"`
+	GeoDist             map[string]uint64 `json:"geo_dist"`
+	TotalConnections    uint64            `json:"total_connections"`
+	ActiveFlows         uint64            `json:"active_flows"`
+	PacketsProcessed    uint64            `json:"packets_processed"`
+	BytesProcessed      uint64            `json:"bytes_processed"`
+	TCPConnections      uint64            `json:"tcp_connections"`
+	UDPConnections      uint64            `json:"udp_connections"`
+	TargetedConnections uint64            `json:"targeted_connections"`
+	CurrentCPS          float64           `json:"current_cps"`
+	CurrentPPS          float64           `json:"current_pps"`
+	CPUUsage            float64           `json:"cpu_usage"`
 
-	mu                sync.RWMutex
-	TopDomains        map[string]uint64
-	ProtocolDist      map[string]uint64
-	GeoDist           map[string]uint64
-	ConnectionRate    []TimeSeriesPoint
-	PacketRate        []TimeSeriesPoint
-	StartTime         time.Time
-	Uptime            string
-	MemoryUsage       MemoryStats
-	WorkerStatus      []WorkerHealth
-	NFQueueStatus     string
-	IPTablesStatus    string
-	RecentConnections []ConnectionLog
-	RecentEvents      []SystemEvent
-	lastUpdate        time.Time
+	ConnectionRate    []TimeSeriesPoint `json:"connection_rate"`
+	PacketRate        []TimeSeriesPoint `json:"packet_rate"`
+	StartTime         time.Time         `json:"start_time"`
+	Uptime            string            `json:"uptime"`
+	MemoryUsage       MemoryStats       `json:"memory_usage"`
+	WorkerStatus      []WorkerHealth    `json:"worker_status"`
+	NFQueueStatus     string            `json:"nfqueue_status"`
+	IPTablesStatus    string            `json:"iptables_status"`
+	RecentConnections []ConnectionLog   `json:"recent_connections"`
+	RecentEvents      []SystemEvent     `json:"recent_events"`
+
+	lastUpdate      time.Time    `json:"-"`
+	mu              sync.RWMutex `json:"-"`
+	lastConnCount   uint64       `json:"-"`
+	lastPacketCount uint64       `json:"-"`
 }
 
 type TimeSeriesPoint struct {
@@ -47,16 +48,16 @@ type MemoryStats struct {
 	Allocated      uint64  `json:"allocated"`
 	TotalAllocated uint64  `json:"total_allocated"`
 	System         uint64  `json:"system"`
-	NumGC          uint32  `json:"num_gc"`
+	Percent        float64 `json:"percent"`
 	HeapAlloc      uint64  `json:"heap_alloc"`
 	HeapInuse      uint64  `json:"heap_inuse"`
-	Percent        float64 `json:"percent"`
+	NumGC          uint32  `json:"num_gc"`
 }
 
 type WorkerHealth struct {
+	Processed uint64 `json:"processed"`
 	ID        int    `json:"id"`
 	Status    string `json:"status"`
-	Processed uint64 `json:"processed"`
 }
 
 type ConnectionLog struct {
@@ -324,6 +325,8 @@ func (m *MetricsCollector) GetSnapshot() *MetricsCollector {
 		snapshot.RecentEvents = make([]SystemEvent, 0)
 	}
 
+	snapshot.ConnectionRate = smoothTimeSeriesData(m.ConnectionRate, 3)
+	snapshot.PacketRate = smoothTimeSeriesData(m.PacketRate, 3)
 	return snapshot
 }
 
@@ -343,6 +346,45 @@ func (m *MetricsCollector) pruneTopDomains() {
 	}
 
 	delete(m.TopDomains, minDomain)
+}
+
+func smoothTimeSeriesData(data []TimeSeriesPoint, windowSize int) []TimeSeriesPoint {
+	if len(data) <= windowSize {
+		return data
+	}
+
+	smoothed := make([]TimeSeriesPoint, len(data))
+
+	for i := range data {
+		sum := 0.0
+		count := 0
+
+		for j := max(0, i-windowSize/2); j <= min(len(data)-1, i+windowSize/2); j++ {
+			sum += data[j].Value
+			count++
+		}
+
+		smoothed[i] = TimeSeriesPoint{
+			Timestamp: data[i].Timestamp,
+			Value:     sum / float64(count),
+		}
+	}
+
+	return smoothed
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func formatDuration(d time.Duration) string {

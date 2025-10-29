@@ -13,7 +13,15 @@ REPO_NAME="b4"
 INSTALL_DIR="/opt/sbin"
 BINARY_NAME="b4"
 CONFIG_DIR="/opt/etc/b4"
+CONFIG_FILE="${CONFIG_DIR}/b4.json"
 TEMP_DIR="/tmp/b4_install_$$"
+
+# Geosite sources (pipe-delimited: number|name|url)
+GEOSITE_SOURCES="1|Loyalsoldier source|https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
+2|RUNET Freedom source|https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geosite.dat
+3|Nidelon source|https://github.com/Nidelon/ru-block-v2ray-rules/releases/latest/download/geosite.dat
+4|DustinWin source|https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo/geosite.dat
+5|Chocolate4U source|https://raw.githubusercontent.com/Chocolate4U/Iran-v2ray-rules/release/geosite.dat"
 
 # Colors for output (if terminal supports it)
 if [ -t 1 ]; then
@@ -21,6 +29,7 @@ if [ -t 1 ]; then
     GREEN='\033[0;32m'
     YELLOW='\033[1;33m'
     BLUE='\033[0;34m'
+    CYAN='\033[0;36m'
     NC='\033[0m' # No Color
 else
     RED=''
@@ -172,7 +181,7 @@ remove_b4() {
     fi
 
     # Ask about configuration
-    printf "${YELLOW}Remove configuration files as well? (y/N): ${NC}"
+    printf "${CYAN}Remove configuration files as well? (y/N): ${NC}"
     read answer
     case "$answer" in
     [yY] | [yY][eE][sS])
@@ -592,11 +601,12 @@ install_b4() {
     # Stop existing b4 if running
     stop_process "$BINARY_NAME"
 
+    # Create timestamp in POSIX way
+    timestamp=$(date '+%Y%m%d_%H%M%S')
+
     # Backup existing binary if it exists
     if [ -f "${INSTALL_DIR}/${BINARY_NAME}" ]; then
         print_info "Backing up existing binary..."
-        # Create timestamp in POSIX way
-        timestamp=$(date '+%Y%m%d_%H%M%S')
         mv "${INSTALL_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}.backup.${timestamp}"
     fi
 
@@ -615,6 +625,7 @@ install_b4() {
 
     # Verify installation
     if "${INSTALL_DIR}/${BINARY_NAME}" --version >/dev/null 2>&1; then
+        rm -f "${INSTALL_DIR}/${BINARY_NAME}.backup.${timestamp}"
         print_success "b4 installed successfully!"
     else
         print_warning "Binary installed but version check failed"
@@ -635,7 +646,7 @@ After=network.target
 [Service]
 Type=simple
 User=root
-ExecStart=${INSTALL_DIR}/${BINARY_NAME} --config ${CONFIG_DIR}/b4.json
+ExecStart=${INSTALL_DIR}/${BINARY_NAME} --config ${CONFIG_FILE}
 Restart=on-failure
 RestartSec=5
 
@@ -746,6 +757,278 @@ EOF
     fi
 }
 
+# Get geosite path from config using jq if available
+get_geosite_path_from_config() {
+    if [ -f "$CONFIG_FILE" ] && command_exists jq; then
+        geosite_path=$(jq -r '.domains.geosite_path // empty' "$CONFIG_FILE" 2>/dev/null)
+        if [ -n "$geosite_path" ] && [ "$geosite_path" != "null" ]; then
+            # Extract directory from path
+            echo "$(dirname "$geosite_path")"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Display geosite source menu and get user choice
+select_geosite_source() {
+    echo "" >&2
+    echo "=======================================" >&2
+    echo "  Select Geosite Data Source" >&2
+    echo "=======================================" >&2
+    echo "" >&2
+
+    # Display sources (using POSIX-compliant iteration)
+    echo "$GEOSITE_SOURCES" | while IFS='|' read -r num name url; do
+        if [ -n "$num" ]; then
+            printf "  ${GREEN}%s${NC}) %s\n" "$num" "$name" >&2
+        fi
+    done
+
+    echo "" >&2
+    printf "${CYAN}Select source (1-5) or 'q' to skip: ${NC}" >&2
+    read choice
+
+    case "$choice" in
+    [qQ] | [qQ][uU][iI][tT])
+        return 1
+        ;;
+    [1-5])
+        # Extract URL for selected choice (POSIX-compliant)
+        selected_url=$(echo "$GEOSITE_SOURCES" | grep "^${choice}|" | cut -d'|' -f3)
+        if [ -n "$selected_url" ]; then
+            echo "$selected_url"
+            return 0
+        else
+            print_error "Invalid selection"
+            return 1
+        fi
+        ;;
+    *)
+        print_error "Invalid selection"
+        return 1
+        ;;
+    esac
+}
+
+# Download geosite file
+download_geosite() {
+    geosite_url="$1"
+    save_dir="$2"
+    geosite_file="${save_dir}/geosite.dat"
+
+    print_info "Downloading geosite.dat from: $geosite_url"
+
+    # Create directory if it doesn't exist
+    if [ ! -d "$save_dir" ]; then
+        mkdir -p "$save_dir" || {
+            print_error "Failed to create directory: $save_dir"
+            return 1
+        }
+    fi
+
+    # Download the file
+    if command_exists wget; then
+        wget -q --show-progress -O "$geosite_file" "$geosite_url" || {
+            print_error "Download failed"
+            return 1
+        }
+    elif command_exists curl; then
+        curl -L -# -o "$geosite_file" "$geosite_url" || {
+            print_error "Download failed"
+            return 1
+        }
+    else
+        print_error "Neither wget nor curl found"
+        return 1
+    fi
+
+    # Verify file was downloaded and is not empty
+    if [ ! -f "$geosite_file" ] || [ ! -s "$geosite_file" ]; then
+        print_error "Downloaded file is empty or missing"
+        rm -f "$geosite_file"
+        return 1
+    fi
+
+    print_success "Geosite file downloaded to: $geosite_file"
+    return 0
+}
+
+# Update config file with geosite path
+update_config_geosite_path() {
+    geosite_file="$1"
+
+    if [ ! -f "$CONFIG_FILE" ]; then
+        print_warning "Config file not found: $CONFIG_FILE"
+        print_info "You'll need to manually add geosite_path to your config"
+        print_info "Set domains.geosite_path to: $geosite_file"
+        return 1
+    fi
+
+    # Try to update with jq if available
+    if command_exists jq; then
+        print_info "Updating config file..."
+
+        # Create temporary file
+        temp_file="${CONFIG_FILE}.tmp"
+
+        # Update or add geosite_path
+        if jq ".domains.geosite_path = \"$geosite_file\"" "$CONFIG_FILE" >"$temp_file" 2>/dev/null; then
+            mv "$temp_file" "$CONFIG_FILE" || {
+                print_error "Failed to update config file"
+                rm -f "$temp_file"
+                return 1
+            }
+            print_success "Config updated with geosite path: $geosite_file"
+            return 0
+        else
+            print_error "Failed to parse config with jq"
+            rm -f "$temp_file"
+            return 1
+        fi
+    else
+        print_warning "jq not found - cannot automatically update config"
+        print_info "Please manually add to your config file:"
+        print_info "  \"domains\": {"
+        print_info "    \"geosite_path\": \"$geosite_file\""
+        print_info "  }"
+        echo ""
+        print_info "Or remember to update Geosite Path in the B4 Web UI by accessing Settings -> Domains."
+        return 1
+    fi
+}
+
+# Setup geosite data
+setup_geosite() {
+    echo ""
+    echo "======================================="
+    echo "  Geosite Data Setup"
+    echo "======================================="
+    echo ""
+
+    # Ask if user wants to download geosite
+    printf "${CYAN}Do you want to download geosite.dat file? (y/N): ${NC}"
+    read answer
+
+    case "$answer" in
+    [yY] | [yY][eE][sS])
+        # Select source
+        geosite_url=$(select_geosite_source)
+        if [ $? -ne 0 ] || [ -z "$geosite_url" ]; then
+            print_info "Geosite setup skipped"
+            return 0
+        fi
+
+        # Get save directory
+        default_dir="$CONFIG_DIR"
+
+        # Try to get existing path from config
+        existing_dir=$(get_geosite_path_from_config || true)
+        if [ -n "$existing_dir" ]; then
+            default_dir="$existing_dir"
+            print_info "Found existing geosite path in config: $default_dir"
+        fi
+
+        echo ""
+        printf "${CYAN}Save directory [${default_dir}]: ${NC}"
+        read save_dir
+
+        # Use default if empty
+        if [ -z "$save_dir" ]; then
+            save_dir="$default_dir"
+        fi
+
+        # Download geosite file
+        if download_geosite "$geosite_url" "$save_dir"; then
+            geosite_file="${save_dir}/geosite.dat"
+
+            # Update config
+            update_config_geosite_path "$geosite_file"
+
+            print_success "Geosite setup completed!"
+        else
+            print_error "Failed to download geosite file"
+        fi
+        ;;
+    *)
+        print_info "Geosite setup skipped"
+        ;;
+    esac
+
+    echo ""
+}
+
+# Print web interface access information
+print_web_interface_info() {
+
+    local web_port
+    if [ -f "$CONFIG_FILE" ] && command_exists jq; then
+        web_port=$(jq -r '.web_server.port // empty' "$CONFIG_FILE" 2>/dev/null)
+    else
+        web_port="7000"
+    fi
+
+    echo ""
+    echo "======================================="
+    echo "  Web Interface Access"
+    echo "======================================="
+    echo ""
+
+    # Get local IP address (POSIX compliant methods)
+    local_ip=""
+
+    # Method 1: Try ip command (common on modern systems)
+    if command_exists ip; then
+        local_ip=$(ip route get 1 2>/dev/null | grep -oP 'src \K\S+' || true)
+        # Fallback for systems without grep -P
+        if [ -z "$local_ip" ]; then
+            local_ip=$(ip route get 1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}' | head -n1)
+        fi
+    fi
+
+    # Method 2: Try hostname -I (if available)
+    if [ -z "$local_ip" ] && command_exists hostname; then
+        local_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    fi
+
+    # Method 3: Parse ifconfig (fallback for older systems)
+    if [ -z "$local_ip" ] && command_exists ifconfig; then
+        local_ip=$(ifconfig 2>/dev/null | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' | sed 's/addr://' | head -n1)
+    fi
+
+    # Print local access
+    if [ -n "$local_ip" ]; then
+        print_info "Local network access:"
+        printf "  ${GREEN}http://%s:%s${NC}\n" "$local_ip" "$web_port"
+        echo ""
+    fi
+
+    # Try to get external IP (with timeout)
+    print_info "Checking external IP address..."
+    external_ip=""
+
+    # Try multiple services with timeout
+    if command_exists curl; then
+        external_ip=$(curl -s --max-time 3 ifconfig.me 2>/dev/null ||
+            curl -s --max-time 3 ipinfo.io/ip 2>/dev/null ||
+            curl -s --max-time 3 icanhazip.com 2>/dev/null || true)
+    elif command_exists wget; then
+        external_ip=$(wget -qO- --timeout=3 ifconfig.me 2>/dev/null ||
+            wget -qO- --timeout=3 ipinfo.io/ip 2>/dev/null ||
+            wget -qO- --timeout=3 icanhazip.com 2>/dev/null || true)
+    fi
+
+    # Print external access if available
+    if [ -n "$external_ip" ]; then
+        print_info "External access (if port ${web_port} is forwarded):"
+        printf "  ${GREEN}http://%s:%s${NC}\n" "$external_ip" "$web_port"
+        print_warning "Note: Ensure port ${web_port} is open in your firewall"
+    else
+        print_warning "Could not determine external IP address"
+    fi
+
+}
+
 # Main installation process
 main_install() {
     echo ""
@@ -793,18 +1076,25 @@ main_install() {
     create_systemd_service
     create_openwrt_init
 
+    # Setup geosite (new feature)
+    setup_geosite
+
     # Print installation summary
     echo ""
     print_info "Binary installed to: ${INSTALL_DIR}/${BINARY_NAME}"
-    print_info "Configuration at: ${CONFIG_DIR}/b4.json"
+    print_info "Configuration at: ${CONFIG_FILE}"
     echo ""
     print_info "To see all B4 options:"
     print_info "  ${INSTALL_DIR}/${BINARY_NAME} --help"
 
     echo ""
     print_info "To start B4 now:"
-    print_info "  ${INIT_DIR}/S99b4 restart        # For OpenWRT/Entware systems"
-    print_info "  systemctl start b4               # For systemd systems"
+    if [ -n "$INIT_DIR" ]; then
+        print_info "  ${INIT_DIR}/S99b4 start         # For OpenWRT/Entware systems"
+    fi
+    if [ -d "/etc/systemd/system" ]; then
+        print_info "  systemctl start b4              # For systemd systems"
+    fi
     echo ""
 
     # Check PATH
@@ -813,6 +1103,8 @@ main_install() {
         print_info "You may want to add it to your PATH or create a symlink:"
         print_info "  ln -s ${INSTALL_DIR}/${BINARY_NAME} /usr/bin/${BINARY_NAME}"
     fi
+
+    print_web_interface_info
 
     echo "======================================="
     echo "       Installation Complete!"
