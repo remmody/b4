@@ -503,11 +503,11 @@ check_dependencies() {
 
         # Try to detect package manager and suggest install command
         if command_exists opkg; then
-            print_info "For OpenWRT, try: opkg update && opkg install wget tar"
+            print_info "For OpenWRT, try: opkg update && opkg install wget tar iptables"
         elif command_exists apt-get; then
-            print_info "Try: apt-get update && apt-get install -y wget tar"
+            print_info "Try: apt-get update && apt-get install -y wget tar iptables"
         elif command_exists yum; then
-            print_info "Try: yum install -y wget tar"
+            print_info "Try: yum install -y wget tar iptables"
         fi
 
         exit 1
@@ -749,7 +749,9 @@ update() {
 
     chmod +x ~/b4install.sh --geosite-src="$geosite_src" --geosite-dst="$geosite_dst"
     sh ~/b4install.sh -q
- 
+
+    start
+    echo "b4 service updated"
 }
 
 
