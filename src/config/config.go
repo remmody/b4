@@ -24,7 +24,7 @@ type Config struct {
 	ConnBytesLimit int     `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
 	Logging        Logging `json:"logging" bson:"logging"`
 	Threads        int     `json:"threads" bson:"threads"`
-	SkipIpTables   bool    `json:"skip_iptables" bson:"skip_iptables"`
+	SkipTables     bool    `json:"skip_tables" bson:"skip_tables"`
 	Seg2Delay      int     `json:"seg2delay" bson:"seg2delay"`
 	IPv4Enabled    bool    `json:"ipv4" bson:"ipv4"`
 	IPv6Enabled    bool    `json:"ipv6" bson:"ipv6"`
@@ -96,7 +96,7 @@ var DefaultConfig = Config{
 	Mark:           1 << 15,
 	Threads:        4,
 	ConnBytesLimit: 19,
-	SkipIpTables:   false,
+	SkipTables:     false,
 	Seg2Delay:      0,
 	IPv4Enabled:    true,
 	IPv6Enabled:    false,
@@ -257,7 +257,7 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&c.UDP.FilterSTUN, "udp-filter-stun", c.UDP.FilterSTUN, "STUN filtering mode (disabled|all|parse)")
 
 	// Feature flags
-	cmd.Flags().BoolVar(&c.SkipIpTables, "skip-iptables", c.SkipIpTables, "Skip iptables rules setup")
+	cmd.Flags().BoolVar(&c.SkipTables, "skip-tables", c.SkipTables, "Skip iptables/nftables rules setup")
 	cmd.Flags().BoolVar(&c.IPv4Enabled, "ipv4", c.IPv4Enabled, "Enable IPv4 processing")
 	cmd.Flags().BoolVar(&c.IPv6Enabled, "ipv6", c.IPv6Enabled, "Enable IPv6 processing")
 

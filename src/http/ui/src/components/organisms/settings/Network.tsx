@@ -47,7 +47,7 @@ export const NetworkSettings: React.FC<NetworkSettingsProps> = ({
             type="number"
             value={config.mark}
             onChange={(e) => onChange("mark", Number(e.target.value))}
-            helperText="Packet mark value for iptables"
+            helperText="Packet mark value for iptables/nftables rules"
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>

@@ -35,10 +35,10 @@ export const FeatureSettings: React.FC<FeatureSettingsProps> = ({
             description="Enable IPv6 support"
           />
           <SettingSwitch
-            label="Skip IPTables Setup"
-            checked={config.skip_iptables}
-            onChange={(checked) => onChange("skip_iptables", checked)}
-            description="Skip automatic iptables rules configuration"
+            label="Skip IPTables/NFTables Setup"
+            checked={config.skip_tables}
+            onChange={(checked) => onChange("skip_tables", checked)}
+            description="Skip automatic IPTables/NFTables rules configuration"
           />
         </Grid>
       </Grid>

@@ -55,7 +55,6 @@
 - Root/CAP_NET_ADMIN privileges
 - Go 1.24+ (for building)
 - Node.js 18+ and pnpm (for building web UI)
-- `iptables` and `ip6tables`
 
 ## Installation
 
@@ -120,7 +119,7 @@ The `--update` flag performs an automatic update:
 # - Removes binary and backups
 # - Removes service files (systemd/init)
 # - Optionally keeps or removes configuration
-# - Cleans up iptables rules
+# - Cleans up iptables/nftables rules
 ```
 
 ### Service Manager Detection
@@ -139,8 +138,8 @@ The installer intelligently detects and configures the appropriate service manag
 
 ```bash
 # Check for missing dependencies
-opkg update && opkg install wget tar iptables  # OpenWRT
-apt-get install wget tar iptables              # Debian/Ubuntu
+opkg update && opkg install wget tar  # OpenWRT
+apt-get install wget tar              # Debian/Ubuntu
 ```
 
 ## Quick Start
@@ -203,7 +202,7 @@ sudo systemctl enable b4 #to restart on reboot
 
 #### System Configuration
 
-- `--skip-iptables` - Skip iptables rules setup
+- `--skip-tables` - Skip iptables/nftables rules setup
 - `--seg2delay` - Delay between segments in ms (default: 0)
 
 #### Logging

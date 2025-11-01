@@ -1,11 +1,9 @@
-package iptables
+package tables
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -14,32 +12,31 @@ import (
 	"github.com/daniellavrushin/b4/log"
 )
 
-func run(args ...string) (string, error) {
-	var out bytes.Buffer
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return out.String(), err
+type IPTablesManager struct {
+	cfg *config.Config
 }
 
-func existsChain(ipt, table, chain string) bool {
+func NewIPTablesManager(cfg *config.Config) *IPTablesManager {
+	return &IPTablesManager{cfg: cfg}
+}
+
+func (im *IPTablesManager) existsChain(ipt, table, chain string) bool {
 	_, err := run(ipt, "-w", "-t", table, "-S", chain)
 	return err == nil
 }
 
-func ensureChain(ipt, table, chain string) {
-	if !existsChain(ipt, table, chain) {
+func (im *IPTablesManager) ensureChain(ipt, table, chain string) {
+	if !im.existsChain(ipt, table, chain) {
 		_, _ = run(ipt, "-w", "-t", table, "-N", chain)
 	}
 }
 
-func existsRule(ipt, table, chain string, spec []string) bool {
+func (im *IPTablesManager) existsRule(ipt, table, chain string, spec []string) bool {
 	_, err := run(append([]string{ipt, "-w", "-t", table, "-C", chain}, spec...)...)
 	return err == nil
 }
 
-func delAll(ipt, table, chain string, spec []string) {
+func (im *IPTablesManager) delAll(ipt, table, chain string, spec []string) {
 	for {
 		_, err := run(append([]string{ipt, "-w", "-t", table, "-D", chain}, spec...)...)
 		if err != nil {
@@ -48,25 +45,17 @@ func delAll(ipt, table, chain string, spec []string) {
 	}
 }
 
-func setSysctlOrProc(name, val string) {
-	_, _ = run("sh", "-c", "sysctl -w "+name+"="+val+" || echo "+val+" > /proc/sys/"+strings.ReplaceAll(name, ".", "/"))
-}
-
-func getSysctlOrProc(name string) string {
-	out, _ := run("sh", "-c", "sysctl -n "+name+" 2>/dev/null || cat /proc/sys/"+strings.ReplaceAll(name, ".", "/"))
-	return strings.TrimSpace(out)
-}
-
 type Rule struct {
-	IPT    string
-	Table  string
-	Chain  string
-	Spec   []string
-	Action string
+	manager *IPTablesManager
+	IPT     string
+	Table   string
+	Chain   string
+	Spec    []string
+	Action  string
 }
 
 func (r Rule) Apply() error {
-	if existsRule(r.IPT, r.Table, r.Chain, r.Spec) {
+	if r.manager.existsRule(r.IPT, r.Table, r.Chain, r.Spec) {
 		return nil
 	}
 	op := "-A"
@@ -78,21 +67,22 @@ func (r Rule) Apply() error {
 }
 
 func (r Rule) Remove() {
-	delAll(r.IPT, r.Table, r.Chain, r.Spec)
+	r.manager.delAll(r.IPT, r.Table, r.Chain, r.Spec)
 }
 
 type Chain struct {
-	IPT   string
-	Table string
-	Name  string
+	manager *IPTablesManager
+	IPT     string
+	Table   string
+	Name    string
 }
 
 func (c Chain) Ensure() {
-	ensureChain(c.IPT, c.Table, c.Name)
+	c.manager.ensureChain(c.IPT, c.Table, c.Name)
 }
 
 func (c Chain) Remove() {
-	if existsChain(c.IPT, c.Table, c.Name) {
+	if c.manager.existsChain(c.IPT, c.Table, c.Name) {
 		_, _ = run(c.IPT, "-w", "-t", c.Table, "-F", c.Name)
 		_, _ = run(c.IPT, "-w", "-t", c.Table, "-X", c.Name)
 	}
@@ -123,7 +113,7 @@ func saveSysctlSnapshot(m map[string]string) {
 	_ = os.WriteFile(sysctlSnapPath, b, 0600)
 }
 
-func buildNFQSpec(queueStart, threads int) []string {
+func (ipt *IPTablesManager) buildNFQSpec(queueStart, threads int) []string {
 	if threads > 1 {
 		start := strconv.Itoa(queueStart)
 		end := strconv.Itoa(queueStart + threads - 1)
@@ -191,17 +181,8 @@ func (m Manifest) RevertSysctls() {
 	}
 }
 
-func hasBinary(name string) bool {
-	_, err := exec.LookPath(name)
-	return err == nil
-}
-
-func loadKernelModules() {
-	_, _ = run("sh", "-c", "modprobe xt_connbytes --first-time >/dev/null 2>&1 || true")
-	_, _ = run("sh", "-c", "modprobe xt_NFQUEUE --first-time >/dev/null 2>&1 || true")
-}
-
-func buildManifest(cfg *config.Config) (Manifest, error) {
+func (manager *IPTablesManager) buildManifest() (Manifest, error) {
+	cfg := manager.cfg
 	var ipts []string
 	if cfg.IPv4Enabled && hasBinary("iptables") {
 		ipts = append(ipts, "iptables")
@@ -221,31 +202,31 @@ func buildManifest(cfg *config.Config) (Manifest, error) {
 	var rules []Rule
 
 	for _, ipt := range ipts {
-		ch := Chain{IPT: ipt, Table: "mangle", Name: chainName}
+		ch := Chain{manager: manager, IPT: ipt, Table: "mangle", Name: chainName}
 		chains = append(chains, ch)
 
 		rules = append(rules,
-			Rule{IPT: ipt, Table: "mangle", Chain: chainName, Action: "I", Spec: []string{"-m", "mark", "--mark", markAccept, "-j", "RETURN"}},
+			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "I", Spec: []string{"-m", "mark", "--mark", markAccept, "-j", "RETURN"}},
 		)
 
 		tcpSpec := append(
 			[]string{"-p", "tcp", "--dport", "443",
 				"-m", "connbytes", "--connbytes-dir", "original",
 				"--connbytes-mode", "packets", "--connbytes", "0:19"},
-			buildNFQSpec(queueNum, threads)...,
+			manager.buildNFQSpec(queueNum, threads)...,
 		)
 		udpSpec := append(
-			[]string{"-p", "udp", "--dport", "443",
+			[]string{"-p", "udp",
 				"-m", "connbytes", "--connbytes-dir", "original",
 				"--connbytes-mode", "packets", "--connbytes", "0:8"},
-			buildNFQSpec(queueNum, threads)...,
+			manager.buildNFQSpec(queueNum, threads)...,
 		)
 
 		rules = append(rules,
-			Rule{IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: tcpSpec},
-			Rule{IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: udpSpec},
-			Rule{IPT: ipt, Table: "mangle", Chain: "POSTROUTING", Action: "I", Spec: []string{"-j", chainName}},
-			Rule{IPT: ipt, Table: "mangle", Chain: "OUTPUT", Action: "I", Spec: []string{"-m", "mark", "--mark", markAccept, "-j", "ACCEPT"}},
+			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: tcpSpec},
+			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: udpSpec},
+			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "POSTROUTING", Action: "I", Spec: []string{"-j", chainName}},
+			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "OUTPUT", Action: "I", Spec: []string{"-m", "mark", "--mark", markAccept, "-j", "ACCEPT"}},
 		)
 
 	}
@@ -258,13 +239,11 @@ func buildManifest(cfg *config.Config) (Manifest, error) {
 	return Manifest{Chains: chains, Rules: rules, Sysctls: sysctls}, nil
 }
 
-func AddRules(cfg *config.Config) error {
-	if cfg.SkipIpTables {
-		return nil
-	}
+func (ipt *IPTablesManager) Apply() error {
+
 	log.Infof("IPTABLES: adding rules")
 	loadKernelModules()
-	m, err := buildManifest(cfg)
+	m, err := ipt.buildManifest()
 	if err != nil {
 		return err
 	}
@@ -277,10 +256,8 @@ func AddRules(cfg *config.Config) error {
 	return result
 }
 
-func ClearRules(cfg *config.Config) error {
-	if cfg.SkipIpTables {
-		return nil
-	}
+func (ipt *IPTablesManager) Clear() error {
+
 	ipts := []string{}
 	if hasBinary("iptables") {
 		ipts = append(ipts, "iptables")
@@ -291,7 +268,7 @@ func ClearRules(cfg *config.Config) error {
 	if len(ipts) == 0 {
 		ipts = []string{"iptables"}
 	}
-	m, err := buildManifest(cfg)
+	m, err := ipt.buildManifest()
 	if err != nil {
 		return err
 	}

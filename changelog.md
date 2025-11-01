@@ -2,7 +2,7 @@
 
 ## [1.7.0] - 2025-10-31
 
-- ADDED: 'RESTART SERVICE' Button in the Settings to perform the B4 restart from the Web UI.
+- ADDED: 'RESTART SERVICE` Button in the Settings to perform the B4 restart from the Web UI.
 - ADDED: Add `quiet` mode and `geosite` source/destination options to installer script. Use `b4install.sh --help` to get more information.
 - ADDED: Sort Domains by clicking the columns.
 - ADDED: Update a new version from the Web Interface.

@@ -17,21 +17,21 @@ import (
 	"github.com/daniellavrushin/b4/geodat"
 	b4http "github.com/daniellavrushin/b4/http"
 	"github.com/daniellavrushin/b4/http/handler"
-	"github.com/daniellavrushin/b4/iptables"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/nfq"
+	"github.com/daniellavrushin/b4/tables"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
 var (
-	cfg           = config.DefaultConfig
-	verboseFlag   string
-	showVersion   bool
-	clearIptables bool
-	Version       = "dev"
-	Commit        = "none"
-	Date          = "unknown"
+	cfg         = config.DefaultConfig
+	verboseFlag string
+	showVersion bool
+	clearTables bool
+	Version     = "dev"
+	Commit      = "none"
+	Date        = "unknown"
 )
 
 var rootCmd = &cobra.Command{
@@ -48,7 +48,7 @@ func init() {
 	// Add verbosity flags separately since they need special handling
 	rootCmd.Flags().StringVar(&verboseFlag, "verbose", "info", "Set verbosity level (debug, trace, info, silent), default: info")
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version and exit")
-	rootCmd.Flags().BoolVar(&clearIptables, "clear-iptables", false, "Perform only iptables cleanup and exit")
+	rootCmd.Flags().BoolVar(&clearTables, "clear-tables", false, "Perform only iptables/nftables cleanup and exit")
 }
 
 func main() {
@@ -71,14 +71,14 @@ func runB4(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("logging initialization failed: %w", err)
 	}
 
-	if clearIptables {
+	if clearTables {
 		// Initialize logging first thing
 		if err := initLogging(&cfg); err != nil {
 			return fmt.Errorf("logging initialization failed: %w", err)
 		}
 
 		log.Infof("Clearing iptables rules as requested (--clear-iptables)")
-		iptables.ClearRules(&cfg)
+		tables.ClearRules(&cfg)
 		log.Infof("IPTables rules cleared successfully")
 		return nil
 	}
@@ -142,21 +142,21 @@ func runB4(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Setup iptables rules
-	if !cfg.SkipIpTables {
-		log.Infof("Clearing existing iptables rules")
-		iptables.ClearRules(&cfg)
+	// Setup iptables/nftables rules
+	if !cfg.SkipTables {
+		log.Infof("Clearing existing iptables/nftables rules")
+		tables.ClearRules(&cfg)
 
-		log.Infof("Adding iptables rules")
-		if err := iptables.AddRules(&cfg); err != nil {
-			metrics.RecordEvent("error", fmt.Sprintf("Failed to add iptables rules: %v", err))
-			return fmt.Errorf("failed to add iptables rules: %w", err)
+		log.Infof("Adding tables rules")
+		if err := tables.AddRules(&cfg); err != nil {
+			metrics.RecordEvent("error", fmt.Sprintf("Failed to add tables rules: %v", err))
+			return fmt.Errorf("failed to add tables rules: %w", err)
 		}
-		metrics.RecordEvent("info", "IPTables rules configured successfully")
-		metrics.IPTablesStatus = "active"
+		metrics.RecordEvent("info", "Tables rules configured successfully")
+		metrics.TablesStatus = "active"
 	} else {
-		log.Infof("Skipping iptables setup (--skip-iptables)")
-		metrics.IPTablesStatus = "skipped"
+		log.Infof("Skipping tables setup (--skip-tables)")
+		metrics.TablesStatus = "skipped"
 	}
 
 	// Start netfilter queue pool
@@ -255,19 +255,19 @@ func gracefulShutdown(cfg *config.Config, pool *nfq.Pool, httpServer *http.Serve
 		}
 	}()
 
-	// Clean up iptables rules
-	if !cfg.SkipIpTables {
+	// Clean up iptables/nftables rules
+	if !cfg.SkipTables {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			log.Infof("Clearing iptables rules...")
-			if err := iptables.ClearRules(cfg); err != nil {
-				log.Errorf("Failed to clear iptables rules: %v", err)
-				metrics.RecordEvent("error", fmt.Sprintf("Failed to clear iptables rules: %v", err))
-				shutdownErrors <- fmt.Errorf("iptables cleanup: %w", err)
+			log.Infof("Clearing iptables/nftables rules...")
+			if err := tables.ClearRules(cfg); err != nil {
+				log.Errorf("Failed to clear tables rules: %v", err)
+				metrics.RecordEvent("error", fmt.Sprintf("Failed to clear tables rules: %v", err))
+				shutdownErrors <- fmt.Errorf("tables cleanup: %w", err)
 			} else {
-				log.Infof("IPTables rules cleared")
-				metrics.IPTablesStatus = "inactive"
+				log.Infof("Tables rules cleared")
+				metrics.TablesStatus = "inactive"
 			}
 		}()
 	}

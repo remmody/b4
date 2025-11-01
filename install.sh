@@ -503,11 +503,11 @@ check_dependencies() {
 
         # Try to detect package manager and suggest install command
         if command_exists opkg; then
-            print_info "For OpenWRT, try: opkg update && opkg install wget tar iptables"
+            print_info "For OpenWRT, try: opkg update && opkg install wget tar"
         elif command_exists apt-get; then
-            print_info "Try: apt-get update && apt-get install -y wget tar iptables"
+            print_info "Try: apt-get update && apt-get install -y wget tar"
         elif command_exists yum; then
-            print_info "Try: yum install -y wget tar iptables"
+            print_info "Try: yum install -y wget tar"
         fi
 
         exit 1

@@ -49,10 +49,10 @@ export interface Metrics {
     processed: number;
   }>;
   nfqueue_status: string;
-  iptables_status: string;
+  tables_status: string;
   recent_connections: Array<{
     timestamp: string;
-    protocol: string;
+    protocol: "TCP" | "UDP";
     domain: string;
     source: string;
     destination: string;
@@ -105,7 +105,7 @@ const normalizeMetrics = (data: any): Metrics => {
       },
       worker_status: [],
       nfqueue_status: "unknown",
-      iptables_status: "unknown",
+      tables_status: "unknown",
       recent_connections: [],
       recent_events: [],
       current_cps: 0,
@@ -180,11 +180,14 @@ const normalizeMetrics = (data: any): Metrics => {
         }))
       : [],
     nfqueue_status: String(data.nfqueue_status || "unknown"),
-    iptables_status: String(data.iptables_status || "unknown"),
+    tables_status: String(data.tables_status || "unknown"),
     recent_connections: Array.isArray(data.recent_connections)
       ? data.recent_connections.map((conn: any) => ({
           timestamp: String(conn?.timestamp || ""),
-          protocol: String(conn?.protocol || ""),
+          protocol:
+            conn?.protocol === "TCP" || conn?.protocol === "UDP"
+              ? (conn.protocol as "TCP" | "UDP")
+              : ("TCP" as "TCP" | "UDP"),
           domain: String(conn?.domain || ""),
           source: String(conn?.source || ""),
           destination: String(conn?.destination || ""),

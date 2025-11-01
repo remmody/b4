@@ -29,7 +29,7 @@ type MetricsCollector struct {
 	MemoryUsage       MemoryStats       `json:"memory_usage"`
 	WorkerStatus      []WorkerHealth    `json:"worker_status"`
 	NFQueueStatus     string            `json:"nfqueue_status"`
-	IPTablesStatus    string            `json:"iptables_status"`
+	TablesStatus      string            `json:"tables_status"`
 	RecentConnections []ConnectionLog   `json:"recent_connections"`
 	RecentEvents      []SystemEvent     `json:"recent_events"`
 
@@ -93,7 +93,7 @@ func GetMetricsCollector() *MetricsCollector {
 			RecentEvents:      make([]SystemEvent, 0, 20),
 			WorkerStatus:      make([]WorkerHealth, 0),
 			NFQueueStatus:     "active",
-			IPTablesStatus:    "active",
+			TablesStatus:      "active",
 			lastUpdate:        time.Now(),
 		}
 
@@ -270,7 +270,7 @@ func (m *MetricsCollector) GetSnapshot() *MetricsCollector {
 		CPUUsage:            m.CPUUsage,
 		MemoryUsage:         m.MemoryUsage,
 		NFQueueStatus:       m.NFQueueStatus,
-		IPTablesStatus:      m.IPTablesStatus,
+		TablesStatus:        m.TablesStatus,
 		CurrentCPS:          m.CurrentCPS,
 		CurrentPPS:          m.CurrentPPS,
 	}

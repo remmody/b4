@@ -7,7 +7,7 @@ import { colors } from "../../../Theme";
 interface DashboardStatusBarProps {
   metrics: {
     nfqueue_status: string;
-    iptables_status: string;
+    tables_status: string;
     worker_status: Array<any>;
     tcp_connections: number;
     udp_connections: number;
@@ -36,7 +36,7 @@ export const DashboardStatusBar: React.FC<DashboardStatusBarProps> = ({
           status="active"
         />
         <StatusBadge
-          label={`IPTables: ${metrics.iptables_status}`}
+          label={`Tables: ${metrics.tables_status}`}
           status="active"
         />
         <StatusBadge

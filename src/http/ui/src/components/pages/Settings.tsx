@@ -176,7 +176,7 @@ export default function Settings() {
         config.mark !== originalConfig.mark ||
         config.conn_bytes_limit !== originalConfig.conn_bytes_limit ||
         config.seg2delay !== originalConfig.seg2delay ||
-        config.skip_iptables !== originalConfig.skip_iptables ||
+        config.skip_tables !== originalConfig.skip_tables ||
         config.ipv4 !== originalConfig.ipv4 ||
         config.ipv6 !== originalConfig.ipv6,
       // Domains
