@@ -169,19 +169,13 @@ func (w *Worker) Start() error {
 					st.packetCount++
 					st.last = time.Now()
 
-					// Stop processing after ConnBytesLimit packets (default 19)
-					if st.packetCount > cfg.ConnBytesLimit && cfg.ConnBytesLimit > 0 {
-						w.mu.Unlock()
-						_ = q.SetVerdict(id, nfqueue.NfAccept)
-						return 0
-					}
-
+					// If SNI was already processed and matched
 					if st.sniProcessed && st.sniFound {
-						// Fragment first 3 packets after SNI detection
-						if st.packetCount <= 4 { // SNI packet + 3 more
+						if st.fragPacketCount < 3 {
+							st.fragPacketCount++
 							w.mu.Unlock()
 
-							// Continue fragmenting (but no fake SNI after first packet)
+							// Continue fragmenting but no fake SNI
 							if v == 4 {
 								w.dropAndInjectTCP(cfg, raw, dst, false)
 							} else {
@@ -189,20 +183,27 @@ func (w *Worker) Start() error {
 							}
 							_ = q.SetVerdict(id, nfqueue.NfDrop)
 							return 0
-						} else {
-							// After 4 packets, just accept normally (for video performance)
-							w.mu.Unlock()
-							_ = q.SetVerdict(id, nfqueue.NfAccept)
-							return 0
 						}
+						// After fragmenting enough packets, just accept
+						w.mu.Unlock()
+						_ = q.SetVerdict(id, nfqueue.NfAccept)
+						return 0
 					}
 
-					// If already processed but not matched, just accept
+					// If SNI was processed but not matched, accept
 					if st.sniProcessed && !st.sniFound {
 						w.mu.Unlock()
 						_ = q.SetVerdict(id, nfqueue.NfAccept)
 						return 0
 					}
+
+					// Stop processing after ConnBytesLimit packets if SNI not found yet
+					if st.packetCount > cfg.ConnBytesLimit && cfg.ConnBytesLimit > 0 {
+						w.mu.Unlock()
+						_ = q.SetVerdict(id, nfqueue.NfAccept)
+						return 0
+					}
+
 					w.mu.Unlock()
 
 					// Try to extract SNI from this packet
@@ -221,7 +222,7 @@ func (w *Worker) Start() error {
 						if st, exists := w.flows[k]; exists {
 							st.sniProcessed = true
 							st.sniFound = matched
-							st.packetCount = 1 // Reset to 1 since this is our first fragmented packet
+							st.fragPacketCount = 0 // Initialize fragment counter
 						}
 						w.mu.Unlock()
 
@@ -232,6 +233,7 @@ func (w *Worker) Start() error {
 						log.Infof("SNI TCP%v: %s %s:%d -> %s:%d", target, host, src.String(), sport, dst.String(), dport)
 
 						if matched {
+							// This is the SNI packet itself - fragment with fake
 							if v == 4 {
 								w.dropAndInjectTCP(cfg, raw, dst, onlyOnce)
 							} else {
@@ -476,26 +478,95 @@ func (w *Worker) sendTCPFragments(cfg *config.Config, packet []byte, dst net.IP)
 	totalLen := len(packet)
 	payloadStart := ipHdrLen + tcpHdrLen
 	payloadLen := totalLen - payloadStart
-
 	if payloadLen <= 0 {
 		_ = w.sock.SendIPv4(packet, dst)
 		return
 	}
 
-	splitPos := cfg.Fragmentation.SNIPosition
 	payload := packet[payloadStart:]
+	p1 := cfg.Fragmentation.SNIPosition
+	validP1 := p1 > 0 && p1 < payloadLen
 
+	p2 := -1
 	if cfg.Fragmentation.MiddleSNI {
 		if s, e, ok := locateSNI(payload); ok && e-s >= 4 {
-			log.Tracef("SNI found at %d..%d of %d", s, e, payloadLen)
-			splitPos = s + (e-s)/2
-		} else {
-			if splitPos <= 0 || splitPos >= payloadLen {
-				splitPos = 1
-			}
+			p2 = s + (e-s)/2
 		}
 	}
+	validP2 := p2 > 0 && p2 < payloadLen && (!validP1 || p2 != p1)
 
+	if !validP1 && !validP2 {
+		p1 = 1
+		validP1 = p1 < payloadLen
+	}
+
+	if validP1 && validP2 && p2 < p1 {
+		p1, p2 = p2, p1
+	}
+
+	if validP1 && validP2 {
+		seg1Len := payloadStart + p1
+		seg2Len := payloadStart + (p2 - p1)
+		seg3Len := payloadStart + (payloadLen - p2)
+
+		seg1 := make([]byte, seg1Len)
+		copy(seg1, packet[:seg1Len])
+
+		seg2 := make([]byte, seg2Len)
+		copy(seg2[:payloadStart], packet[:payloadStart])
+		copy(seg2[payloadStart:], payload[p1:p2])
+
+		seg3 := make([]byte, seg3Len)
+		copy(seg3[:payloadStart], packet[:payloadStart])
+		copy(seg3[payloadStart:], payload[p2:])
+
+		binary.BigEndian.PutUint16(seg1[2:4], uint16(seg1Len))
+		sock.FixIPv4Checksum(seg1[:ipHdrLen])
+		sock.FixTCPChecksum(seg1)
+
+		seq0 := binary.BigEndian.Uint32(packet[ipHdrLen+4 : ipHdrLen+8])
+		id0 := binary.BigEndian.Uint16(packet[4:6])
+
+		binary.BigEndian.PutUint32(seg2[ipHdrLen+4:ipHdrLen+8], seq0+uint32(p1))
+		binary.BigEndian.PutUint16(seg2[4:6], id0+1)
+		binary.BigEndian.PutUint16(seg2[2:4], uint16(seg2Len))
+		sock.FixIPv4Checksum(seg2[:ipHdrLen])
+		sock.FixTCPChecksum(seg2)
+
+		binary.BigEndian.PutUint32(seg3[ipHdrLen+4:ipHdrLen+8], seq0+uint32(p2))
+		binary.BigEndian.PutUint16(seg3[4:6], id0+2)
+		binary.BigEndian.PutUint16(seg3[2:4], uint16(seg3Len))
+		sock.FixIPv4Checksum(seg3[:ipHdrLen])
+		sock.FixTCPChecksum(seg3)
+
+		if cfg.Fragmentation.SNIReverse {
+			_ = w.sock.SendIPv4(seg2, dst)
+			if cfg.Seg2Delay > 0 {
+				time.Sleep(time.Duration(cfg.Seg2Delay) * time.Millisecond)
+			}
+			_ = w.sock.SendIPv4(seg1, dst)
+			if cfg.Seg2Delay > 0 {
+				time.Sleep(time.Duration(cfg.Seg2Delay) * time.Millisecond)
+			}
+			_ = w.sock.SendIPv4(seg3, dst)
+		} else {
+			_ = w.sock.SendIPv4(seg1, dst)
+			if cfg.Seg2Delay > 0 {
+				time.Sleep(time.Duration(cfg.Seg2Delay) * time.Millisecond)
+			}
+			_ = w.sock.SendIPv4(seg2, dst)
+			if cfg.Seg2Delay > 0 {
+				time.Sleep(time.Duration(cfg.Seg2Delay) * time.Millisecond)
+			}
+			_ = w.sock.SendIPv4(seg3, dst)
+		}
+		return
+	}
+
+	splitPos := p1
+	if !validP1 {
+		splitPos = p2
+	}
 	seg1Len := payloadStart + splitPos
 	seg1 := make([]byte, seg1Len)
 	copy(seg1, packet[:seg1Len])

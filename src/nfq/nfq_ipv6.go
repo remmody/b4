@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/daniellavrushin/b4/config"
-	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/sock"
 )
 
@@ -97,7 +96,6 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.Config, raw []byte, dst net.IP, 
 	}
 }
 
-// sendTCPSegmentsv6 sends TCP packet as two segments (TCP-level segmentation for IPv6)
 func (w *Worker) sendTCPSegmentsv6(cfg *config.Config, packet []byte, dst net.IP) {
 	ipv6HdrLen := 40
 	tcpHdrLen := int((packet[ipv6HdrLen+12] >> 4) * 4)
@@ -110,40 +108,120 @@ func (w *Worker) sendTCPSegmentsv6(cfg *config.Config, packet []byte, dst net.IP
 		return
 	}
 
-	splitPos := cfg.Fragmentation.SNIPosition
 	payload := packet[payloadStart:]
+	p1 := cfg.Fragmentation.SNIPosition
+	validP1 := p1 > 0 && p1 < payloadLen
 
-	// Find SNI position if middle split is enabled
+	p2 := -1
 	if cfg.Fragmentation.MiddleSNI {
 		if s, e, ok := locateSNI(payload); ok && e-s >= 4 {
-			log.Tracef("SNI found at %d..%d of %d", s, e, payloadLen)
-			splitPos = s + (e-s)/2
-		} else {
-			if splitPos <= 0 || splitPos >= payloadLen {
-				splitPos = 1
-			}
+			p2 = s + (e-s)/2
 		}
 	}
+	validP2 := p2 > 0 && p2 < payloadLen && (!validP1 || p2 != p1)
 
-	// Use IPv6 TCP segmentation
-	segments, ok := sock.IPv6SendTCPSegments(packet, splitPos)
-	if !ok {
-		_ = w.sock.SendIPv6(packet, dst)
+	if !validP1 && !validP2 {
+		p1 = 1
+		validP1 = p1 < payloadLen
+	}
+
+	if validP1 && validP2 && p2 < p1 {
+		p1, p2 = p2, p1
+	}
+
+	// Three-segment case when both positions are valid
+	if validP1 && validP2 {
+		seg1Len := payloadStart + p1
+		seg2Len := payloadStart + (p2 - p1)
+		seg3Len := payloadStart + (payloadLen - p2)
+
+		seg1 := make([]byte, seg1Len)
+		copy(seg1, packet[:seg1Len])
+
+		seg2 := make([]byte, seg2Len)
+		copy(seg2[:payloadStart], packet[:payloadStart])
+		copy(seg2[payloadStart:], payload[p1:p2])
+
+		seg3 := make([]byte, seg3Len)
+		copy(seg3[:payloadStart], packet[:payloadStart])
+		copy(seg3[payloadStart:], payload[p2:])
+
+		// Update IPv6 payload length for seg1
+		binary.BigEndian.PutUint16(seg1[4:6], uint16(seg1Len-ipv6HdrLen))
+		sock.FixTCPChecksumV6(seg1)
+
+		// Update seg2 TCP sequence and IPv6 payload length
+		seq0 := binary.BigEndian.Uint32(packet[ipv6HdrLen+4 : ipv6HdrLen+8])
+		binary.BigEndian.PutUint32(seg2[ipv6HdrLen+4:ipv6HdrLen+8], seq0+uint32(p1))
+		binary.BigEndian.PutUint16(seg2[4:6], uint16(seg2Len-ipv6HdrLen))
+		sock.FixTCPChecksumV6(seg2)
+
+		// Update seg3 TCP sequence and IPv6 payload length
+		binary.BigEndian.PutUint32(seg3[ipv6HdrLen+4:ipv6HdrLen+8], seq0+uint32(p2))
+		binary.BigEndian.PutUint16(seg3[4:6], uint16(seg3Len-ipv6HdrLen))
+		sock.FixTCPChecksumV6(seg3)
+
+		if cfg.Fragmentation.SNIReverse {
+			_ = w.sock.SendIPv6(seg2, dst)
+			if cfg.Seg2Delay > 0 {
+				time.Sleep(time.Duration(cfg.Seg2Delay) * time.Millisecond)
+			}
+			_ = w.sock.SendIPv6(seg1, dst)
+			if cfg.Seg2Delay > 0 {
+				time.Sleep(time.Duration(cfg.Seg2Delay) * time.Millisecond)
+			}
+			_ = w.sock.SendIPv6(seg3, dst)
+		} else {
+			_ = w.sock.SendIPv6(seg1, dst)
+			if cfg.Seg2Delay > 0 {
+				time.Sleep(time.Duration(cfg.Seg2Delay) * time.Millisecond)
+			}
+			_ = w.sock.SendIPv6(seg2, dst)
+			if cfg.Seg2Delay > 0 {
+				time.Sleep(time.Duration(cfg.Seg2Delay) * time.Millisecond)
+			}
+			_ = w.sock.SendIPv6(seg3, dst)
+		}
 		return
 	}
 
+	// Two-segment case (fallback)
+	splitPos := p1
+	if !validP1 {
+		splitPos = p2
+	}
+
+	seg1Len := payloadStart + splitPos
+	seg1 := make([]byte, seg1Len)
+	copy(seg1, packet[:seg1Len])
+
+	seg2Len := payloadStart + (payloadLen - splitPos)
+	seg2 := make([]byte, seg2Len)
+	copy(seg2[:payloadStart], packet[:payloadStart])
+	copy(seg2[payloadStart:], packet[payloadStart+splitPos:])
+
+	// Update IPv6 payload length for seg1
+	binary.BigEndian.PutUint16(seg1[4:6], uint16(seg1Len-ipv6HdrLen))
+	sock.FixTCPChecksumV6(seg1)
+
+	// Update seg2 TCP sequence and IPv6 payload length
+	seq := binary.BigEndian.Uint32(seg2[ipv6HdrLen+4 : ipv6HdrLen+8])
+	binary.BigEndian.PutUint32(seg2[ipv6HdrLen+4:ipv6HdrLen+8], seq+uint32(splitPos))
+	binary.BigEndian.PutUint16(seg2[4:6], uint16(seg2Len-ipv6HdrLen))
+	sock.FixTCPChecksumV6(seg2)
+
 	if cfg.Fragmentation.SNIReverse {
-		_ = w.sock.SendIPv6(segments[1], dst)
+		_ = w.sock.SendIPv6(seg2, dst)
 		if cfg.Seg2Delay > 0 {
 			time.Sleep(time.Duration(cfg.Seg2Delay) * time.Millisecond)
 		}
-		_ = w.sock.SendIPv6(segments[0], dst)
+		_ = w.sock.SendIPv6(seg1, dst)
 	} else {
-		_ = w.sock.SendIPv6(segments[0], dst)
+		_ = w.sock.SendIPv6(seg1, dst)
 		if cfg.Seg2Delay > 0 {
 			time.Sleep(time.Duration(cfg.Seg2Delay) * time.Millisecond)
 		}
-		_ = w.sock.SendIPv6(segments[1], dst)
+		_ = w.sock.SendIPv6(seg2, dst)
 	}
 }
 
