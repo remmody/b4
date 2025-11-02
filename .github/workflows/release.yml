@@ -161,6 +161,7 @@ jobs:
           body: ${{ steps.read_changelog.outputs.changelog }}
           files: |
             release-assets/*.tar.gz
+            release-assets/*.tar.gz.sha256
             release-assets/SHA256SUMS
             release-assets/checksums.txt
           generate_release_notes: true
