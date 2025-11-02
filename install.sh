@@ -228,23 +228,22 @@ detect_architecture() {
     aarch64 | arm64)
         arch_variant="arm64"
         ;;
-    armv7* | armv7l | armv7-*)
-        # For armv7, default to using armv7 binary
-        # The CPU should handle armv7 instructions if kernel reports armv7l
+    armv7)
         arch_variant="armv7"
+        ;;
+    armv7* | armv7l | armv7-*)
+        # Default to armv5 for compatibility, only use armv7 if certain
+        arch_variant="armv5"
 
-        # However, check if we should fallback for compatibility
-        # Some routers report armv7l but have limited instruction sets
+        # Only use armv7 if we have clear evidence of full support
         if [ -f /proc/cpuinfo ]; then
-            # Check CPU features - look for VFP (Vector Floating Point)
-            # Most armv7 CPUs should have at least vfp
-            if ! grep -qiE "(vfp|neon)" /proc/cpuinfo 2>/dev/null; then
-                # No VFP/NEON found, check if CPU architecture field confirms armv7
-                if ! grep -qE "CPU architecture:\s*7" /proc/cpuinfo 2>/dev/null; then
-                    # No clear armv7 features, use armv5 for safety
-                    print_warning "armv7l detected but no VFP support found, using armv5 for compatibility"
-                    arch_variant="armv5"
-                fi
+            # Need BOTH vfpv3+ AND proper architecture confirmation
+            if grep -qE "(vfpv[3-9]|vfpv[0-9][0-9])" /proc/cpuinfo 2>/dev/null &&
+                grep -qE "CPU architecture:\s*7" /proc/cpuinfo 2>/dev/null; then
+                arch_variant="armv7"
+                print_info "Full ARMv7 support detected, using armv7 binary"
+            else
+                print_warning "armv7l detected but using armv5 for compatibility (safer for routers)"
             fi
         fi
         ;;
