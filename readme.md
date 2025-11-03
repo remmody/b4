@@ -1,319 +1,381 @@
-# B4 - Bye Bye Big Bro
+# B4
 
-![GitHub Release](https://img.shields.io/github/v/release/daniellavrushin/b4?logoColor=violet)
-![GitHub Release Date](https://img.shields.io/github/release-date/daniellavrushin/b4)
-![GitHub commits since latest release](https://img.shields.io/github/commits-since/daniellavrushin/b4/latest)
-![GitHub Downloads (specific asset, latest release)](https://img.shields.io/github/downloads/daniellavrushin/b4/latest/total)
-![image](https://img.shields.io/github/downloads/DanielLavrushin/b4/total?label=total%20downloads)
+![GitHub Release](https://img.shields.io/github/v/release/daniellavrushin/b4)
+![GitHub Downloads](https://img.shields.io/github/downloads/daniellavrushin/b4/total)
 
-**B4** is a high-performance, next-generation network packet processor designed to circumvent Deep Packet Inspection (DPI) systems. Built with Go and featuring a modern React-based web interface, B4 provides intelligent traffic obfuscation to maintain privacy and unrestricted access to content.
+Network packet processor for circumventing Deep Packet Inspection (DPI) systems.
 
 ![alt text](image.png)
 
 ## Overview
 
-**B4** operates at the kernel level using Linux `netfilter` queues to intercept and process network packets in real-time. It analyzes TLS/QUIC traffic patterns and applies sophisticated evasion techniques to bypass DPI systems used by ISPs and network administrators.
-
-## How It Works
-
-- Packet Interception: Captures packets via netfilter queue before they leave your device
-- SNI Detection: Identifies TLS ClientHello and QUIC Initial packets containing Server Name Indication
-- Smart Evasion: Applies configurable fragmentation and obfuscation techniques
-- Transparent Routing: Sends modified packets that appear normal to endpoints but confuse DPI systems
-
-## Key Features
-
-### Advanced DPI Bypass
-
-- Multi-Strategy Evasion: TCP/IP fragmentation, fake packet injection, sequence manipulation
-- Protocol Support: TLS (HTTPS) and QUIC (HTTP/3) traffic processing
-- SNI-Based Targeting: Selective processing based on domain names
-
-### Intelligent Domain Filtering
-
-- Geodata Integration: Support for geosite.dat/geoip.dat community database files (v2ray-rules format)
-- Category-Based Filtering: Filter by service categories (youtube, netflix, google, etc.)
-- Manual Domain Lists: Add custom domains for processing
-
-### Modern Web Interface
-
-- Real-Time Dashboard: Live metrics, connection monitoring, and system health
-- Interactive Configuration: Web-based settings management on-the-fly
-- Live Logs: WebSocket-powered log streaming with filtering
-- Domain Analysis: See intercepted connections and add domains on-the-fly
-
-### Performance & Compatibility
-
-- Multi-Threaded Processing: Configurable worker threads for high throughput
-- Cross-Platform: Linux systems, OpenWRT routers, MerlinWRT, Entware environments
-- Low Overhead: Efficient packet processing with minimal latency
-  -IPv4/IPv6 Support: Dual-stack networking
+B4 uses Linux netfilter to intercept and modify network packets in real-time, applying various techniques to bypass DPI systems used by ISPs and network administrators.
 
 ## Prerequisites
 
-- Linux kernel with netfilter support
-- Root/CAP_NET_ADMIN privileges
-- Go 1.24+ (for building)
-- Node.js 18+ and pnpm (for building web UI)
+- Linux-based system (desktop, server, or router)
+- Root access (sudo)
+
+That's it. The installer handles everything else.
 
 ## Installation
 
-### To install B4
+### Automated Installation
+
+> [!NOTE]
+> In some systems you need to run `sudo b4install.sh`.
 
 ```bash
-wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ~/b4install.sh
+wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ./b4install.sh
+```
+
+If something went wrong try to run - this will diagnose the system
+
+```bash
+wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ./b4install.sh --sysinfo
 ```
 
 ### Installer Options
 
-The B4 installer script (`b4install.sh`) supports various flags for different use cases:
-
-### Basic Usage
-
 ```bash
-# Install latest version
-./b4install.sh
+
+./b4install.sh -h # print help
+
+# Show system information
+./b4install.sh --sysinfo
 
 # Install specific version
-./b4install.sh v1.8.0
+./b4install.sh v1.10.0
 
-# Quiet mode (minimal output)
+# Quiet mode
 ./b4install.sh --quiet
-```
 
-### Available Flags
+# Specify geosite source
+./b4install.sh --geosite-src=https://example.com/geosite.dat --geosite-dst=/opt/etc/b4
 
-#### Installation Flags
-
-| Flag                | Description                    | Example                                    |
-| ------------------- | ------------------------------ | ------------------------------------------ |
-| `VERSION`           | Install specific version       | `./b4install.sh v1.4.0`                    |
-| `--quiet`, `-q`     | Suppress output except errors  | `./b4install.sh --quiet`                   |
-| `--geosite-src=URL` | Specify geosite.dat source URL | `./b4install.sh --geosite-src=https://...` |
-| `--geosite-dst=DIR` | Directory to save geosite.dat  | `./b4install.sh --geosite-dst=/opt/etc/b4` |
-
-#### Management Flags
-
-| Flag                            | Description              | Example                   |
-| ------------------------------- | ------------------------ | ------------------------- |
-| `--update`, `-u`                | Update to latest version | `./b4install.sh --update` |
-| `--remove`, `--uninstall`, `-r` | Uninstall B4             | `./b4install.sh --remove` |
-| `--help`, `-h`                  | Show help message        | `./b4install.sh --help`   |
-
-### Update Process
-
-The `--update` flag performs an automatic update:
-
-```bash
+# Update existing installation
 ./b4install.sh --update
+
+# Uninstall
+./b4install.sh --remove
+
+
 ```
 
-### Uninstallation
+## Basic Usage
+
+### Starting B4
 
 ```bash
-# Interactive uninstall (asks about config)
-wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ~/b4install.sh --remove
-
-# The uninstaller:
-# - Stops all B4 processes
-# - Removes binary and backups
-# - Removes service files (systemd/init)
-# - Optionally keeps or removes configuration
-# - Cleans up iptables/nftables rules
-```
-
-### Service Manager Detection
-
-The installer intelligently detects and configures the appropriate service manager:
-
-| System Type    | Service Manager | Start Command                 |
-| -------------- | --------------- | ----------------------------- |
-| Standard Linux | systemd         | `systemctl start b4`          |
-| OpenWRT        | procd init      | `/etc/init.d/b4 start`        |
-| Entware/Merlin | Entware init    | `/opt/etc/init.d/S99b4 start` |
-
-### Troubleshooting Installation
-
-#### Installation Fails
-
-```bash
-# Check for missing dependencies
-opkg update && opkg install wget tar  # OpenWRT
-apt-get install wget tar              # Debian/Ubuntu
-```
-
-## Quick Start
-
-### entware/merlinwrt
-
-```bash
-/opt/etc/init.d/S99b4 restart
-```
-
-### Service Management
-
-```bash
+# Standard Linux (systemd)
 sudo systemctl start b4
-sudo systemctl enable b4 #to restart on reboot
+sudo systemctl enable b4  # Start on boot
+
+# OpenWRT
+/etc/init.d/b4 start # restart | stop
+
+# Entware/MerlinWRT
+/opt/etc/init.d/S99b4 start # restart | stop
 ```
 
-## Configuration
+### Access Web Interface
 
-### Command-Line Flags
+Open your browser and navigate to:
 
-#### Network Configuration
+```cmd
+http://your-device-ip:7000
+```
 
-- `--queue-num` - Netfilter queue number (default: 537)
-- `--threads` - Number of worker threads (default: 4)
-- `--mark` - Packet mark value (default: 32768)
-- `--connbytes-limit` - Connection bytes limit (default: 19)
+### Building from Source
 
-#### Geodata Filtering
+```bash
+# Clone repository
+git clone https://github.com/daniellavrushin/b4.git
+cd b4
 
-- `--geosite` - Path to geosite.dat file
-- `--geo-categories` - Categories to process (e.g., youtube,facebook)
-- `--sni-domains` - Comma-separated list of domains (can be used as additional list together with `--geo-categories`)
+# Build binary
+make build
 
-#### TCP Fragmentation
+# Build for all architectures
+make build-all
 
-- `--frag` - Fragmentation strategy: tcp/ip/none (default: tcp)
-- `--frag-sni-reverse` - Reverse fragment order (default: true)
-- `--frag-middle-sni` - Fragment in middle of SNI (default: true)
-- `--frag-sni-pos` - SNI fragment position (default: 1)
+# Build for specific architecture
+make linux-amd64
+make linux-arm64
+make linux-armv7
+```
 
-#### Fake SNI Configuration
+## Command-Line Usage
 
-- `--fake-sni` - Enable fake SNI packets (default: true)
-- `--fake-ttl` - TTL for fake packets (default: 8)
-- `--fake-strategy` - Strategy: ttl/randseq/pastseq/tcp_check/md5sum (default: pastseq)
-- `--fake-seq-offset` - Sequence offset for fake packets (default: 10000)
-- `--fake-sni-len` - Length of fake SNI sequence (default: 1)
-- `--fake-sni-type` - Payload type: 0=random, 1=custom, 2=default
+```bash
 
-#### UDP/QUIC Configuration
+# get help
+b4  --help
 
-- `--udp-mode` - UDP handling: drop/fake (default: drop)
-- `--udp-fake-seq-len` - UDP fake packet sequence length (default: 6)
-- `--udp-fake-len` - UDP fake packet size in bytes (default: 64)
-- `--udp-faking-strategy` - Strategy: none/ttl/checksum (default: none)
-- `--udp-dport-min` - Minimum UDP destination port (default: 0)
-- `--udp-dport-max` - Maximum UDP destination port (default: 0)
-- `--udp-filter-quic` - QUIC filtering: disabled/all/parse (default: parse)
+# Basic usage with manual domains
+sudo b4 --sni-domains youtube.com,netflix.com
 
-#### System Configuration
+# Using geosite categories
+sudo b4 --geosite /etc/b4/geosite.dat --geosite-categories youtube,netflix
 
-- `--skip-tables` - Skip iptables/nftables rules setup
-- `--seg2delay` - Delay between segments in ms (default: 0)
-
-#### Logging
-
-- `--verbose` - Verbosity level: debug/trace/info/silent (default: info)
-- `--instaflush` - Flush logs immediately (default: true)
-- `--syslog` - Enable syslog output
-
-#### Web Server
-
-- `--web-port` - Port for web interface (0 disables) (default: 0)
+# Custom configuration
+sudo b4 --queue-num 100 --threads 4 --web-port 8080
+```
 
 ### Configuration File
 
-B4 can save and load configuration from `b4.json`:
+Create `/etc/b4/b4.json`
+(the file can be redefined by passing the `--config=` argument):
 
 ```json
 {
   "queue_start_num": 537,
+  "mark": 32768,
   "threads": 4,
+  "conn_bytes_limit": 19,
+  "seg2delay": 0,
+  "ipv4": true,
+  "ipv6": false,
+
+  "domains": {
+    "geosite_path": "/etc/b4/geosite.dat",
+    "geoip_path": "",
+    "sni_domains": [],
+    "geosite_categories": ["youtube", "netflix"],
+    "geoip_categories": []
+  },
+
+  "fragmentation": {
+    "strategy": "tcp",
+    "sni_reverse": true,
+    "middle_sni": true,
+    "sni_position": 1
+  },
+
+  "faking": {
+    "sni": true,
+    "ttl": 8,
+    "strategy": "pastseq",
+    "seq_offset": 10000,
+    "sni_seq_length": 1,
+    "sni_type": 2,
+    "custom_payload": ""
+  },
+
+  "udp": {
+    "mode": "fake",
+    "fake_seq_length": 6,
+    "fake_len": 64,
+    "faking_strategy": "none",
+    "dport_min": 0,
+    "dport_max": 0,
+    "filter_quic": "parse",
+    "filter_stun": true,
+    "conn_bytes_limit": 8
+  },
+
   "web_server": {
     "port": 7000
   },
+
   "logging": {
     "level": "info",
     "instaflush": true,
     "syslog": false
+  },
+
+  "tables": {
+    "monitor_interval": 10,
+    "skip_setup": false
   }
 }
 ```
 
+Load with custom configuration:
+
+```bash
+sudo b4 --config /home/username/b4custom.json
+```
+
+### Configuration Options
+
+#### Network Configuration
+
+| Flag                | Default | Description                 |
+| ------------------- | ------- | --------------------------- |
+| `--queue-num`       | 537     | Netfilter queue number      |
+| `--threads`         | 4       | Number of worker threads    |
+| `--mark`            | 32768   | Packet mark value           |
+| `--connbytes-limit` | 19      | TCP connection bytes limit  |
+| `--seg2delay`       | 0       | Delay between segments (ms) |
+| `--ipv4`            | true    | Enable IPv4 processing      |
+| `--ipv6`            | false   | Enable IPv6 processing      |
+
+#### Domain Filtering
+
+| Flag                   | Default | Description                     |
+| ---------------------- | ------- | ------------------------------- |
+| `--sni-domains`        | []      | Comma-separated list of domains |
+| `--geosite`            | ""      | Path to geosite.dat file        |
+| `--geosite-categories` | []      | Categories to process           |
+| `--geoip`              | ""      | Path to geoip.dat file          |
+| `--geoip-categories`   | []      | IP categories to process        |
+
+#### TCP Fragmentation
+
+| Flag                 | Default | Description                         |
+| -------------------- | ------- | ----------------------------------- |
+| `--frag`             | tcp     | Fragmentation strategy: tcp/ip/none |
+| `--frag-sni-reverse` | true    | Reverse fragment order              |
+| `--frag-middle-sni`  | true    | Fragment in middle of SNI           |
+| `--frag-sni-pos`     | 1       | SNI fragment position               |
+
+#### Fake SNI Configuration
+
+| Flag                | Default | Description                                    |
+| ------------------- | ------- | ---------------------------------------------- |
+| `--fake-sni`        | true    | Enable fake SNI packets                        |
+| `--fake-ttl`        | 8       | TTL for fake packets                           |
+| `--fake-strategy`   | pastseq | Strategy: ttl/randseq/pastseq/tcp_check/md5sum |
+| `--fake-seq-offset` | 10000   | Sequence offset for fake packets               |
+| `--fake-sni-len`    | 1       | Length of fake SNI sequence                    |
+| `--fake-sni-type`   | 2       | Payload type: 0=random, 1=custom, 2=default    |
+
+#### UDP/QUIC Configuration
+
+| Flag                     | Default | Description                        |
+| ------------------------ | ------- | ---------------------------------- |
+| `--udp-mode`             | fake    | UDP handling: drop/fake            |
+| `--udp-fake-seq-len`     | 6       | UDP fake packet sequence length    |
+| `--udp-fake-len`         | 64      | UDP fake packet size (bytes)       |
+| `--udp-faking-strategy`  | none    | Strategy: none/ttl/checksum        |
+| `--udp-dport-min`        | 0       | Minimum UDP destination port       |
+| `--udp-dport-max`        | 0       | Maximum UDP destination port       |
+| `--udp-filter-quic`      | parse   | QUIC filtering: disabled/all/parse |
+| `--udp-filter-stun`      | true    | Enable STUN filtering              |
+| `--udp-conn-bytes-limit` | 8       | UDP connection bytes limit         |
+
+#### System Configuration
+
+| Flag                        | Default | Description                                   |
+| --------------------------- | ------- | --------------------------------------------- |
+| `--skip-tables`             | false   | Skip iptables/nftables setup                  |
+| `--tables-monitor-interval` | 10      | Tables monitor interval (seconds, 0=disabled) |
+| `--web-port`                | 7000    | Web interface port (0=disabled)               |
+| `--verbose`                 | info    | Log level: debug/trace/info/error/silent      |
+| `--instaflush`              | true    | Flush logs immediately                        |
+| `--syslog`                  | false   | Enable syslog output                          |
+
 ## Web Interface
 
-Access the web interface at `http://your-router-ip:7000` (configure port with `--web-port`).
+The web interface is accessible at `http://device-ip:7000` (default port, can be changed in the `config` file).
 
-Features:
+**Features:**
 
-- **Domains**: Real-time table of intercepted connections with protocol, SNI, source/destination
-- **Logs**: Live streaming logs with filtering and search
-- **Settings**: Configuration management (under development)
+- Real-time metrics (connections, packets, bandwidth)
+- Live log streaming with filtering
+- Connection history with protocol and SNI information
+- Domain management (add/remove domains on-the-fly)
+- Configuration management
+- System health monitoring
 
-## Advanced Usage
+## Geosite Integration
 
-### Custom Fake Packet Strategies
-
-```bash
-# TTL manipulation (fake packets expire before reaching destination)
-sudo b4 --fake-strategy ttl --fake-ttl 5
-
-# Random sequence numbers (confuse state tracking)
-sudo b4 --fake-strategy randseq
-
-# Past sequence numbers (appear to be retransmissions)
-sudo b4 --fake-strategy pastseq --fake-seq-offset 8192
-
-# TCP checksum corruption
-sudo b4 --fake-strategy tcp_check
-```
-
-## Troubleshooting
-
-### No packets being processed
-
-```bach
-# Check iptables rules
-sudo iptables -t mangle -vnL --line-numbers
-
-# Verify nfqueue status
-cat /proc/net/netfilter/nfnetlink_queue
-
-# Check B4 is running with correct permissions (root)
-ps aux | grep b4
-```
-
-### Web interface not accessible
-
-- Check if port is open: `sudo netstat -tlnp | grep 7000`
-- Verify `--web-port` is set
-- Check firewall rules
-
-### High CPU usage
+B4 supports [v2ray/xray `geosite.dat`](https://github.com/v2fly/domain-list-community) files from various sources:
 
 ```bash
-# Reduce worker threads
-sudo b4 --threads 2
+# Loyalsoldier
+wget https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
 
-# Limit to specific domains
-sudo b4 --sni-domains specific-domain.com
+# RUNET Freedom
+wget https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geosite.dat
+
+# Nidelon
+wget https://github.com/Nidelon/ru-block-v2ray-rules/releases/latest/download/geosite.dat
+```
+
+Place the file in `/etc/b4/geosite.dat` and configure categories:
+
+```bash
+sudo b4 --geosite /etc/b4/geosite.dat --geosite-categories youtube,netflix,facebook
+```
+
+> [!TIP]
+> All these settings can be configured via the web interface.
+
+## Building and Development
+
+### Build Requirements
+
+- Go 1.25 or later
+- Node.js 22+ and pnpm (for web UI)
+- Make
+
+### Build Commands
+
+```bash
+# Build for current platform
+make build
+
+# Build for all platforms
+make build-all
+
+# Build for specific platform
+make linux-amd64
+make linux-arm64
+make linux-armv7
+
+# Clean build artifacts
+make clean
+
+# Run with sudo (development)
+make run
+
+# Install to /usr/local/bin
+make install
+```
+
+## Contributing
+
+Contributions are accepted through GitHub pull requests.
+
+### Development Setup
+
+```bash
+# Clone repository
+git clone https://github.com/daniellavrushin/b4.git
+cd b4
+
+# Install dependencies
+cd ui && pnpm install
+
+# Build and run
+make build
+sudo ./out/b4 --verbose debug
 ```
 
 ## Credits
 
-B4 builds upon research and techniques from:
+This project incorporates research and techniques from:
 
-- [youtubeUnblock](https://github.com/Waujito/youtubeUnblock)
-- [GoodbyeDPI](https://github.com/ValdikSS/GoodbyeDPI)
-- [zapret](https://github.com/bol-van/zapret)
+- [youtubeUnblock](https://github.com/Waujito/youtubeUnblock) - C-based DPI bypass
+- [GoodbyeDPI](https://github.com/ValdikSS/GoodbyeDPI) - Windows DPI circumvention
+- [zapret](https://github.com/bol-van/zapret) - Advanced DPI bypass techniques
 
 ## License
 
-This project is provided as-is for educational purposes. Users are responsible for compliance with local laws and regulations.
+This project is provided for educational purposes. Users are responsible for compliance with applicable laws and regulations.
 
-## Contributing
+**Use Cases:**
 
-Contributions are welcome! Please:
+- Bypassing internet censorship in restricted regions
+- Protecting privacy from network surveillance
+- Research and education on network protocols
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+**Not Intended For:**
 
-## Disclaimer
+- Illegal activities
+- Unauthorized network access
+- Violation of terms of service
 
-This tool is intended for bypassing censorship and protecting privacy in regions where internet access is restricted. It should not be used for **illegal activities**. `The authors are not responsible for misuse of this software`.
+The authors are not responsible for misuse of this software.
