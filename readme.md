@@ -3,6 +3,8 @@
 ![GitHub Release](https://img.shields.io/github/v/release/daniellavrushin/b4)
 ![GitHub Downloads](https://img.shields.io/github/downloads/daniellavrushin/b4/total)
 
+[[русский язык](readme_ru.md)]
+
 Network packet processor for circumventing Deep Packet Inspection (DPI) systems.
 
 ![alt text](image.png)
