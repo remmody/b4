@@ -15,25 +15,41 @@ type Sender struct {
 }
 
 func NewSenderWithMark(mark int) (*Sender, error) {
+	s := &Sender{
+		fd4:  -1,
+		fd6:  -1,
+		mark: mark,
+	}
+
+	// Create IPv4 raw socket
 	fd4, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 	if err != nil {
 		return nil, err
 	}
-	if err := syscall.SetsockoptInt(fd4, syscall.IPPROTO_IP, syscall.IP_HDRINCL, 1); err != nil {
-		syscall.Close(fd4)
+	s.fd4 = fd4
+
+	if err := syscall.SetsockoptInt(s.fd4, syscall.IPPROTO_IP, syscall.IP_HDRINCL, 1); err != nil {
+		s.Close()
 		return nil, err
 	}
-	if err := syscall.SetsockoptInt(fd4, syscall.SOL_SOCKET, unix.SO_MARK, mark); err != nil {
-		syscall.Close(fd4)
+	if err := syscall.SetsockoptInt(s.fd4, syscall.SOL_SOCKET, unix.SO_MARK, mark); err != nil {
+		s.Close()
 		return nil, err
 	}
+
+	// Create IPv6 raw socket
 	fd6, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 	if err != nil {
-		syscall.Close(fd4)
+		s.Close()
 		return nil, err
 	}
-	_ = syscall.SetsockoptInt(fd6, syscall.SOL_SOCKET, unix.SO_MARK, mark)
-	return &Sender{fd4: fd4, fd6: fd6, mark: mark}, nil
+	s.fd6 = fd6
+
+	if err := syscall.SetsockoptInt(s.fd6, syscall.SOL_SOCKET, unix.SO_MARK, mark); err != nil {
+		log.Warnf("Failed to set SO_MARK on IPv6 socket: %v", err)
+	}
+
+	return s, nil
 }
 
 func NewSender(mark int) (*Sender, error) {
@@ -55,10 +71,12 @@ func (s *Sender) SendIPv6(packet []byte, destIP net.IP) error {
 }
 
 func (s *Sender) Close() {
-	if s.fd4 != 0 {
+	if s.fd4 >= 0 {
 		_ = syscall.Close(s.fd4)
+		s.fd4 = -1
 	}
-	if s.fd6 != 0 {
+	if s.fd6 >= 0 {
 		_ = syscall.Close(s.fd6)
+		s.fd6 = -1
 	}
 }

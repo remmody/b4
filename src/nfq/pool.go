@@ -17,9 +17,6 @@ func NewWorkerWithQueue(cfg *config.Config, domains *[]string, qnum uint16) *Wor
 		qnum:   qnum,
 		ctx:    ctx,
 		cancel: cancel,
-		flows:  make(map[string]*flowState),
-		ttl:    10 * time.Second,
-		limit:  8192,
 	}
 
 	w.cfg.Store(cfg)

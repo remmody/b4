@@ -19,23 +19,18 @@ func (e parseErr) Error() string { return string(e) }
 var errNotHello = parseErr("not a ClientHello")
 
 func isValidSNIChar(b byte) bool {
-	// Allow basic ASCII
 	if (b >= 'a' && b <= 'z') ||
 		(b >= 'A' && b <= 'Z') ||
 		(b >= '0' && b <= '9') ||
 		b == '-' || b == '.' || b == '_' {
 		return true
 	}
-
-	// Allow high-bit characters for international domains
 	if b >= 128 {
 		return true
 	}
-
 	return false
 }
 
-// validateSNI checks if the SNI string contains only valid characters
 func validateSNI(sni string) bool {
 	if len(sni) == 0 {
 		return false
@@ -46,7 +41,6 @@ func validateSNI(sni string) bool {
 			return false
 		}
 	}
-	// Additional validation: must contain at least one dot or be localhost
 	if sni != "localhost" && !contains(sni, '.') {
 		return false
 	}
@@ -63,39 +57,48 @@ func contains(s string, char byte) bool {
 }
 
 func ParseTLSClientHelloSNI(b []byte) (string, bool) {
-	log.Tracef("TCP Payload=%v", len(b))
-
-	// Fast path: Check if this looks like a TLS handshake
-	if len(b) < 5 || b[0] != 0x16 {
-		return "", false
-	}
-
-	// Fast path: Check TLS version (should be 0x0301, 0x0302, 0x0303, or 0x0304)
-	if b[1] != 0x03 || b[2] > 0x04 {
-		return "", false
-	}
-
 	i := 0
 	for i+5 <= len(b) {
 		if b[i] != 0x16 {
 			i++
 			continue
 		}
+
+		// Parse TLS record length
 		recLen := int(b[i+3])<<8 | int(b[i+4])
-		if recLen <= 0 || i+5+recLen > len(b) {
-			log.Tracef("TLS: record truncated at %d", i)
-			return "", false
+		if recLen <= 0 {
+			i++
+			continue
 		}
+
+		// Handle truncated records like youtubeUnblock does
+		if i+5+recLen > len(b) {
+			recLen = len(b) - i - 5
+			if recLen <= 0 {
+				i++
+				continue
+			}
+		}
+
 		rec := b[i+5 : i+5+recLen]
 		if len(rec) < 4 {
-			return "", false
+			i++
+			continue
 		}
+
+		// Check if this is ClientHello (0x01)
 		if rec[0] == 0x01 {
+			// Parse handshake length (3 bytes)
 			hl := int(rec[1])<<16 | int(rec[2])<<8 | int(rec[3])
 			if 4+hl > len(rec) {
-				log.Tracef("TLS: ClientHello truncated")
-				return "", false
+				// Truncated handshake, try to parse what we have
+				hl = len(rec) - 4
+				if hl <= 0 {
+					i++
+					continue
+				}
 			}
+
 			ch := rec[4 : 4+hl]
 			sni, hasECH, _ := parseTLSClientHelloMeta(ch)
 			if sni == "" {
@@ -104,20 +107,20 @@ func ParseTLSClientHelloSNI(b []byte) (string, bool) {
 				} else {
 					log.Tracef("TLS: SNI missing")
 				}
-				return "", false
+				i++
+				continue
 			}
 
-			// Validate the extracted SNI
 			if !validateSNI(sni) {
 				log.Tracef("TLS: Invalid SNI extracted: %q", sni)
-				return "", false
+				i++
+				continue
 			}
 
 			return sni, true
 		}
 		i += 5 + recLen
 	}
-	log.Tracef("TLS: no handshake record")
 	return "", false
 }
 
@@ -127,7 +130,6 @@ func ParseTLSClientHelloBodySNI(ch []byte) (string, bool) {
 		return "", false
 	}
 
-	// Validate the extracted SNI
 	if !validateSNI(sni) {
 		return "", false
 	}
@@ -184,14 +186,22 @@ func parseTLSClientHelloMeta(ch []byte) (string, bool, []string) {
 	}
 	p += cmLen
 
-	// Extensions
+	// Extensions - be tolerant if truncated
 	if p+2 > chLen {
 		return "", false, nil
 	}
 	extLen := int(ch[p])<<8 | int(ch[p+1])
 	p += 2
-	if extLen == 0 || p+extLen > chLen {
+	if extLen == 0 {
 		return "", false, nil
+	}
+
+	// Handle truncated extensions
+	if p+extLen > chLen {
+		extLen = chLen - p
+		if extLen <= 0 {
+			return "", false, nil
+		}
 	}
 
 	exts := ch[p : p+extLen]
@@ -209,13 +219,11 @@ func parseTLSClientHelloMeta(ch []byte) (string, bool, []string) {
 		el := int(exts[q+2])<<8 | int(exts[q+3])
 		q += 4
 
-		// Check bounds for extension data
 		if el < 0 || q+el > extEnd {
-			log.Tracef("TLS: Extension %d has invalid length %d", et, el)
+			// Truncated extension, break
 			break
 		}
 
-		// Extension data
 		ed := exts[q : q+el]
 
 		switch et {
@@ -244,45 +252,34 @@ func extractSNIFromExtension(ed []byte) string {
 		return ""
 	}
 
-	// Server name list length (2 bytes)
 	listLen := int(ed[0])<<8 | int(ed[1])
 	if listLen <= 0 || 2+listLen > len(ed) {
-		log.Tracef("TLS: SNI list invalid length: %d, have %d bytes", listLen, len(ed))
 		return ""
 	}
 
 	r := 2
 	listEnd := 2 + listLen
 
-	// Process server name entries
 	for r+3 <= listEnd {
-		// Name type (1 byte)
 		nameType := ed[r]
 		r++
 
-		// Name length (2 bytes)
 		if r+2 > listEnd {
 			break
 		}
 		nameLen := int(ed[r])<<8 | int(ed[r+1])
 		r += 2
 
-		// Name data
 		if nameLen <= 0 || r+nameLen > listEnd || r+nameLen > len(ed) {
-			log.Tracef("TLS: SNI name invalid length: %d at position %d", nameLen, r)
 			break
 		}
 
-		if nameType == 0 { // hostname type
-			// Create a defensive copy of exactly nameLen bytes
+		if nameType == 0 {
 			sniBytes := make([]byte, nameLen)
 			copy(sniBytes, ed[r:r+nameLen])
 
-			// Validate each byte before converting to string
 			for i, b := range sniBytes {
 				if !isValidSNIChar(b) {
-					log.Tracef("TLS: Invalid byte 0x%02x at position %d in SNI", b, i)
-					// Truncate at first invalid byte
 					if i > 0 {
 						return string(sniBytes[:i])
 					}
@@ -306,7 +303,6 @@ func extractALPNFromExtension(ed []byte) []string {
 		return alpns
 	}
 
-	// ALPN list length (2 bytes)
 	listLen := int(ed[0])<<8 | int(ed[1])
 	if listLen <= 0 || 2+listLen > len(ed) {
 		return alpns
@@ -320,7 +316,6 @@ func extractALPNFromExtension(ed []byte) []string {
 			break
 		}
 
-		// Protocol name length (1 byte)
 		protoLen := int(ed[r])
 		r++
 
@@ -328,7 +323,6 @@ func extractALPNFromExtension(ed []byte) []string {
 			break
 		}
 
-		// Protocol name
 		alpns = append(alpns, string(ed[r:r+protoLen]))
 		r += protoLen
 	}

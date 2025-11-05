@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/daniellavrushin/b4/sock"
 	"github.com/florianl/go-nfqueue"
@@ -12,16 +11,6 @@ import (
 
 type Pool struct {
 	workers []*Worker
-}
-
-type flowState struct {
-	buf          []byte
-	last         time.Time
-	sniProcessed bool
-	sniDetected  bool
-	sniMatched   bool
-	sni          string
-	packetCount  int
 }
 
 type Worker struct {
@@ -33,9 +22,6 @@ type Worker struct {
 	q                *nfqueue.Nfqueue
 	wg               sync.WaitGroup
 	mu               sync.Mutex
-	flows            map[string]*flowState
-	ttl              time.Duration
-	limit            int
 	matcher          atomic.Value
 	sock             *sock.Sender
 }

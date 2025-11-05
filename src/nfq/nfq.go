@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -22,18 +21,8 @@ import (
 )
 
 var (
-	sentFake    sync.Map
 	labelTarget = " TARGET"
 )
-
-func markFakeOnce(key string, ttl time.Duration) bool {
-	_, loaded := sentFake.LoadOrStore(key, struct{}{})
-	if loaded {
-		return false
-	}
-	time.AfterFunc(ttl, func() { sentFake.Delete(key) })
-	return true
-}
 
 func (w *Worker) Start() error {
 	cfg := w.getConfig()
@@ -155,103 +144,37 @@ func (w *Worker) Start() error {
 				dport := binary.BigEndian.Uint16(tcp[2:4])
 
 				if dport == HTTPSPort && len(payload) > 0 {
-					k := fmt.Sprintf("%s:%d>%s:%d", src.String(), sport, dst.String(), dport)
 
-					// Check flow state first
-					w.mu.Lock()
-					st := w.flows[k]
-					if st == nil {
-						st = &flowState{
-							buf:          nil,
-							last:         time.Now(),
-							packetCount:  0,
-							sniDetected:  false,
-							sniProcessed: false,
-						}
-						w.flows[k] = st
-					}
+					host, ok := sni.ParseTLSClientHelloSNI(payload)
 
-					// Increment packet count
-					st.packetCount++
-					st.last = time.Now()
-
-					// If SNI already processed (detected and handled), accept all subsequent packets
-					if st.sniProcessed {
-						w.mu.Unlock()
-						_ = q.SetVerdict(id, nfqueue.NfAccept)
-						return 0
-					}
-
-					// If we already detected SNI but didn't match filter, skip further processing
-					if st.sniDetected && !st.sniMatched {
-						w.mu.Unlock()
-						_ = q.SetVerdict(id, nfqueue.NfAccept)
-						return 0
-					}
-
-					// Stop processing after ConnBytesLimit packets if SNI not found yet
-					if st.packetCount > cfg.ConnBytesLimit && cfg.ConnBytesLimit > 0 {
-						w.mu.Unlock()
-						_ = q.SetVerdict(id, nfqueue.NfAccept)
-						return 0
-					}
-
-					w.mu.Unlock()
-
-					// Try to extract SNI from this packet
-					host, ok := w.feed(k, payload)
 					if ok {
-						// SNI found! Process it once
 						matched := matcher.Match(host)
-						onlyOnce := markFakeOnce(k, 20*time.Second)
 						target := ""
 						if matched {
 							target = labelTarget
 						}
-
-						// Mark this flow as processed
-						w.mu.Lock()
-						if st, exists := w.flows[k]; exists {
-							st.sniDetected = true   // SNI was detected (regardless of match)
-							st.sniMatched = matched // Whether it matched filter
-							st.sni = host
-							// Don't set sniProcessed yet - will be set after handling
-						}
-						w.mu.Unlock()
 
 						metrics := metrics.GetMetricsCollector()
 						metrics.RecordConnection("TCP", host, fmt.Sprintf("%s:%d", src, sport), fmt.Sprintf("%s:%d", dst, dport), matched)
 						metrics.RecordPacket(uint64(len(raw)))
 
 						log.Infof("SNI TCP%v: %s %s:%d -> %s:%d", target, host, src.String(), sport, dst.String(), dport)
-						if matched {
-							// Mark as fully processed BEFORE dropping packet
-							w.mu.Lock()
-							if st, exists := w.flows[k]; exists {
-								st.sniProcessed = true
-							}
-							w.mu.Unlock()
 
+						if matched {
 							// This is the SNI packet itself - fragment with fake
 							if v == 4 {
-								w.dropAndInjectTCP(cfg, raw, dst, onlyOnce)
+								w.dropAndInjectTCP(cfg, raw, dst)
 							} else {
-								w.dropAndInjectTCPv6(cfg, raw, dst, onlyOnce)
+								w.dropAndInjectTCPv6(cfg, raw, dst)
 							}
 							_ = q.SetVerdict(id, nfqueue.NfDrop)
 						} else {
-							// Mark as processed (non-matching domain)
-							w.mu.Lock()
-							if st, exists := w.flows[k]; exists {
-								st.sniProcessed = true
-							}
-							w.mu.Unlock()
 							_ = q.SetVerdict(id, nfqueue.NfAccept)
 						}
 						return 0
 					}
 
-					// Still accumulating data for SNI detection
+					// No SNI found in this packet - just accept
 					_ = q.SetVerdict(id, nfqueue.NfAccept)
 					return 0
 				}
@@ -391,7 +314,7 @@ func (w *Worker) dropAndInjectQUIC(cfg *config.Config, raw []byte, dst net.IP) {
 	}
 }
 
-func (w *Worker) dropAndInjectTCP(cfg *config.Config, raw []byte, dst net.IP, injectFake bool) {
+func (w *Worker) dropAndInjectTCP(cfg *config.Config, raw []byte, dst net.IP) {
 	if len(raw) < 40 {
 		_ = w.sock.SendIPv4(raw, dst)
 		return
@@ -407,7 +330,7 @@ func (w *Worker) dropAndInjectTCP(cfg *config.Config, raw []byte, dst net.IP, in
 		return
 	}
 
-	if injectFake && cfg.Faking.SNI && cfg.Faking.SNISeqLength > 0 {
+	if cfg.Faking.SNI && cfg.Faking.SNISeqLength > 0 {
 		w.sendFakeSNISequence(cfg, raw, dst)
 	}
 
@@ -421,43 +344,6 @@ func (w *Worker) dropAndInjectTCP(cfg *config.Config, raw []byte, dst net.IP, in
 	default:
 		w.sendTCPFragments(cfg, raw, dst)
 	}
-}
-
-func (w *Worker) feed(key string, chunk []byte) (string, bool) {
-	w.mu.Lock()
-	st := w.flows[key]
-	if st == nil {
-		st = &flowState{buf: nil, last: time.Now(), packetCount: 0}
-		w.flows[key] = st
-	}
-
-	// If we already found SNI for this flow, return it
-	if st.sniDetected {
-		w.mu.Unlock()
-		return st.sni, false
-	}
-
-	// ALWAYS accumulate data first (up to limit)
-	if len(st.buf) < w.limit {
-		need := w.limit - len(st.buf)
-		if len(chunk) < need {
-			st.buf = append(st.buf, chunk...)
-		} else {
-			st.buf = append(st.buf, chunk[:need]...)
-		}
-	}
-
-	st.last = time.Now()
-	buf := append([]byte(nil), st.buf...)
-	w.mu.Unlock()
-
-	// Try to parse SNI from accumulated buffer
-	host, ok := sni.ParseTLSClientHelloSNI(buf)
-	if ok && host != "" {
-		return host, true
-	}
-
-	return "", false
 }
 
 func (w *Worker) sendTCPFragments(cfg *config.Config, packet []byte, dst net.IP) {
@@ -599,9 +485,25 @@ func (w *Worker) sendIPFragments(cfg *config.Config, packet []byte, dst net.IP) 
 	}
 
 	ipHdrLen := int((packet[0] & 0x0F) * 4)
+
+	tcpHdrLen := int((packet[ipHdrLen+12] >> 4) * 4)
+	payloadStart := ipHdrLen + tcpHdrLen
+
+	splitPos = payloadStart + splitPos
+
 	splitPos = (splitPos + 7) &^ 7
+
+	minSplitPos := ipHdrLen + 8
+	if splitPos < minSplitPos {
+		splitPos = minSplitPos
+	}
+
 	if splitPos >= len(packet) {
 		splitPos = len(packet) - 8
+		if splitPos < minSplitPos {
+			_ = w.sock.SendIPv4(packet, dst)
+			return
+		}
 	}
 
 	frag1 := make([]byte, splitPos)
@@ -802,24 +704,13 @@ func (w *Worker) Stop() {
 
 func (w *Worker) gc(cfg *config.Config) {
 	defer w.wg.Done()
-	t := time.NewTicker(1 * time.Second) // More frequent GC
+	t := time.NewTicker(30 * time.Second)
 	defer t.Stop()
 	for {
 		select {
 		case <-w.ctx.Done():
 			return
-		case now := <-t.C:
-			w.mu.Lock()
-			for k, st := range w.flows {
-				// Remove flows that have been processed and idle
-				if st.sniProcessed && now.Sub(st.last) > 10*time.Second {
-					delete(w.flows, k)
-				} else if !st.sniProcessed && now.Sub(st.last) > 30*time.Second {
-					// Remove incomplete flows faster
-					delete(w.flows, k)
-				}
-			}
-			w.mu.Unlock()
+		case <-t.C:
 
 			if cfg.WebServer.IsEnabled {
 				mtcs := metrics.GetMetricsCollector()

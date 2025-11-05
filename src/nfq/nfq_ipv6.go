@@ -62,7 +62,7 @@ func (w *Worker) dropAndInjectQUICV6(cfg *config.Config, raw []byte, dst net.IP)
 }
 
 // dropAndInjectTCPv6 handles TCP packet manipulation for IPv6
-func (w *Worker) dropAndInjectTCPv6(cfg *config.Config, raw []byte, dst net.IP, injectFake bool) {
+func (w *Worker) dropAndInjectTCPv6(cfg *config.Config, raw []byte, dst net.IP) {
 	if len(raw) < 60 { // IPv6 header (40) + TCP header (20 min)
 		_ = w.sock.SendIPv6(raw, dst)
 		return
@@ -79,7 +79,7 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.Config, raw []byte, dst net.IP, 
 	}
 
 	// Inject fake SNI packets if configured
-	if injectFake && cfg.Faking.SNI && cfg.Faking.SNISeqLength > 0 {
+	if cfg.Faking.SNI && cfg.Faking.SNISeqLength > 0 {
 		w.sendFakeSNISequencev6(cfg, raw, dst)
 	}
 
