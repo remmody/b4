@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/daniellavrushin/b4/config"
@@ -58,4 +59,12 @@ func (api *API) RegisterEndpoints(mux *http.ServeMux, cfg *config.Config) {
 	api.RegisterGeositeApi()
 	api.RegisterSystemApi()
 	api.RegisterCheckApi()
+}
+
+func sendResponse(w http.ResponseWriter, response interface{}) {
+	setJsonHeader(w)
+	json.NewEncoder(w).Encode(response)
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
 }

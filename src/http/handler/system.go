@@ -183,7 +183,6 @@ func (api *API) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	serviceManager := detectServiceManager()
 	log.Infof("Update requested via web UI (service manager: %s, version: %s)", serviceManager, req.Version)
 
-	// Check if we can perform updates
 	if serviceManager == "standalone" {
 		response := UpdateResponse{
 			Success:        false,
@@ -202,32 +201,21 @@ func (api *API) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		ServiceManager: serviceManager,
 	}
 
-	// Send response immediately before triggering update
-	setJsonHeader(w)
-	json.NewEncoder(w).Encode(response)
+	sendResponse(w, response)
 
-	// Flush the response to ensure it's sent
-	if f, ok := w.(http.Flusher); ok {
-		f.Flush()
-	}
-
-	// Trigger update in a goroutine with a small delay
 	go func() {
 		time.Sleep(500 * time.Millisecond)
 		log.Infof("Initiating update process...")
 
-		// Download the installer script
 		installerPath := "/tmp/b4install_update.sh"
 		installerURL := "https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh"
 
-		// Download installer
 		downloadCmd := exec.Command("wget", "-O", installerPath, installerURL)
 		if output, err := downloadCmd.CombinedOutput(); err != nil {
 			log.Errorf("Failed to download installer: %v\nOutput: %s", err, string(output))
 			return
 		}
 
-		// Make executable
 		if err := os.Chmod(installerPath, 0755); err != nil {
 			log.Errorf("Failed to make installer executable: %v", err)
 			return
@@ -236,18 +224,23 @@ func (api *API) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		log.Infof("Installer downloaded, starting update process...")
 		log.Infof("Service will stop now - this is expected")
 
-		// Execute the update
-		// The --update flag will handle: stop service -> update -> start service
 		cmd := exec.Command(installerPath, "--update", "--quiet")
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setsid: true,
+		}
 
-		// Start the update process - it will kill this process when it stops the service
+		logFile, err := os.OpenFile("/tmp/b4_update.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if err == nil {
+			cmd.Stdout = logFile
+			cmd.Stderr = logFile
+			defer logFile.Close()
+		}
+
 		if err := cmd.Start(); err != nil {
 			log.Errorf("Update command failed to start: %v", err)
 		} else {
 			log.Infof("Update process started (PID: %d)", cmd.Process.Pid)
-			// Note: We won't reach here for long as the service will be stopped
+			cmd.Process.Release()
 		}
 	}()
 }
