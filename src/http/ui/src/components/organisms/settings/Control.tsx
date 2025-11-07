@@ -3,11 +3,10 @@ import { Button, Grid, Stack } from "@mui/material";
 import SettingSection from "@molecules/common/B4Section";
 import {
   RestartAlt as RestartIcon,
-  ToggleOn as ToggleOnIcon,
   Hub as ControlIcon,
   Restore as RestoreIcon,
 } from "@mui/icons-material";
-import B4Config from "@models/Config";
+import { B4Config } from "@models/Config";
 import { RestartDialog } from "./RestartDialog";
 import { colors } from "@design";
 import { ResetDialog } from "./ResetDialog";
@@ -23,7 +22,7 @@ export const ControlSettings: React.FC<ControlSettingsProps> = ({
   onChange,
   loadConfig,
 }) => {
-  const [saving, setSaving] = useState(false);
+  const [saving] = useState(false);
   const [showRestartDialog, setShowRestartDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
 

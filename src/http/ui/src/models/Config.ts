@@ -125,5 +125,3 @@ export interface B4Config {
   system: SystemConfig;
   bypass: BypassConfig;
 }
-
-export default B4Config;

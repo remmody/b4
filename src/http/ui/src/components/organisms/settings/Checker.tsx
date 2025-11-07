@@ -8,7 +8,7 @@ import {
 import SettingSection from "@molecules/common/B4Section";
 import SettingTextField from "@atoms/common/B4TextField";
 import { colors } from "@design";
-import B4Config from "@models/Config";
+import { B4Config } from "@models/Config";
 
 interface CheckerSettingsProps {
   config: B4Config;

@@ -32,7 +32,7 @@ import SettingTextField from "@atoms/common/B4TextField";
 import SettingAutocomplete from "@atoms/common/B4Autocomplete";
 import { colors, button_primary } from "@design";
 import { B4Dialog } from "@molecules/common/B4Dialog";
-import B4Config from "@models/Config";
+import { B4Config } from "@models/Config";
 
 interface DomainSettingsProps {
   config: B4Config & { domain_stats?: DomainStatistics };

@@ -2,7 +2,7 @@ import { Domain as DomainIcon } from "@mui/icons-material";
 import B4Section from "@molecules/common/B4Section";
 import { B4FormGroup } from "@molecules/common/B4FormGroup";
 import B4TextField from "@atoms/common/B4TextField";
-import B4Config from "@models/Config";
+import { B4Config } from "@models/Config";
 
 interface NetworkSettingsProps {
   config: B4Config;
