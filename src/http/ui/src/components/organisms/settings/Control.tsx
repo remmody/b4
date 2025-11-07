@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Grid, Stack } from "@mui/material";
+import { Button, Grid } from "@mui/material";
 import SettingSection from "@molecules/common/B4Section";
 import {
   RestartAlt as RestartIcon,
@@ -7,7 +7,7 @@ import {
   Restore as RestoreIcon,
 } from "@mui/icons-material";
 import { RestartDialog } from "./RestartDialog";
-import { colors } from "@design";
+import { colors, spacing } from "@design";
 import { ResetDialog } from "./ResetDialog";
 
 interface ControlSettingsProps {
@@ -31,51 +31,48 @@ export const ControlSettings: React.FC<ControlSettingsProps> = ({
       description="Control core service and config operations"
       icon={<ControlIcon />}
     >
-      <Grid container spacing={2}>
-        <Stack spacing={2}>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<RestartIcon />}
-            onClick={() => setShowRestartDialog(true)}
-            disabled={saving}
-            sx={{
-              borderColor: colors.secondary,
-              color: colors.secondary,
-              "&:hover": {
-                borderColor: colors.primary,
-                bgcolor: colors.accent.primaryHover,
-              },
-            }}
-          >
-            Restart B4 System Service
-          </Button>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<RestoreIcon />}
-            onClick={() => setShowResetDialog(true)}
-            disabled={saving}
-            sx={{
+      <Grid container spacing={spacing.lg}>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<RestartIcon />}
+          onClick={() => setShowRestartDialog(true)}
+          disabled={saving}
+          sx={{
+            borderColor: colors.secondary,
+            color: colors.secondary,
+            "&:hover": {
               borderColor: colors.primary,
-              color: colors.primary,
-              "&:hover": {
-                borderColor: "#d32f2f",
-                bgcolor: `${colors.primary}22`,
-              },
-            }}
-          >
-            Reset the configuration to default settings
-          </Button>
-        </Stack>
+              bgcolor: colors.accent.primaryHover,
+            },
+          }}
+        >
+          Restart B4 System Service
+        </Button>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<RestoreIcon />}
+          onClick={() => setShowResetDialog(true)}
+          disabled={saving}
+          sx={{
+            borderColor: colors.primary,
+            color: colors.primary,
+            "&:hover": {
+              borderColor: "#d32f2f",
+              bgcolor: `${colors.primary}22`,
+            },
+          }}
+        >
+          Reset the configuration to default settings
+        </Button>
       </Grid>
-      {/* Restart Dialog */}
+
       <RestartDialog
         open={showRestartDialog}
         onClose={() => setShowRestartDialog(false)}
       />
 
-      {/* Reset Dialog */}
       <ResetDialog
         open={showResetDialog}
         onClose={() => setShowResetDialog(false)}

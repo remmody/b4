@@ -70,7 +70,6 @@ export const B4Slider: React.FC<B4SliderProps> = ({
               px: 1.5,
               py: 0.5,
               borderRadius: 1,
-              minWidth: 40,
               textAlign: "center",
             }}
           >
@@ -129,7 +128,6 @@ export const B4Slider: React.FC<B4SliderProps> = ({
           sx={{
             color: disabled ? colors.text.disabled : colors.text.secondary,
             ml: 0.1,
-            mt: 0.5,
           }}
         >
           {helperText}

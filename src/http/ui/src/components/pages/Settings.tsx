@@ -486,7 +486,7 @@ export default function Settings() {
       <Box sx={{ flex: 1, overflow: "auto", pb: 2 }}>
         {/* Core Settings */}
         <TabPanel value={validTab} index={0}>
-          <Grid container spacing={spacing}>
+          <Grid container spacing={spacing.lg}>
             <Grid size={{ xs: 12, md: 12 }}>
               {categoryHasChanges[0] && (
                 <Alert severity="warning" icon={<WarningIcon />}>

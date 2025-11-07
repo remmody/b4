@@ -34,7 +34,7 @@ export const NetworkSettings: React.FC<NetworkSettingsProps> = ({
         min={1}
         max={16}
         step={1}
-        helperText="Number of worker threads"
+        helperText="Number of worker threads for processing packets simultaneously (default 4)"
       />
     </B4FormGroup>
 
@@ -46,7 +46,7 @@ export const NetworkSettings: React.FC<NetworkSettingsProps> = ({
         min={1}
         max={100}
         step={1}
-        helperText="Connection bytes limit for TCP"
+        helperText="Connection bytes limit for TCP (default 19)"
       />
       <B4Slider
         label="UDP Connection Bytes Limit"
@@ -55,7 +55,7 @@ export const NetworkSettings: React.FC<NetworkSettingsProps> = ({
         min={1}
         max={50}
         step={1}
-        helperText="Connection bytes limit for UDP"
+        helperText="Connection bytes limit for UDP (default 8)"
       />
     </B4FormGroup>
   </B4Section>
