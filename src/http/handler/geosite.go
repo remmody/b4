@@ -1,3 +1,4 @@
+// src/http/handler/geosite.go
 package handler
 
 import (
@@ -38,13 +39,11 @@ func (a *API) addGeositeDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate domain
 	if req.Domain == "" {
 		http.Error(w, "Domain cannot be empty", http.StatusBadRequest)
 		return
 	}
 
-	// Check if domain already exists in manual domains
 	for _, existingDomain := range a.manualDomains {
 		if existingDomain == req.Domain {
 			response := AddDomainResponse{
@@ -60,50 +59,19 @@ func (a *API) addGeositeDomain(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Add domain to manual domains
 	a.manualDomains = append(a.manualDomains, req.Domain)
 	log.Infof("Added domain '%s' to manual domains list", req.Domain)
 
-	// Update the config with new manual domains
 	a.cfg.Domains.SNIDomains = make([]string, len(a.manualDomains))
 	copy(a.cfg.Domains.SNIDomains, a.manualDomains)
 
-	var allGeositeDomains []string
-	if a.cfg.Domains.GeoSitePath != "" && len(a.cfg.Domains.GeoSiteCategories) > 0 {
-		var err error
-		allGeositeDomains, _, err = a.geodataManager.LoadCategories(a.cfg.Domains.GeoSiteCategories)
-		if err != nil {
-			log.Errorf("Failed to load geosite domains: %v", err)
-		}
-	}
+	stats := a.applyDomainChanges()
 
-	// Combine all domains for the matcher
-	allDomainsForMatcher := make([]string, 0, len(a.manualDomains)+len(allGeositeDomains))
-	allDomainsForMatcher = append(allDomainsForMatcher, a.manualDomains...)
-	allDomainsForMatcher = append(allDomainsForMatcher, allGeositeDomains...)
-
-	// Update the NFQ pool with new configuration
-	if globalPool != nil {
-		globalPool.UpdateConfig(a.cfg, allDomainsForMatcher)
-		log.Infof("Updated NFQ pool with new domain (manual: %d, geosite: %d, total: %d)",
-			len(a.manualDomains), len(allGeositeDomains), len(allDomainsForMatcher))
-	}
-
-	// Save config to file if path is set
-	if a.cfg.ConfigPath != "" {
-		if err := a.cfg.SaveToFile(a.cfg.ConfigPath); err != nil {
-			log.Errorf("Failed to save config after adding domain: %v", err)
-		} else {
-			log.Infof("Config saved to %s after adding domain", a.cfg.ConfigPath)
-		}
-	}
-
-	// Send success response
 	response := AddDomainResponse{
 		Success:       true,
 		Message:       fmt.Sprintf("Successfully added domain '%s'", req.Domain),
 		Domain:        req.Domain,
-		TotalDomains:  len(a.manualDomains),
+		TotalDomains:  stats.TotalDomains,
 		ManualDomains: a.manualDomains,
 	}
 
@@ -158,7 +126,6 @@ func (a *API) previewGeoCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Limit preview to first 100 domains
 	previewLimit := 100
 	preview := domains
 	if len(domains) > previewLimit {

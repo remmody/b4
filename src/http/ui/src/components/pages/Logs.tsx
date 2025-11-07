@@ -13,34 +13,21 @@ import {
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/DeleteForever";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import { useWebSocket } from "@/ctx/B4WsProvider";
 
 export default function Logs() {
-  const [lines, setLines] = React.useState<string[]>([]);
-  const [paused, setPaused] = React.useState(false);
   const [filter, setFilter] = React.useState("");
   const [autoScroll, setAutoScroll] = React.useState(true);
   const [showScrollBtn, setShowScrollBtn] = React.useState(false);
   const logRef = React.useRef<HTMLDivElement | null>(null);
-
-  React.useEffect(() => {
-    const ws = new WebSocket(
-      (location.protocol === "https:" ? "wss://" : "ws://") +
-        location.host +
-        "/api/ws/logs"
-    );
-    ws.onmessage = (ev) => {
-      if (!paused) setLines((prev) => [...prev.slice(-999), String(ev.data)]);
-    };
-    ws.onerror = () => setLines((prev) => [...prev, "[WS ERROR]"]);
-    return () => ws.close();
-  }, [paused]);
+  const { logs, pauseLogs, setPauseLogs, clearLogs } = useWebSocket();
 
   React.useEffect(() => {
     const el = logRef.current;
     if (el && autoScroll) {
       el.scrollTop = el.scrollHeight;
     }
-  }, [lines, autoScroll]);
+  }, [logs, autoScroll]);
 
   const handleScroll = () => {
     const el = logRef.current;
@@ -62,27 +49,30 @@ export default function Logs() {
 
   const filtered = React.useMemo(() => {
     const f = filter.trim().toLowerCase();
-    return f ? lines.filter((l) => l.toLowerCase().includes(f)) : lines;
-  }, [lines, filter]);
+    return f ? logs.filter((l) => l.toLowerCase().includes(f)) : logs;
+  }, [logs, filter]);
 
-  const handleHotkeysDown = React.useCallback((e: KeyboardEvent) => {
-    const target = e.target as HTMLElement;
-    if (
-      target.tagName === "INPUT" ||
-      target.tagName === "TEXTAREA" ||
-      target.isContentEditable
-    ) {
-      return;
-    }
+  const handleHotkeysDown = React.useCallback(
+    (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
 
-    if ((e.ctrlKey && e.key === "x") || e.key === "Delete") {
-      e.preventDefault();
-      setLines([]);
-    } else if (e.key === "p" || e.key === "Pause") {
-      e.preventDefault();
-      setPaused((prev) => !prev);
-    }
-  }, []);
+      if ((e.ctrlKey && e.key === "x") || e.key === "Delete") {
+        e.preventDefault();
+        clearLogs();
+      } else if (e.key === "p" || e.key === "Pause") {
+        e.preventDefault();
+        setPauseLogs(!pauseLogs);
+      }
+    },
+    [clearLogs, pauseLogs, setPauseLogs]
+  );
 
   useEffect(() => {
     globalThis.window.addEventListener("keydown", handleHotkeysDown);
@@ -112,7 +102,7 @@ export default function Logs() {
           flexDirection: "column",
           overflow: "hidden",
           border: "1px solid",
-          borderColor: paused
+          borderColor: pauseLogs
             ? "rgba(245, 173, 24, 0.5)"
             : "rgba(245, 173, 24, 0.24)",
           transition: "border-color 0.3s",
@@ -147,7 +137,7 @@ export default function Logs() {
             />
             <Stack direction="row" spacing={1} alignItems="center">
               <Chip
-                label={`${lines.length} lines`}
+                label={`${logs.length} lines`}
                 size="small"
                 sx={{
                   bgcolor: "rgba(245, 173, 24, 0.2)",
@@ -171,8 +161,8 @@ export default function Logs() {
             <FormControlLabel
               control={
                 <Switch
-                  checked={paused}
-                  onChange={(e) => setPaused(e.target.checked)}
+                  checked={pauseLogs}
+                  onChange={(e) => setPauseLogs(e.target.checked)}
                   sx={{
                     "& .MuiSwitch-switchBase.Mui-checked": {
                       color: "#F5AD18",
@@ -186,17 +176,17 @@ export default function Logs() {
               label={
                 <Typography
                   sx={{
-                    color: paused ? "#F5AD18" : "text.secondary",
-                    fontWeight: paused ? 600 : 400,
+                    color: pauseLogs ? "#F5AD18" : "text.secondary",
+                    fontWeight: pauseLogs ? 600 : 400,
                   }}
                 >
-                  {paused ? "Paused" : "Streaming"}
+                  {pauseLogs ? "Paused" : "Streaming"}
                 </Typography>
               }
             />
             <IconButton
               color="inherit"
-              onClick={() => setLines([])}
+              onClick={clearLogs}
               sx={{
                 color: "text.secondary",
                 "&:hover": {
@@ -210,7 +200,6 @@ export default function Logs() {
           </Stack>
         </Box>
 
-        {/* Log Display */}
         <Box
           ref={logRef}
           onScroll={handleScroll}
@@ -230,7 +219,7 @@ export default function Logs() {
           }}
         >
           {(() => {
-            if (filtered.length === 0 && lines.length === 0) {
+            if (filtered.length === 0 && logs.length === 0) {
               return (
                 <Typography
                   sx={{

@@ -10,28 +10,20 @@ import {
   useFilteredLogs,
   useSortedLogs,
 } from "@hooks/useDomainActions";
-import { useDomainsWebSocket } from "@hooks/useDomainsWebSocket";
-import {
-  generateDomainVariants,
-  loadPersistedLines,
-  clearLogPersistedLines,
-  persistLogLines,
-} from "@utils";
+import { generateDomainVariants } from "@utils";
 import { colors } from "@design";
+import { useWebSocket } from "@/ctx/B4WsProvider";
 
 export default function Domains() {
-  // State
-  const [lines, setLines] = useState<string[]>(loadPersistedLines);
-  const [paused, setPaused] = useState(false);
+  const { domains, pauseDomains, setPauseDomains, clearDomains } =
+    useWebSocket();
+
   const [filter, setFilter] = useState("");
   const [autoScroll, setAutoScroll] = useState(true);
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
-
-  // Refs
   const tableRef = useRef<HTMLDivElement | null>(null);
 
-  // Custom hooks
   const {
     modalState,
     snackbar,
@@ -42,39 +34,17 @@ export default function Domains() {
     closeSnackbar,
   } = useDomainActions();
 
-  // Persist lines to localStorage
-  useEffect(() => {
-    persistLogLines(lines);
-  }, [lines]);
-
-  // WebSocket connection
-  const handleWebSocketMessage = useCallback((line: string) => {
-    setLines((prev) => [...prev.slice(-999), line]);
-  }, []);
-
-  const handleWebSocketError = useCallback(() => {
-    setLines((prev) => [...prev, "[WS ERROR]"]);
-  }, []);
-
-  useDomainsWebSocket({
-    paused,
-    onMessage: handleWebSocketMessage,
-    onError: handleWebSocketError,
-  });
-
-  // Auto-scroll effect for new data
   useEffect(() => {
     const el = tableRef.current;
     if (el && autoScroll) {
       el.scrollTop = el.scrollHeight;
     }
-  }, [lines, autoScroll]);
+  }, [domains, autoScroll]);
 
-  const parsedLogs = useParsedLogs(lines);
+  const parsedLogs = useParsedLogs(domains);
   const filteredLogs = useFilteredLogs(parsedLogs, filter);
   const sortedData = useSortedLogs(filteredLogs, sortColumn, sortDirection);
 
-  // Handlers
   const handleScroll = () => {
     const el = tableRef.current;
     if (el) {
@@ -84,11 +54,9 @@ export default function Domains() {
   };
 
   const handleSort = (column: SortColumn) => {
-    // Disable auto-scroll when user manually sorts
     setAutoScroll(false);
 
     if (sortColumn === column) {
-      // Cycle through: asc -> desc -> null
       if (sortDirection === "asc") {
         setSortDirection("desc");
       } else if (sortDirection === "desc") {
@@ -112,11 +80,6 @@ export default function Domains() {
     openModal(domain, variants);
   };
 
-  const handleReset = useCallback(() => {
-    setLines([]);
-    clearLogPersistedLines();
-  }, []);
-
   const handleHotkeysDown = useCallback(
     (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -130,13 +93,13 @@ export default function Domains() {
 
       if ((e.ctrlKey && e.key === "x") || e.key === "Delete") {
         e.preventDefault();
-        handleReset();
+        clearDomains();
       } else if (e.key === "p" || e.key === "Pause") {
         e.preventDefault();
-        setPaused((prev) => !prev);
+        setPauseDomains(!pauseDomains);
       }
     },
-    [handleReset, setPaused]
+    [clearDomains, pauseDomains, setPauseDomains]
   );
 
   useEffect(() => {
@@ -167,24 +130,24 @@ export default function Domains() {
           flexDirection: "column",
           overflow: "hidden",
           border: "1px solid",
-          borderColor: paused ? colors.border.strong : colors.border.default,
+          borderColor: pauseDomains
+            ? colors.border.strong
+            : colors.border.default,
           transition: "border-color 0.3s",
         }}
       >
-        {/* Control Bar */}
         <DomainsControlBar
           filter={filter}
           onFilterChange={setFilter}
           totalCount={parsedLogs.length}
           filteredCount={filteredLogs.length}
           sortColumn={sortColumn}
-          paused={paused}
-          onPauseChange={setPaused}
+          paused={pauseDomains}
+          onPauseChange={setPauseDomains}
           onClearSort={handleClearSort}
-          onReset={handleReset}
+          onReset={clearDomains}
         />
 
-        {/* Domains Table */}
         <DomainsTable
           data={sortedData}
           sortColumn={sortColumn}
@@ -196,7 +159,6 @@ export default function Domains() {
         />
       </Paper>
 
-      {/* Domain Add Modal */}
       <DomainAddModal
         open={modalState.open}
         domain={modalState.domain}
@@ -209,7 +171,6 @@ export default function Domains() {
         }}
       />
 
-      {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}

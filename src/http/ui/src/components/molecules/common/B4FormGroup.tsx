@@ -15,7 +15,7 @@ export const B4FormGroup: React.FC<B4FormGroupProps> = ({
   description,
   icon,
   children,
-  columns = 1,
+  columns = 2,
 }) => (
   <Box sx={{ mb: spacing.md }}>
     <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: spacing.md }}>

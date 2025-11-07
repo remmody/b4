@@ -20,7 +20,8 @@
       "@pages/*": ["./src/components/pages/*"],
       "@hooks/*": ["./src/hooks/*"],
       "@utils": ["./src/utils/index.ts"],
-      "@models/*": ["./src/models/*"]
+      "@models/*": ["./src/models/*"],
+      "@ctx/*": ["./src/ctx/*"]
     }
   },
   "include": ["src"]

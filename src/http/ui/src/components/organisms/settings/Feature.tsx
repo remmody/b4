@@ -1,10 +1,9 @@
 import React from "react";
-import { Alert, Grid } from "@mui/material";
+import { Alert } from "@mui/material";
 import { ToggleOn as ToggleOnIcon } from "@mui/icons-material";
 import SettingSection from "@molecules/common/B4Section";
 import SettingSwitch from "@atoms/common/B4Switch";
 import { B4Config } from "@models/Config";
-import { spacing } from "@/design";
 import { B4FormGroup } from "@/components/molecules/common/B4FormGroup";
 import { B4Slider } from "@/components/atoms/common/B4Slider";
 

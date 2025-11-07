@@ -21,6 +21,7 @@ import {
   Typography,
   ThemeProvider,
   Divider,
+  Badge,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -36,6 +37,7 @@ import Test from "@pages/Checker";
 import { theme, colors } from "@design";
 import Logo from "@molecules/Logo";
 import Version from "@organisms/version/Version";
+import { useWebSocket } from "@ctx/B4WsProvider";
 
 const DRAWER_WIDTH = 240;
 
@@ -57,6 +59,7 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState<boolean>(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const { logs } = useWebSocket();
 
   const getPageTitle = () => {
     const path = location.pathname;
@@ -113,7 +116,11 @@ export default function App() {
                   <ListItemIcon sx={{ color: "inherit" }}>
                     {item.icon}
                   </ListItemIcon>
-                  <ListItemText primary={item.label} />
+                  <ListItemText primary={item.label}>
+                    <Badge badgeContent={logs.length} color="secondary">
+                      <AssessmentIcon />
+                    </Badge>
+                  </ListItemText>
                 </ListItemButton>
               </ListItem>
             ))}

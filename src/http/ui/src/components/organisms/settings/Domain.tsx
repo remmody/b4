@@ -294,7 +294,7 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
                       {bypassTotal + blockTotal}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Total Configured
+                      Total Validated
                     </Typography>
                   </Box>
                 </Grid>
