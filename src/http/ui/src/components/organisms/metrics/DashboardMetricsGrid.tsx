@@ -30,7 +30,7 @@ export const DashboardMetricsGrid: React.FC<DashboardMetricsGridProps> = ({
 }) => {
   return (
     <Grid container spacing={3}>
-      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: "flex" }}>
         <StatCard
           title="Total Connections"
           value={formatNumber(metrics.total_connections)}
@@ -41,7 +41,7 @@ export const DashboardMetricsGrid: React.FC<DashboardMetricsGridProps> = ({
         />
       </Grid>
 
-      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: "flex" }}>
         <StatCard
           title="Active Flows"
           value={formatNumber(metrics.active_flows)}
@@ -52,7 +52,7 @@ export const DashboardMetricsGrid: React.FC<DashboardMetricsGridProps> = ({
         />
       </Grid>
 
-      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: "flex" }}>
         <StatCard
           title="Packets Processed"
           value={formatNumber(metrics.packets_processed)}
@@ -63,7 +63,7 @@ export const DashboardMetricsGrid: React.FC<DashboardMetricsGridProps> = ({
         />
       </Grid>
 
-      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: "flex" }}>
         <StatCard
           title="Data Processed"
           value={formatBytes(metrics.bytes_processed)}

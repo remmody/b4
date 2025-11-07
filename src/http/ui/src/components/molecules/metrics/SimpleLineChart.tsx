@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Box, Typography } from "@mui/material";
 import { colors } from "@design";
 
@@ -35,6 +35,33 @@ export const SimpleLineChart: React.FC<SimpleChartProps> = ({
   height = 200,
   color = colors.secondary,
 }) => {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const prevDataLengthRef = useRef(data.length);
+
+  useEffect(() => {
+    if (svgRef.current && data.length > prevDataLengthRef.current) {
+      const svg = svgRef.current;
+      const scrollAmount = (1 / Math.max(data.length - 1, 1)) * 100;
+
+      // Apply smooth scroll animation
+      svg.style.transform = `translateX(-${scrollAmount}%)`;
+
+      // Reset transform after animation
+      setTimeout(() => {
+        if (svg) {
+          svg.style.transition = "none";
+          svg.style.transform = "translateX(0)";
+          setTimeout(() => {
+            if (svg) {
+              svg.style.transition = "transform 1s linear";
+            }
+          }, 10);
+        }
+      }, 1000);
+    }
+    prevDataLengthRef.current = data.length;
+  }, [data]);
+
   if (data.length === 0)
     return (
       <Typography sx={{ color: colors.text.secondary }}>No data</Typography>
@@ -44,44 +71,47 @@ export const SimpleLineChart: React.FC<SimpleChartProps> = ({
   const minValue = Math.min(...data.map((d) => d.value), 0);
   const range = maxValue - minValue || 1;
 
-  // Add padding to avoid clipping at edges
   const padding = height * 0.1;
   const chartHeight = height - padding * 2;
 
-  // Calculate SVG points
   const width = 100;
   const points = data.map((d, i) => ({
     x: (i / Math.max(data.length - 1, 1)) * width,
     y: padding + chartHeight - ((d.value - minValue) / range) * chartHeight,
   }));
 
-  // Create smooth path
   const smoothPath = createSmoothPath(points);
-
-  // Create area path (same as line but closed at bottom)
   const areaPath = `${smoothPath} L ${width},${height} L 0,${height} Z`;
-
-  // Generate unique IDs for gradients
   const gradientId = `gradient-${Math.random().toString(36).substring(2, 11)}`;
 
   return (
-    <Box sx={{ position: "relative", width: "100%", height, pl: 1 }}>
+    <Box
+      sx={{
+        position: "relative",
+        width: "100%",
+        height,
+        pl: 1,
+        overflow: "hidden",
+      }}
+    >
       <svg
+        ref={svgRef}
         width="100%"
         height={height}
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
-        style={{ overflow: "visible" }}
+        style={{
+          overflow: "visible",
+          transition: "transform 1s linear",
+        }}
       >
         <defs>
-          {/* Gradient for area fill */}
           <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.1" />
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
 
-        {/* Grid lines */}
         {[0, 0.25, 0.5, 0.75, 1].map((y) => (
           <line
             key={y}
@@ -105,7 +135,6 @@ export const SimpleLineChart: React.FC<SimpleChartProps> = ({
           }}
         />
 
-        {/* Smooth line */}
         <path
           d={smoothPath}
           fill="none"
@@ -119,7 +148,6 @@ export const SimpleLineChart: React.FC<SimpleChartProps> = ({
         />
       </svg>
 
-      {/* Y-axis labels */}
       <Box
         sx={{
           position: "absolute",

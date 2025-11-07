@@ -1,6 +1,6 @@
 import { B4Card } from "@atoms/common/B4Card";
 import { Box, Stack, Typography } from "@mui/material";
-import { colors, spacing } from "@design";
+import { colors, spacing, radius } from "@design";
 
 interface StatCardProps {
   title: string;
@@ -32,6 +32,9 @@ export const StatCard: React.FC<StatCardProps> = ({
       border: `1px solid ${color}33`,
       cursor: onClick ? "pointer" : "default",
       transition: "all 0.2s ease",
+      width: "100%",
+      display: "flex",
+      flexDirection: "column",
       "&:hover": onClick
         ? {
             borderColor: `${color}66`,
@@ -45,7 +48,7 @@ export const StatCard: React.FC<StatCardProps> = ({
     }}
     onClick={onClick}
   >
-    <Box sx={{ p: spacing.lg }}>
+    <Box sx={{ p: spacing.md, flex: 1 }}>
       <Stack
         direction="row"
         justifyContent="space-between"
@@ -106,7 +109,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         <Box
           sx={{
             p: 1.5,
-            borderRadius: spacing.md,
+            borderRadius: radius.lg,
             bgcolor: `${color}22`,
             color,
             display: "flex",
