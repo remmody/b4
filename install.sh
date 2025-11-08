@@ -1523,6 +1523,7 @@ detect_firewall_backend() {
 show_system_info() {
 
     set_system_paths
+    CONFIG_FILE="${CONFIG_DIR}/b4.json" #temprorary solution...
 
     echo ""
     echo "======================================="
