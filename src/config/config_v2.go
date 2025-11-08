@@ -17,7 +17,7 @@ type Config struct {
 }
 
 var DefaultSetConfig = SetConfig{
-	Id:   "04a6b092-6900-4933-8c76-543a0d18d5e6",
+	Id:   "11111111-1111-1111-1111-111111111111",
 	Name: "default",
 
 	UDP: UDPConfig{

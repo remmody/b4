@@ -37,26 +37,5 @@ export const NetworkSettings: React.FC<NetworkSettingsProps> = ({
         helperText="Number of worker threads for processing packets simultaneously (default 4)"
       />
     </B4FormGroup>
-
-    <B4FormGroup label="Connection Limits" columns={2}>
-      <B4Slider
-        label="TCP Connection Bytes Limit"
-        value={config.bypass.tcp.conn_bytes_limit}
-        onChange={(value) => onChange("bypass.tcp.conn_bytes_limit", value)}
-        min={1}
-        max={100}
-        step={1}
-        helperText="Connection bytes limit for TCP (default 19)"
-      />
-      <B4Slider
-        label="UDP Connection Bytes Limit"
-        value={config.bypass.udp.conn_bytes_limit}
-        onChange={(value) => onChange("bypass.udp.conn_bytes_limit", value)}
-        min={1}
-        max={50}
-        step={1}
-        helperText="Connection bytes limit for UDP (default 8)"
-      />
-    </B4FormGroup>
   </B4Section>
 );

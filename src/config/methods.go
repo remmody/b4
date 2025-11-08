@@ -17,6 +17,10 @@ func (c *Config) SaveToFile(path string) error {
 		return nil
 	}
 
+	if len(c.Sets) == 0 {
+		c.Sets = []*SetConfig{&DefaultSetConfig}
+	}
+
 	data, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return log.Errorf("failed to marshal config: %v", err)
@@ -56,6 +60,9 @@ func (c *Config) LoadFromFile(path string) error {
 	err = json.Unmarshal(data, c)
 	if err != nil {
 		return log.Errorf("failed to parse config file: %v", err)
+	}
+	if len(c.Sets) == 0 {
+		c.Sets = []*SetConfig{&DefaultSetConfig}
 	}
 	return nil
 }

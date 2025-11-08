@@ -34,7 +34,7 @@ export const B4Dialog: React.FC<B4DialogProps> = ({
     slotProps={{
       paper: {
         sx: {
-          bgcolor: colors.background.paper,
+          bgcolor: colors.background.default,
           border: `2px solid ${colors.border.default}`,
           borderRadius: radius.md,
         },
@@ -76,12 +76,16 @@ export const B4Dialog: React.FC<B4DialogProps> = ({
       </Stack>
     </DialogTitle>
 
-    <DialogContent sx={{ mt: spacing.md }}>{children}</DialogContent>
+    <DialogContent sx={{ mt: spacing.md, bgcolor: colors.background.default }}>
+      {children}
+    </DialogContent>
 
     {actions && (
       <>
         <Divider sx={{ borderColor: colors.border.default }} />
-        <DialogActions sx={{ p: spacing.md }}>{actions}</DialogActions>
+        <DialogActions sx={{ p: spacing.md, bgcolor: colors.background.paper }}>
+          {actions}
+        </DialogActions>
       </>
     )}
   </Dialog>

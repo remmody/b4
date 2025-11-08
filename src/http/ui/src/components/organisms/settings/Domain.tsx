@@ -25,17 +25,17 @@ import {
   Domain as DomainIcon,
   Block as BlockIcon,
   Security as SecurityIcon,
-  Settings as SettingsIcon,
 } from "@mui/icons-material";
 import SettingSection from "@molecules/common/B4Section";
 import SettingTextField from "@atoms/common/B4TextField";
 import SettingAutocomplete from "@atoms/common/B4Autocomplete";
 import { colors, button_primary } from "@design";
 import { B4Dialog } from "@molecules/common/B4Dialog";
-import { B4Config } from "@models/Config";
+import { B4SetConfig, GeoConfig } from "@models/Config";
 
 interface DomainSettingsProps {
-  config: B4Config & { domain_stats?: DomainStatistics };
+  config: B4SetConfig & { domain_stats?: DomainStatistics };
+  geo: GeoConfig;
   onChange: (field: string, value: string | string[]) => void;
 }
 
@@ -84,6 +84,7 @@ function TabPanel(props: Readonly<TabPanelProps>) {
 export const DomainSettings: React.FC<DomainSettingsProps> = ({
   config,
   onChange,
+  geo,
 }) => {
   const [tabValue, setTabValue] = useState(0);
   const [newBypassDomain, setNewBypassDomain] = useState("");
@@ -101,10 +102,10 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
   }>({ open: false, category: "", loading: false });
 
   useEffect(() => {
-    if (config.domains.geosite_path) {
+    if (geo.sitedat_path) {
       void loadAvailableCategories();
     }
-  }, [config.domains.geosite_path]);
+  }, [geo.sitedat_path]);
 
   const loadAvailableCategories = async () => {
     setLoadingCategories(true);
@@ -225,25 +226,6 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
   return (
     <>
       <Stack spacing={3}>
-        <SettingSection
-          title="Geosite General Settings"
-          description="General settings for GeoSite domain database"
-          icon={<SettingsIcon />}
-        >
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12 }}>
-              <SettingTextField
-                label="GeoSite Database Path"
-                value={config.domains.geosite_path}
-                onChange={(e) =>
-                  onChange("domains.geosite_path", e.target.value)
-                }
-                helperText="Path to geosite.dat file"
-                placeholder="/path/to/geosite.dat"
-              />
-            </Grid>
-          </Grid>
-        </SettingSection>
         <SettingSection
           title="Domain Filtering Configuration"
           description="Configure domain matching for DPI bypass and blocking"
@@ -440,110 +422,102 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
                 </Box>
               </Grid>
 
-              {config.domains.geosite_path &&
-                availableCategories.length > 0 && (
-                  <Grid size={{ sm: 12, md: 6 }}>
-                    <Box sx={{ mb: 2 }}>
-                      <Typography
-                        variant="h6"
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          mb: 2,
-                        }}
-                      >
-                        <CategoryIcon /> Bypass GeoSite Categories
-                        <Tooltip title="Load predefined domain lists from GeoSite database for DPI bypass">
-                          <InfoIcon fontSize="small" color="action" />
-                        </Tooltip>
-                      </Typography>
+              {geo.sitedat_path && availableCategories.length > 0 && (
+                <Grid size={{ sm: 12, md: 6 }}>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 2,
+                      }}
+                    >
+                      <CategoryIcon /> Bypass GeoSite Categories
+                      <Tooltip title="Load predefined domain lists from GeoSite database for DPI bypass">
+                        <InfoIcon fontSize="small" color="action" />
+                      </Tooltip>
+                    </Typography>
 
-                      {config.domains.geosite_path &&
-                        availableCategories.length > 0 && (
-                          <SettingAutocomplete
-                            label="Add Bypass Category"
-                            value={newBypassCategory}
-                            options={availableCategories}
-                            onChange={setNewBypassCategory}
-                            onSelect={handleAddBypassCategory}
-                            loading={loadingCategories}
-                            placeholder="Select or type category"
-                            helperText={`${availableCategories.length} categories available`}
-                          />
-                        )}
+                    <SettingAutocomplete
+                      label="Add Bypass Category"
+                      value={newBypassCategory}
+                      options={availableCategories}
+                      onChange={setNewBypassCategory}
+                      onSelect={handleAddBypassCategory}
+                      loading={loadingCategories}
+                      placeholder="Select or type category"
+                      helperText={`${availableCategories.length} categories available`}
+                    />
 
-                      {config.domains.geosite_categories.length > 0 && (
-                        <Box sx={{ mt: 2 }}>
-                          <Typography variant="subtitle2" gutterBottom>
-                            Active Bypass Categories
-                          </Typography>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: 1,
-                              p: 1,
-                              border: `1px solid ${colors.border.default}`,
-                              borderRadius: 1,
-                              bgcolor: colors.background.paper,
-                            }}
-                          >
-                            {config.domains.geosite_categories.map(
-                              (category) => (
-                                <Chip
-                                  size="small"
-                                  key={category}
-                                  label={
-                                    <Box
+                    {config.domains.geosite_categories.length > 0 && (
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Active Bypass Categories
+                        </Typography>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 1,
+                            p: 1,
+                            border: `1px solid ${colors.border.default}`,
+                            borderRadius: 1,
+                            bgcolor: colors.background.paper,
+                          }}
+                        >
+                          {config.domains.geosite_categories.map((category) => (
+                            <Chip
+                              size="small"
+                              key={category}
+                              label={
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <span>{category}</span>
+                                  {stats?.category_breakdown?.[category] && (
+                                    <Typography
+                                      component="span"
+                                      variant="caption"
                                       sx={{
-                                        display: "flex",
-                                        alignItems: "center",
+                                        cursor: "pointer",
+                                        bgcolor: "action.selected",
+                                        px: 0.5,
+                                        ml: 0.5,
+                                        borderRadius: 1,
+                                      }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        void previewCategory(category);
                                       }}
                                     >
-                                      <span>{category}</span>
-                                      {stats?.category_breakdown?.[
-                                        category
-                                      ] && (
-                                        <Typography
-                                          component="span"
-                                          variant="caption"
-                                          sx={{
-                                            cursor: "pointer",
-                                            bgcolor: "action.selected",
-                                            px: 0.5,
-                                            ml: 0.5,
-                                            borderRadius: 1,
-                                          }}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            void previewCategory(category);
-                                          }}
-                                        >
-                                          {stats.category_breakdown[category]}
-                                        </Typography>
-                                      )}
-                                    </Box>
-                                  }
-                                  onDelete={() =>
-                                    handleRemoveBypassCategory(category)
-                                  }
-                                  sx={{
-                                    bgcolor: colors.accent.primary,
-                                    color: colors.secondary,
-                                    "& .MuiChip-deleteIcon": {
-                                      color: colors.secondary,
-                                    },
-                                  }}
-                                />
-                              )
-                            )}
-                          </Box>
+                                      {stats.category_breakdown[category]}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              }
+                              onDelete={() =>
+                                handleRemoveBypassCategory(category)
+                              }
+                              sx={{
+                                bgcolor: colors.accent.primary,
+                                color: colors.secondary,
+                                "& .MuiChip-deleteIcon": {
+                                  color: colors.secondary,
+                                },
+                              }}
+                            />
+                          ))}
                         </Box>
-                      )}
-                    </Box>
-                  </Grid>
-                )}
+                      </Box>
+                    )}
+                  </Box>
+                </Grid>
+              )}
             </Grid>
           </TabPanel>
           {/* Block List Tab */}
@@ -643,105 +617,97 @@ export const DomainSettings: React.FC<DomainSettingsProps> = ({
                 </Box>
               </Grid>
 
-              {config.domains.geosite_path &&
-                availableCategories.length > 0 && (
-                  <Grid size={{ sm: 12, md: 6 }}>
-                    <Box sx={{ mb: 2 }}>
-                      <Typography
-                        variant="h6"
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          mb: 2,
-                        }}
-                      >
-                        <CategoryIcon /> Block GeoSite Categories
-                        <Tooltip title="Load predefined domain lists from GeoSite database to block">
-                          <InfoIcon fontSize="small" color="action" />
-                        </Tooltip>
-                      </Typography>
+              {geo.sitedat_path && availableCategories.length > 0 && (
+                <Grid size={{ sm: 12, md: 6 }}>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 2,
+                      }}
+                    >
+                      <CategoryIcon /> Block GeoSite Categories
+                      <Tooltip title="Load predefined domain lists from GeoSite database to block">
+                        <InfoIcon fontSize="small" color="action" />
+                      </Tooltip>
+                    </Typography>
 
-                      {config.domains.geosite_path &&
-                        availableCategories.length > 0 && (
-                          <SettingAutocomplete
-                            label="Add Block Category"
-                            value={newBlockCategory}
-                            options={availableCategories}
-                            onChange={setNewBlockCategory}
-                            onSelect={handleAddBlockCategory}
-                            loading={loadingCategories}
-                            placeholder="Select category to block"
-                            helperText={`${availableCategories.length} categories available`}
-                          />
-                        )}
+                    <SettingAutocomplete
+                      label="Add Block Category"
+                      value={newBlockCategory}
+                      options={availableCategories}
+                      onChange={setNewBlockCategory}
+                      onSelect={handleAddBlockCategory}
+                      loading={loadingCategories}
+                      placeholder="Select category to block"
+                      helperText={`${availableCategories.length} categories available`}
+                    />
 
-                      {blockCategories.length > 0 && (
-                        <Box sx={{ mt: 3 }}>
-                          <Typography variant="subtitle2" gutterBottom>
-                            Active Block Categories
-                          </Typography>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: 1,
-                              p: 2,
-                              border: `1px solid ${colors.border.default}`,
-                              borderRadius: 1,
-                              bgcolor: colors.background.paper,
-                            }}
-                          >
-                            {blockCategories.map((category) => (
-                              <Chip
-                                key={category}
-                                label={
-                                  <Box
-                                    sx={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 0.5,
-                                    }}
-                                  >
-                                    <span>{category}</span>
-                                    {stats?.block_category_breakdown?.[
-                                      category
-                                    ] && (
-                                      <Typography
-                                        component="span"
-                                        variant="caption"
-                                        sx={{
-                                          cursor: "pointer",
-                                          bgcolor: "action.selected",
-                                          px: 0.5,
-                                          borderRadius: 0.5,
-                                        }}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          void previewCategory(category);
-                                        }}
-                                      >
-                                        {
-                                          stats.block_category_breakdown[
-                                            category
-                                          ]
-                                        }
-                                      </Typography>
-                                    )}
-                                  </Box>
-                                }
-                                onDelete={() =>
-                                  handleRemoveBlockCategory(category)
-                                }
-                                color="error"
-                              />
-                            ))}
-                          </Box>
+                    {blockCategories.length > 0 && (
+                      <Box sx={{ mt: 3 }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Active Block Categories
+                        </Typography>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 1,
+                            p: 2,
+                            border: `1px solid ${colors.border.default}`,
+                            borderRadius: 1,
+                            bgcolor: colors.background.paper,
+                          }}
+                        >
+                          {blockCategories.map((category) => (
+                            <Chip
+                              key={category}
+                              label={
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 0.5,
+                                  }}
+                                >
+                                  <span>{category}</span>
+                                  {stats?.block_category_breakdown?.[
+                                    category
+                                  ] && (
+                                    <Typography
+                                      component="span"
+                                      variant="caption"
+                                      sx={{
+                                        cursor: "pointer",
+                                        bgcolor: "action.selected",
+                                        px: 0.5,
+                                        borderRadius: 0.5,
+                                      }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        void previewCategory(category);
+                                      }}
+                                    >
+                                      {stats.block_category_breakdown[category]}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              }
+                              onDelete={() =>
+                                handleRemoveBlockCategory(category)
+                              }
+                              color="error"
+                            />
+                          ))}
                         </Box>
-                      )}
-                    </Box>
-                  </Grid>
-                )}
+                      </Box>
+                    )}
+                  </Box>
+                </Grid>
+              )}
             </Grid>
           </TabPanel>
         </SettingSection>

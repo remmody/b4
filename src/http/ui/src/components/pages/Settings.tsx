@@ -23,25 +23,21 @@ import {
   Save as SaveIcon,
   Refresh as RefreshIcon,
   Settings as SettingsIcon,
-  Language as NetworkIcon,
-  Security as SecurityIcon,
-  Storage as StorageIcon,
-  Description as LogIcon,
   Warning as WarningIcon,
-  Science as TestIcon,
+  Layers as LayersIcon,
+  Monitor as MonitorIcon,
+  Language as LanguageIcon,
 } from "@mui/icons-material";
 
 import { NetworkSettings } from "@organisms/settings/Network";
 import { LoggingSettings } from "@organisms/settings/Logging";
 import { FeatureSettings } from "@organisms/settings/Feature";
-import { DomainSettings } from "@organisms/settings/Domain";
-import { FragmentationSettings } from "@organisms/settings/Fragmentation";
-import { FakingSettings } from "@organisms/settings/Faking";
-import { UDPSettings } from "@organisms/settings/Udp";
 import { CheckerSettings } from "@organisms/settings/Checker";
 import { ControlSettings } from "@organisms/settings/Control";
+import { SetsManager } from "@/components/organisms/settings/set/Manager";
+import { GeoSettings } from "@organisms/settings/Geo";
 
-import { B4Config } from "@models/Config";
+import { B4Config, B4SetConfig } from "@models/Config";
 import { colors, spacing, button_primary, button_secondary } from "@design";
 import { B4Dialog } from "@molecules/common/B4Dialog";
 
@@ -72,54 +68,45 @@ function TabPanel({
   );
 }
 
+enum TABS {
+  SETS = 0,
+  GENERAL,
+  DOMAINS,
+  TESTING,
+}
+
 // Settings categories with route paths
 const SETTING_CATEGORIES = [
   {
-    id: 0,
-    path: "core",
+    id: TABS.GENERAL,
+    path: "general",
     label: "Core",
     icon: <SettingsIcon />,
-    description: "Essential network and system configuration",
+    description: "Global network and queue configuration",
     requiresRestart: true,
   },
   {
-    id: 1,
+    id: TABS.SETS,
+    path: "sets",
+    label: "Sets",
+    icon: <LayersIcon />,
+    description: "Manage configuration sets for different scenarios",
+    requiresRestart: false,
+  },
+  {
+    id: TABS.DOMAINS,
     path: "domains",
-    label: "Domains",
-    icon: <NetworkIcon />,
-    description: "Domain filtering and geodata configuration",
+    label: "Geodat Settings",
+    icon: <LanguageIcon />,
+    description: "Global geodata configuration",
     requiresRestart: false,
   },
   {
-    id: 2,
-    path: "dpi",
-    label: "DPI Bypass",
-    icon: <SecurityIcon />,
-    description: "Fragmentation and faking strategies",
-    requiresRestart: false,
-  },
-  {
-    id: 3,
-    path: "proto",
-    label: "Protocols",
-    icon: <StorageIcon />,
-    description: "UDP and protocol-specific settings",
-    requiresRestart: false,
-  },
-  {
-    id: 4,
-    path: "checker",
+    id: TABS.TESTING,
+    path: "testing",
     label: "Testing",
-    icon: <TestIcon />,
-    description: "DPI bypass testing configuration",
-    requiresRestart: false,
-  },
-  {
-    id: 5,
-    path: "logging",
-    label: "Logging",
-    icon: <LogIcon />,
-    description: "Logging and debugging configuration",
+    icon: <MonitorIcon />,
+    description: "DPI bypass domains testing",
     requiresRestart: false,
   },
 ];
@@ -180,41 +167,27 @@ export default function Settings() {
 
     return {
       // Core
-      0:
-        config.queue.start_num !== originalConfig.queue.start_num ||
-        config.queue.threads !== originalConfig.queue.threads ||
-        config.queue.mark !== originalConfig.queue.mark ||
-        config.bypass.tcp.conn_bytes_limit !==
-          originalConfig.bypass.tcp.conn_bytes_limit ||
-        config.bypass.udp.conn_bytes_limit !==
-          originalConfig.bypass.udp.conn_bytes_limit ||
-        config.bypass.tcp.seg2delay !== originalConfig.bypass.tcp.seg2delay ||
-        config.system.tables.skip_setup !==
-          originalConfig.system.tables.skip_setup ||
-        config.queue.ipv4 !== originalConfig.queue.ipv4 ||
-        config.queue.ipv6 !== originalConfig.queue.ipv6,
-      // Domains
-      1:
-        JSON.stringify(config.domains) !==
-        JSON.stringify(originalConfig.domains),
-      // DPI Bypass
-      2:
-        JSON.stringify(config.bypass.fragmentation) !==
-          JSON.stringify(originalConfig.bypass.fragmentation) ||
-        JSON.stringify(config.bypass.faking) !==
-          JSON.stringify(originalConfig.bypass.faking),
-      // Protocols
-      3:
-        JSON.stringify(config.bypass.udp) !==
-        JSON.stringify(originalConfig.bypass.udp),
+      [TABS.GENERAL]:
+        JSON.stringify(config.system.logging) !==
+          JSON.stringify(originalConfig.system.logging) ||
+        JSON.stringify(config.queue) !== JSON.stringify(originalConfig.queue) ||
+        JSON.stringify(config.system.web_server) !==
+          JSON.stringify(originalConfig.system.web_server) ||
+        JSON.stringify(config.system.tables) !==
+          JSON.stringify(originalConfig.system.tables),
+
+      // Sets
+      [TABS.SETS]:
+        JSON.stringify(config.sets) !== JSON.stringify(originalConfig.sets),
+      // Geosite Settings
+      [TABS.DOMAINS]:
+        JSON.stringify(config.system.geo) !==
+        JSON.stringify(originalConfig.system.geo),
+
       // Testing
-      4:
+      [TABS.TESTING]:
         JSON.stringify(config.system.checker) !==
         JSON.stringify(originalConfig.system.checker),
-      // Logging
-      5:
-        JSON.stringify(config.system.logging) !==
-        JSON.stringify(originalConfig.system.logging),
     };
   }, [config, originalConfig, hasChanges]);
 
@@ -294,7 +267,14 @@ export default function Settings() {
 
   const handleChange = (
     field: string,
-    value: string | number | boolean | string[] | null | undefined
+    value:
+      | string
+      | number
+      | boolean
+      | string[]
+      | B4SetConfig[]
+      | null
+      | undefined
   ) => {
     if (!config) return;
 
@@ -377,6 +357,12 @@ export default function Settings() {
             </Stack>
 
             <Stack direction="row" spacing={1}>
+              {categoryHasChanges[TABS.GENERAL] && (
+                <Alert severity="warning" sx={{ py: 0, px: spacing.sm }}>
+                  Core settings require <strong>B4</strong> restart to take
+                  effect
+                </Alert>
+              )}
               <Button
                 size="small"
                 variant="text"
@@ -455,7 +441,7 @@ export default function Settings() {
               },
             }}
           >
-            {SETTING_CATEGORIES.map((category) => (
+            {SETTING_CATEGORIES.sort((a, b) => a.id - b.id).map((category) => (
               <Tab
                 key={category.id}
                 label={
@@ -485,22 +471,20 @@ export default function Settings() {
       {/* Tab Content */}
       <Box sx={{ flex: 1, overflow: "auto", pb: 2 }}>
         {/* Core Settings */}
-        <TabPanel value={validTab} index={0}>
+        <TabPanel value={validTab} index={TABS.GENERAL}>
           <Grid container spacing={spacing.lg}>
             <Grid size={{ xs: 12, md: 12 }}>
-              {categoryHasChanges[0] && (
-                <Alert severity="warning" icon={<WarningIcon />}>
-                  Core settings require B4 restart to take effect
-                </Alert>
-              )}
               <NetworkSettings config={config} onChange={handleChange} />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <ControlSettings
-                loadConfig={() => {
-                  void loadConfig();
-                }}
-              />
+              <Stack spacing={spacing.lg}>
+                <ControlSettings
+                  loadConfig={() => {
+                    void loadConfig();
+                  }}
+                />
+                <LoggingSettings config={config} onChange={handleChange} />
+              </Stack>
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <FeatureSettings config={config} onChange={handleChange} />
@@ -508,32 +492,16 @@ export default function Settings() {
           </Grid>
         </TabPanel>
 
-        {/* Domain Settings */}
-        <TabPanel value={validTab} index={1}>
-          <DomainSettings config={config} onChange={handleChange} />
+        <TabPanel value={validTab} index={TABS.SETS}>
+          <SetsManager config={config} onChange={handleChange} />
         </TabPanel>
 
-        {/* DPI Bypass Settings */}
-        <TabPanel value={validTab} index={2}>
-          <Stack spacing={3}>
-            <FragmentationSettings config={config} onChange={handleChange} />
-            <FakingSettings config={config} onChange={handleChange} />
-          </Stack>
+        <TabPanel value={validTab} index={TABS.DOMAINS}>
+          <GeoSettings config={config} onChange={handleChange} />
         </TabPanel>
 
-        {/* Protocol Settings */}
-        <TabPanel value={validTab} index={3}>
-          <UDPSettings config={config} onChange={handleChange} />
-        </TabPanel>
-
-        {/* Checker Settings */}
-        <TabPanel value={validTab} index={4}>
+        <TabPanel value={validTab} index={TABS.TESTING}>
           <CheckerSettings config={config} onChange={handleChange} />
-        </TabPanel>
-
-        {/* Logging Settings */}
-        <TabPanel value={validTab} index={5}>
-          <LoggingSettings config={config} onChange={handleChange} />
         </TabPanel>
       </Box>
 

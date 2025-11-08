@@ -18,6 +18,7 @@ interface B4SliderProps extends Omit<SliderProps, "onChange"> {
   helperText?: string;
   showValue?: boolean;
   valueSuffix?: string;
+  alert?: React.ReactNode;
 }
 
 export const B4Slider: React.FC<B4SliderProps> = ({
@@ -31,6 +32,7 @@ export const B4Slider: React.FC<B4SliderProps> = ({
   showValue = true,
   valueSuffix = "",
   disabled,
+  alert,
   ...props
 }) => {
   const handleChange = (_event: Event, newValue: number | number[]) => {
@@ -133,6 +135,7 @@ export const B4Slider: React.FC<B4SliderProps> = ({
           {helperText}
         </FormHelperText>
       )}
+      {alert && <Box sx={{ mt: 1 }}>{alert}</Box>}
     </Box>
   );
 };

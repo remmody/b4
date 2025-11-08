@@ -55,13 +55,15 @@ export const FeatureSettings: React.FC<FeatureSettingsProps> = ({
           max={120}
           step={5}
           helperText="Interval for monitoring B4 iptables/nftables rules"
+          alert={
+            config.system.tables.monitor_interval <= 0 && (
+              <Alert severity="warning">
+                Warning: This <strong>disables</strong> automatic monitoring of
+                B4 iptables/nftables
+              </Alert>
+            )
+          }
         />
-        {config.system.tables.monitor_interval <= 0 && (
-          <Alert severity="warning">
-            Warning: This <strong>disables</strong> automatic monitoring of B4
-            iptables/nftables
-          </Alert>
-        )}
       </B4FormGroup>
     </SettingSection>
   );

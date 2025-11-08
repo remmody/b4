@@ -44,8 +44,6 @@ export interface LoggingConfig {
 
 export interface DomainConfig {
   sni_domains: string[];
-  geosite_path: string;
-  geoip_path: string;
   geosite_categories: string[];
   geoip_categories: string[];
   block_domains: string[];
@@ -101,12 +99,6 @@ export interface TcpConfig {
   seg2delay: number;
 }
 
-export interface BypassConfig {
-  tcp: TcpConfig;
-  udp: UdpConfig;
-  fragmentation: FragmentationConfig;
-  faking: FakingConfig;
-}
 export interface WebServerConfig {
   port: number;
 }
@@ -114,16 +106,35 @@ export interface TableConfig {
   monitor_interval: number;
   skip_setup: false;
 }
+
+export interface GeoConfig {
+  sitedat_url: string;
+  ipdat_url: string;
+  sitedat_path: string;
+  ipdat_path: string;
+}
+
 export interface SystemConfig {
   logging: LoggingConfig;
   web_server: WebServerConfig;
   tables: TableConfig;
   checker: CheckerConfig;
+  geo: GeoConfig;
 }
 
 export interface B4Config {
   queue: QueueConfig;
-  domains: DomainConfig;
   system: SystemConfig;
-  bypass: BypassConfig;
+  sets: B4SetConfig[];
+}
+
+export interface B4SetConfig {
+  id: string;
+  name: string;
+
+  tcp: TcpConfig;
+  udp: UdpConfig;
+  fragmentation: FragmentationConfig;
+  faking: FakingConfig;
+  domains: DomainConfig;
 }
