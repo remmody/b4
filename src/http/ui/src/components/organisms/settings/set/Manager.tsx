@@ -24,6 +24,8 @@ import {
   ExpandLess as CollapseIcon,
   Layers as LayersIcon,
   Warning as WarningIcon,
+  ArrowUpward as ArrowUpIcon,
+  ArrowDownward as ArrowDownIcon,
 } from "@mui/icons-material";
 import { v4 as uuidv4 } from "uuid";
 
@@ -180,6 +182,20 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
     );
   };
 
+  const handleMoveSetUp = (index: number) => {
+    if (index <= 0) return;
+    const newSets = [...sets];
+    [newSets[index - 1], newSets[index]] = [newSets[index], newSets[index - 1]];
+    onChange("sets", newSets);
+  };
+
+  const handleMoveSetDown = (index: number) => {
+    if (index >= sets.length - 1) return;
+    const newSets = [...sets];
+    [newSets[index], newSets[index + 1]] = [newSets[index + 1], newSets[index]];
+    onChange("sets", newSets);
+  };
+
   return (
     <Stack spacing={3}>
       {/* Info Alert */}
@@ -243,6 +259,35 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                   }}
                   secondaryAction={
                     <Stack direction="row" spacing={0.5}>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleMoveSetUp(sets.indexOf(set))}
+                        disabled={sets.indexOf(set) === 0}
+                        title="Move up"
+                        sx={{
+                          color:
+                            sets.indexOf(set) === 0
+                              ? colors.text.disabled
+                              : colors.text.secondary,
+                        }}
+                      >
+                        <ArrowUpIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleMoveSetDown(sets.indexOf(set))}
+                        disabled={sets.indexOf(set) === sets.length - 1}
+                        title="Move down"
+                        sx={{
+                          color:
+                            sets.indexOf(set) === sets.length - 1
+                              ? colors.text.disabled
+                              : colors.text.secondary,
+                        }}
+                      >
+                        <ArrowDownIcon />
+                      </IconButton>
+
                       <IconButton
                         size="small"
                         onClick={() =>
