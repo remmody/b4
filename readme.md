@@ -5,24 +5,11 @@
 
 [[русский язык](readme_ru.md)]
 
-Network packet processor for circumventing Deep Packet Inspection (DPI) systems.
+Network packet processor that bypasses Deep Packet Inspection (DPI) using netfilter queue manipulation.
 
 ![alt text](image.png)
 
-## Overview
-
-B4 uses Linux netfilter to intercept and modify network packets in real-time, applying various techniques to bypass DPI systems used by ISPs and network administrators.
-
-## Prerequisites
-
-- Linux-based system (desktop, server, or router)
-- Root access (sudo)
-
-That's it. The installer handles everything else.
-
-## Installation
-
-### Automated Installation
+## Quick Install
 
 > [!NOTE]
 > In some systems you need to run `sudo b4install.sh`.
@@ -31,182 +18,74 @@ That's it. The installer handles everything else.
 wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ~/b4install.sh
 ```
 
-If something went wrong try to run - this will diagnose the system
+If something went wrong try to run it with the flag `--sysinfo` - this will diagnose the system
 
 ```bash
 wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ~/b4install.sh --sysinfo
 ```
 
-### Installer Options
+Or pass `--help` to get more information about the possible options.
 
 ```bash
-
-./b4install.sh # perform installation of the B4 application
-
-./b4install.sh -h # print help
-
-# Show system information
-./b4install.sh --sysinfo
-
-# Install specific version
-./b4install.sh v1.10.0
-
-# Quiet mode
-./b4install.sh --quiet
-
-# Specify geosite source
-./b4install.sh --geosite-src=https://example.com/geosite.dat --geosite-dst=/opt/etc/b4
-
-# Update existing installation
-./b4install.sh --update
-
-# Uninstall
-./b4install.sh --remove
-
-
+wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ~/b4install.sh --help
 ```
 
-## Basic Usage
-
-### Starting B4
+## Usage
 
 ```bash
-# Standard Linux (systemd)
+
+# Systemd
 sudo systemctl start b4
-sudo systemctl enable b4  # Start on boot
+sudo systemctl enable b4
 
 # OpenWRT
-/etc/init.d/b4 start # restart | stop
+/etc/init.d/b4 restart
 
 # Entware/MerlinWRT
-/opt/etc/init.d/S99b4 start # restart | stop
+/opt/etc/init.d/S99b4 restart
 ```
 
-### Access Web Interface
+### Web UI
 
-Open your browser and navigate to:
-
-```cmd
+```
 http://your-device-ip:7000
 ```
 
+### Command Line
+
+````bash
+# Custom config
+b4 --config /path/to/config.json
+
+# Basic - manual domains
+b4 --sni-domains youtube.com,netflix.com
+
+# With geosite categories
+b4 --geosite /etc/b4/geosite.dat --geosite-categories youtube,netflix
+
+# Print help
+b4 --help
+``
 ### Building from Source
 
 ```bash
-# Clone repository
 git clone https://github.com/daniellavrushin/b4.git
 cd b4
+
+# Build UI
+cd src/http/ui
+pnpm install && pnpm build
+cd ../../..
 
 # Build binary
 make build
 
-# Build for all architectures
+# All architectures
 make build-all
 
-# Build for specific architecture
+# Or build specific
 make linux-amd64
-make linux-arm64
-make linux-armv7
-```
-
-## Command-Line Usage
-
-```bash
-
-# get help
-b4  --help
-
-# Basic usage with manual domains
-sudo b4 --sni-domains youtube.com,netflix.com
-
-# Using geosite categories
-sudo b4 --geosite /etc/b4/geosite.dat --geosite-categories youtube,netflix
-
-# Custom configuration
-sudo b4 --queue-num 100 --threads 4 --web-port 8080
-```
-
-### Configuration File
-
-Usually a configuration file is located in `/etc/b4/b4.json` and is created automatically when missing.
-(the file can be redefined by passing the `--config=` argument):
-
-Load with custom configuration:
-
-```bash
-sudo b4 --config /home/username/b4custom.json
-```
-
-### Configuration Options
-
-#### Network Configuration
-
-| Flag                | Default | Description                 |
-| ------------------- | ------- | --------------------------- |
-| `--queue-num`       | 537     | Netfilter queue number      |
-| `--threads`         | 4       | Number of worker threads    |
-| `--mark`            | 32768   | Packet mark value           |
-| `--connbytes-limit` | 19      | TCP connection bytes limit  |
-| `--seg2delay`       | 0       | Delay between segments (ms) |
-| `--ipv4`            | true    | Enable IPv4 processing      |
-| `--ipv6`            | false   | Enable IPv6 processing      |
-
-#### Domain Filtering
-
-| Flag                   | Default | Description                     |
-| ---------------------- | ------- | ------------------------------- |
-| `--sni-domains`        | []      | Comma-separated list of domains |
-| `--geosite`            | ""      | Path to geosite.dat file        |
-| `--geosite-categories` | []      | Categories to process           |
-
-#### TCP Fragmentation
-
-| Flag                 | Default | Description                         |
-| -------------------- | ------- | ----------------------------------- |
-| `--frag`             | tcp     | Fragmentation strategy: tcp/ip/none |
-| `--frag-sni-reverse` | true    | Reverse fragment order              |
-| `--frag-middle-sni`  | true    | Fragment in middle of SNI           |
-| `--frag-sni-pos`     | 1       | SNI fragment position               |
-
-#### Fake SNI Configuration
-
-| Flag                | Default | Description                                    |
-| ------------------- | ------- | ---------------------------------------------- |
-| `--fake-sni`        | true    | Enable fake SNI packets                        |
-| `--fake-ttl`        | 8       | TTL for fake packets                           |
-| `--fake-strategy`   | pastseq | Strategy: ttl/randseq/pastseq/tcp_check/md5sum |
-| `--fake-seq-offset` | 10000   | Sequence offset for fake packets               |
-| `--fake-sni-len`    | 1       | Length of fake SNI sequence                    |
-| `--fake-sni-type`   | 2       | Payload type: 0=random, 1=custom, 2=default    |
-
-#### UDP/QUIC Configuration
-
-| Flag                     | Default | Description                        |
-| ------------------------ | ------- | ---------------------------------- |
-| `--udp-mode`             | fake    | UDP handling: drop/fake            |
-| `--udp-fake-seq-len`     | 6       | UDP fake packet sequence length    |
-| `--udp-fake-len`         | 64      | UDP fake packet size (bytes)       |
-| `--udp-faking-strategy`  | none    | Strategy: none/ttl/checksum        |
-| `--udp-dport-min`        | 0       | Minimum UDP destination port       |
-| `--udp-dport-max`        | 0       | Maximum UDP destination port       |
-| `--udp-filter-quic`      | parse   | QUIC filtering: disabled/all/parse |
-| `--udp-filter-stun`      | true    | Enable STUN filtering              |
-| `--udp-conn-bytes-limit` | 8       | UDP connection bytes limit         |
-
-#### System Configuration
-
-| Flag                        | Default | Description                                   |
-| --------------------------- | ------- | --------------------------------------------- |
-| `--skip-tables`             | false   | Skip iptables/nftables setup                  |
-| `--tables-monitor-interval` | 10      | Tables monitor interval (seconds, 0=disabled) |
-| `--web-port`                | 7000    | Web interface port (0=disabled)               |
-| `--verbose`                 | info    | Log level: debug/trace/info/error/silent      |
-| `--instaflush`              | true    | Flush logs immediately                        |
-| `--syslog`                  | false   | Enable syslog output                          |
-
-## Web Interface
-
-The web interface is accessible at `http://device-ip:7000` (default port, can be changed in the `config` file).
+````
 
 ## Geosite Integration
 
@@ -231,55 +110,6 @@ sudo b4 --geosite /etc/b4/geosite.dat --geosite-categories youtube,netflix,faceb
 
 > [!TIP]
 > All these settings can be configured via the web interface.
-
-## Building and Development
-
-### Development Setup
-
-```bash
-# Clone repository
-git clone https://github.com/daniellavrushin/b4.git
-cd b4
-
-# Install dependencies
-cd ui && pnpm install
-
-# Build and run
-make build
-sudo ./out/b4 --verbose debug
-```
-
-### Build Requirements
-
-- Go 1.25 or later
-- Node.js 22+ and pnpm (for web UI)
-- Make
-
-### Build Commands
-
-First, build the UI (as the binary will require to have some assets in place before building it)
-```bash
-cd src/http/ui
-pnpm install
-pnpm build
-```
-
-Now, you can build the binary
-```bash
-# Build for current platform
-make build
-
-# Build for all platforms
-make build-all
-
-# Build for specific platform
-make amd64
-make arm64
-make armv7
-
-# Clean build artifacts
-make clean
-```
 
 ## Contributing
 
