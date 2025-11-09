@@ -42,12 +42,11 @@ export interface LoggingConfig {
   syslog: boolean;
 }
 
-export interface DomainConfig {
+export interface TargetsConfig {
   sni_domains: string[];
+  ip: string[];
   geosite_categories: string[];
   geoip_categories: string[];
-  block_domains: string[];
-  block_geosite_categories: string[];
 }
 
 export interface DomainStatisticsConfig {
@@ -136,5 +135,5 @@ export interface B4SetConfig {
   udp: UdpConfig;
   fragmentation: FragmentationConfig;
   faking: FakingConfig;
-  domains: DomainConfig;
+  targets: TargetsConfig;
 }

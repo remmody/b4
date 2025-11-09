@@ -115,12 +115,11 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
         sni_type: 2,
         custom_payload: "",
       },
-      domains: {
+      targets: {
         sni_domains: [],
+        ip: [],
         geosite_categories: [],
         geoip_categories: [],
-        block_domains: [],
-        block_geosite_categories: [],
       },
     };
 
@@ -165,7 +164,7 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
       ...set,
       id: uuidv4(),
       name: `${set.name} (copy)`,
-      domains: { ...set.domains },
+      targets: { ...set.targets },
       tcp: { ...set.tcp },
       udp: { ...set.udp },
       fragmentation: { ...set.fragmentation },
@@ -177,8 +176,8 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
 
   const getDomainCount = (set: B4SetConfig): number => {
     return (
-      (set.domains?.sni_domains?.length || 0) +
-      (set.domains?.geosite_categories?.length || 0)
+      (set.targets?.sni_domains?.length || 0) +
+      (set.targets?.geosite_categories?.length || 0)
     );
   };
 
@@ -438,7 +437,7 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                           </Typography>
                         </Stack>
                       </Grid>
-                      {set.domains.sni_domains.length > 0 && (
+                      {set.targets.sni_domains.length > 0 && (
                         <Grid size={12}>
                           <Divider sx={{ my: 1 }} />
                           <Typography
@@ -448,7 +447,7 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                             Domains
                           </Typography>
                           <Box sx={{ mt: 1 }}>
-                            {set.domains.sni_domains
+                            {set.targets.sni_domains
                               .slice(0, 5)
                               .map((domain) => (
                                 <Chip
@@ -458,10 +457,10 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
                                   sx={{ mr: 0.5, mb: 0.5 }}
                                 />
                               ))}
-                            {set.domains.sni_domains.length > 5 && (
+                            {set.targets.sni_domains.length > 5 && (
                               <Chip
                                 label={`+${
-                                  set.domains.sni_domains.length - 5
+                                  set.targets.sni_domains.length - 5
                                 } more`}
                                 size="small"
                                 variant="outlined"

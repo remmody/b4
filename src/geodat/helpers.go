@@ -1,8 +1,7 @@
 package geodat
 
 import (
-	"fmt"
-	"os"
+	"net/netip"
 
 	"github.com/urlesistiana/v2dat/v2data"
 )
@@ -43,8 +42,19 @@ func LoadIpsFromCategories(geodataPath string, categories []string) ([]string, e
 	allIps := []string{}
 
 	save := func(tag string, geo *v2data.GeoIP) error {
-		fmt.Fprintf(os.Stdout, "# %s (%d cidr)\n", tag, len(geo.GetCidr()))
-		return convertV2CidrToText(geo.GetCidr(), os.Stdout)
+		// Collect IPs from CIDR list
+		for _, cidr := range geo.GetCidr() {
+			ip, ok := netip.AddrFromSlice(cidr.Ip)
+			if !ok {
+				continue
+			}
+			prefix, err := ip.Prefix(int(cidr.Prefix))
+			if err != nil {
+				continue
+			}
+			allIps = append(allIps, prefix.String())
+		}
+		return nil
 	}
 
 	if err := streamGeoIP(geodataPath, categories, save); err != nil {

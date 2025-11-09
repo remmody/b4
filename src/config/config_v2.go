@@ -56,6 +56,7 @@ var DefaultSetConfig = SetConfig{
 
 	Targets: TargetsConfig{
 		SNIDomains:        []string{},
+		IPs:               []string{},
 		GeoSiteCategories: []string{},
 		GeoIpCategories:   []string{},
 	},

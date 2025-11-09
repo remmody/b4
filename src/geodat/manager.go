@@ -79,7 +79,6 @@ func (gm *GeodataManager) LoadCategory(category string) ([]string, error) {
 }
 
 // LoadCategories loads domains for multiple categories and returns combined domains + counts
-// LoadCategories loads domains for multiple categories and returns combined domains + counts
 func (gm *GeodataManager) LoadCategories(categories []string) ([]string, map[string]int, error) {
 	if len(categories) == 0 {
 		return []string{}, make(map[string]int), nil

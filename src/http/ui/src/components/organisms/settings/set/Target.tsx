@@ -22,8 +22,8 @@ import {
   Info as InfoIcon,
   Category as CategoryIcon,
   Domain as DomainIcon,
-  Block as BlockIcon,
-  Security as SecurityIcon,
+  LooksTwo as IpsIcon,
+  LooksOne as DomainsIcon,
 } from "@mui/icons-material";
 import SettingSection from "@molecules/common/B4Section";
 import SettingTextField from "@atoms/common/B4TextField";
@@ -76,9 +76,16 @@ export const TargetSettings: React.FC<TargetSettingsProps> = ({
 }) => {
   const [tabValue, setTabValue] = useState(0);
   const [newBypassDomain, setNewBypassDomain] = useState("");
+  const [newBypassIP, setNewBypassIP] = useState("");
   const [newBypassCategory, setNewBypassCategory] = useState("");
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
+
+  const [newBypassGeoIPCategory, setNewBypassGeoIPCategory] = useState("");
+  const [availableGeoIPCategories, setAvailableGeoIPCategories] = useState<
+    string[]
+  >([]);
+  const [loadingGeoIPCategories, setLoadingGeoIPCategories] = useState(false);
 
   const [previewDialog, setPreviewDialog] = useState<{
     open: boolean;
@@ -89,11 +96,14 @@ export const TargetSettings: React.FC<TargetSettingsProps> = ({
 
   useEffect(() => {
     if (geo.sitedat_path) {
-      void loadAvailableCategories();
+      void loadAvailableSiteCategories();
     }
-  }, [geo.sitedat_path]);
+    if (geo.ipdat_path) {
+      void loadAvailableGeoIPCategories();
+    }
+  }, [geo.sitedat_path, geo.ipdat_path]);
 
-  const loadAvailableCategories = async () => {
+  const loadAvailableSiteCategories = async () => {
     setLoadingCategories(true);
     try {
       const response = await fetch("/api/geosite");
@@ -108,29 +118,74 @@ export const TargetSettings: React.FC<TargetSettingsProps> = ({
     }
   };
 
+  const loadAvailableGeoIPCategories = async () => {
+    setLoadingGeoIPCategories(true);
+    try {
+      const response = await fetch("/api/geoip");
+      if (response.ok) {
+        const data = (await response.json()) as { tags: string[] };
+        setAvailableGeoIPCategories(data.tags || []);
+      }
+    } catch (error) {
+      console.error("Failed to load geoip categories:", error);
+    } finally {
+      setLoadingGeoIPCategories(false);
+    }
+  };
+
   // Bypass domain handlers
   const handleAddBypassDomain = () => {
     if (newBypassDomain.trim()) {
-      onChange("domains.sni_domains", [
-        ...config.domains.sni_domains,
+      onChange("targets.sni_domains", [
+        ...config.targets.sni_domains,
         newBypassDomain.trim(),
-        config.id,
       ]);
       setNewBypassDomain("");
     }
   };
 
+  const handleAddBypassIP = () => {
+    if (newBypassIP.trim()) {
+      onChange("targets.ip", [...config.targets.ip, newBypassIP.trim()]);
+      setNewBypassIP("");
+    }
+  };
+
+  const handleRemoveBypassIP = (ip: string) => {
+    onChange(
+      "targets.ip",
+      config.targets.ip.filter((d) => d !== ip)
+    );
+  };
+
+  const handleAddBypassGeoIPCategory = (category: string) => {
+    if (category && !config.targets.geoip_categories.includes(category)) {
+      onChange("targets.geoip_categories", [
+        ...config.targets.geoip_categories,
+        category,
+      ]);
+      setNewBypassGeoIPCategory("");
+    }
+  };
+
+  const handleRemoveBypassGeoIPCategory = (category: string) => {
+    onChange(
+      "targets.geoip_categories",
+      config.targets.geoip_categories.filter((c) => c !== category)
+    );
+  };
+
   const handleRemoveBypassDomain = (domain: string) => {
     onChange(
-      "domains.sni_domains",
-      config.domains.sni_domains.filter((d) => d !== domain)
+      "targets.sni_domains",
+      config.targets.sni_domains.filter((d) => d !== domain)
     );
   };
 
   const handleAddBypassCategory = (category: string) => {
-    if (category && !config.domains.geosite_categories.includes(category)) {
-      onChange("domains.geosite_categories", [
-        ...config.domains.geosite_categories,
+    if (category && !config.targets.geosite_categories.includes(category)) {
+      onChange("targets.geosite_categories", [
+        ...config.targets.geosite_categories,
         category,
       ]);
       setNewBypassCategory("");
@@ -139,8 +194,8 @@ export const TargetSettings: React.FC<TargetSettingsProps> = ({
 
   const handleRemoveBypassCategory = (category: string) => {
     onChange(
-      "domains.geosite_categories",
-      config.domains.geosite_categories.filter((c) => c !== category)
+      "targets.geosite_categories",
+      config.targets.geosite_categories.filter((c) => c !== category)
     );
   };
 
@@ -188,7 +243,7 @@ export const TargetSettings: React.FC<TargetSettingsProps> = ({
               }}
             >
               <Tab
-                icon={<SecurityIcon />}
+                icon={<DomainsIcon />}
                 iconPosition="start"
                 label={
                   <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
@@ -197,11 +252,11 @@ export const TargetSettings: React.FC<TargetSettingsProps> = ({
                 }
               />
               <Tab
-                icon={<BlockIcon />}
+                icon={<IpsIcon />}
                 iconPosition="start"
                 label={
                   <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
-                    <span>Block Domains</span>
+                    <span>Bypass IPs</span>
                   </Box>
                 }
               />
@@ -217,7 +272,7 @@ export const TargetSettings: React.FC<TargetSettingsProps> = ({
             <Grid container spacing={2}>
               {/* Manual Bypass Domains */}
               <Grid size={{ sm: 12, md: 6 }}>
-                <Box sx={{ mb: 2 }}>
+                <Box>
                   <Typography
                     variant="h6"
                     sx={{
@@ -228,7 +283,7 @@ export const TargetSettings: React.FC<TargetSettingsProps> = ({
                     }}
                   >
                     <DomainIcon /> Manual Bypass Domains
-                    <Tooltip title="Add specific domains to bypass DPI. These take priority over GeoSite categories.">
+                    <Tooltip title="Add specific domains to bypass DPI.">
                       <InfoIcon fontSize="small" color="action" />
                     </Tooltip>
                   </Typography>
@@ -280,12 +335,12 @@ export const TargetSettings: React.FC<TargetSettingsProps> = ({
                         bgcolor: colors.background.paper,
                       }}
                     >
-                      {config.domains.sni_domains.length === 0 ? (
+                      {config.targets.sni_domains.length === 0 ? (
                         <Typography variant="body2" color="text.secondary">
                           No bypass domains added
                         </Typography>
                       ) : (
-                        config.domains.sni_domains.map((domain) => (
+                        config.targets.sni_domains.map((domain) => (
                           <Chip
                             key={domain}
                             label={domain}
@@ -335,7 +390,7 @@ export const TargetSettings: React.FC<TargetSettingsProps> = ({
                       helperText={`${availableCategories.length} categories available`}
                     />
 
-                    {config.domains.geosite_categories.length > 0 && (
+                    {config.targets.geosite_categories.length > 0 && (
                       <Box sx={{ mt: 2 }}>
                         <Typography variant="subtitle2" gutterBottom>
                           Active Bypass Categories
@@ -351,7 +406,7 @@ export const TargetSettings: React.FC<TargetSettingsProps> = ({
                             bgcolor: colors.background.paper,
                           }}
                         >
-                          {config.domains.geosite_categories.map((category) => (
+                          {config.targets.geosite_categories.map((category) => (
                             <Chip
                               size="small"
                               key={category}
@@ -387,6 +442,175 @@ export const TargetSettings: React.FC<TargetSettingsProps> = ({
                               onDelete={() =>
                                 handleRemoveBypassCategory(category)
                               }
+                              sx={{
+                                bgcolor: colors.accent.primary,
+                                color: colors.secondary,
+                                "& .MuiChip-deleteIcon": {
+                                  color: colors.secondary,
+                                },
+                              }}
+                            />
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+                </Grid>
+              )}
+            </Grid>
+          </TabPanel>
+          <TabPanel value={tabValue} index={1}>
+            {/* Bypass GeoIP Categories */}
+            <Alert severity="info" sx={{ mb: 2 }}>
+              IP ranges in these categories will use DPI bypass techniques
+              (fragmentation, faking) when matched.
+            </Alert>
+
+            <Grid container spacing={2}>
+              {/* Manual Bypass Domains */}
+              <Grid size={{ sm: 12, md: 6 }}>
+                <Box>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: 2,
+                    }}
+                  >
+                    <DomainIcon /> Manual Bypass IPs
+                    <Tooltip title="Add specific ip/cidr to bypass DPI.">
+                      <InfoIcon fontSize="small" color="action" />
+                    </Tooltip>
+                  </Typography>
+                  <Box
+                    sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}
+                  >
+                    <SettingTextField
+                      label="Add Bypass Domain"
+                      value={newBypassIP}
+                      onChange={(e) => setNewBypassIP(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (
+                          e.key === "Enter" ||
+                          e.key === "Tab" ||
+                          e.key === ","
+                        ) {
+                          e.preventDefault();
+                          handleAddBypassIP();
+                        }
+                      }}
+                      helperText="e.g. 192.168.1.1, 10.0.0.0/8"
+                      placeholder="192.168.1.1"
+                    />
+                    <IconButton
+                      onClick={handleAddBypassIP}
+                      sx={{
+                        bgcolor: colors.accent.secondary,
+                        color: colors.secondary,
+                        "&:hover": {
+                          bgcolor: colors.accent.secondaryHover,
+                        },
+                      }}
+                    >
+                      <AddIcon />
+                    </IconButton>
+                  </Box>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Active manually added IPs
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 1,
+                        p: 1,
+                        border: `1px solid ${colors.border.default}`,
+                        borderRadius: 1,
+                        bgcolor: colors.background.paper,
+                      }}
+                    >
+                      {config.targets.ip.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">
+                          No bypass ip added
+                        </Typography>
+                      ) : (
+                        config.targets.ip.map((ip) => (
+                          <Chip
+                            key={ip}
+                            label={ip}
+                            onDelete={() => handleRemoveBypassIP(ip)}
+                            size="small"
+                            sx={{
+                              bgcolor: colors.accent.primary,
+                              color: colors.secondary,
+                              "& .MuiChip-deleteIcon": {
+                                color: colors.secondary,
+                              },
+                            }}
+                          />
+                        ))
+                      )}
+                    </Box>
+                  </Box>
+                </Box>
+              </Grid>
+              {/* GeoIP Categories */}
+              {geo.ipdat_path && availableGeoIPCategories.length > 0 && (
+                <Grid size={{ sm: 12, md: 6 }}>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 2,
+                      }}
+                    >
+                      <CategoryIcon /> Bypass GeoIP Categories
+                      <Tooltip title="Load predefined IP lists from GeoIP database for DPI bypass">
+                        <InfoIcon fontSize="small" color="action" />
+                      </Tooltip>
+                    </Typography>
+
+                    <SettingAutocomplete
+                      label="Add Bypass GeoIP Category"
+                      value={newBypassGeoIPCategory}
+                      options={availableGeoIPCategories}
+                      onChange={setNewBypassGeoIPCategory}
+                      onSelect={handleAddBypassGeoIPCategory}
+                      loading={loadingGeoIPCategories}
+                      placeholder="Select or type GeoIP category"
+                      helperText={`${availableGeoIPCategories.length} GeoIP categories available`}
+                    />
+
+                    {config.targets.geoip_categories.length > 0 && (
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Active Bypass GeoIP Categories
+                        </Typography>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 1,
+                            p: 1,
+                            border: `1px solid ${colors.border.default}`,
+                            borderRadius: 1,
+                            bgcolor: colors.background.paper,
+                          }}
+                        >
+                          {config.targets.geoip_categories.map((category) => (
+                            <Chip
+                              key={category}
+                              label={category}
+                              onDelete={() =>
+                                handleRemoveBypassGeoIPCategory(category)
+                              }
+                              size="small"
                               sx={{
                                 bgcolor: colors.accent.primary,
                                 color: colors.secondary,
