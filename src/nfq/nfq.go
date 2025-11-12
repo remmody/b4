@@ -3,7 +3,6 @@ package nfq
 import (
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"net"
 	"os"
 	"strings"
@@ -127,6 +126,8 @@ func (w *Worker) Start() error {
 				src = net.IP(raw[8:24])
 				dst = net.IP(raw[24:40])
 			}
+			srcStr := src.String()
+			dstStr := dst.String()
 
 			matched, st := matcher.MatchIP(dst)
 			if matched {
@@ -173,11 +174,11 @@ func (w *Worker) Start() error {
 					sniTarget = set.Name
 				}
 
-				log.Infof(",TCP,%s,%s,%s:%d,%s,%s:%d", sniTarget, host, src.String(), sport, ipTarget, dst.String(), dport)
+				log.Infof(",TCP,%s,%s,%s:%d,%s,%s:%d", sniTarget, host, srcStr, sport, ipTarget, dstStr, dport)
 
 				if matched {
 					metrics := metrics.GetMetricsCollector()
-					metrics.RecordConnection("TCP", host, fmt.Sprintf("%s:%d", src, sport), fmt.Sprintf("%s:%d", dst, dport), true)
+					metrics.RecordConnection("TCP", host, srcStr, dstStr, true)
 					metrics.RecordPacket(uint64(len(raw)))
 
 					if v == 4 {
@@ -205,12 +206,10 @@ func (w *Worker) Start() error {
 				sport := binary.BigEndian.Uint16(udp[0:2])
 				dport := binary.BigEndian.Uint16(udp[2:4])
 
-				// Get base set config
 				if set == nil {
 					set = cfg.MainSet
 				}
 
-				// Track all match types for logging
 				matchedIP := matched
 				matchedPort := false
 				matchedQUIC := false
@@ -219,38 +218,30 @@ func (w *Worker) Start() error {
 				ipTarget := ""
 				sniTarget := ""
 
-				// Check IP match
 				if matchedIP {
 					ipTarget = st.Name
 				}
 
-				// Check UDP port filter
 				if mport, portSet := matcher.MatchUDPPort(dport); mport {
 					matchedPort = true
 					set = portSet
 					ipTarget = portSet.Name
 				}
 
-				// Check STUN
 				isSTUN = stun.IsSTUNMessage(payload)
 
-				// Process QUIC based on FilterQUIC mode
 				switch set.UDP.FilterQUIC {
 				case "disabled":
-					// Don't parse QUIC at all
 
 				case "all":
-					// Mark all QUIC Initial packets for handling
 					if quic.IsInitial(payload) {
 						matchedQUIC = true
-						// Try to extract SNI for logging (best effort)
 						if h, ok := sni.ParseQUICClientHelloSNI(payload); ok {
 							host = h
 						}
 					}
 
 				case "parse":
-					// Parse QUIC and match SNI against domains
 					if h, ok := sni.ParseQUICClientHelloSNI(payload); ok {
 						host = h
 						if mSNI, sniSet := matcher.MatchSNI(host); mSNI {
@@ -266,15 +257,10 @@ func (w *Worker) Start() error {
 				matched = shouldHandle
 
 				// Log ALL UDP packets (this runs before verdict)
-				log.Infof(",UDP,%s,%s,%s:%d,%s,%s:%d", sniTarget, host, src.String(), sport, ipTarget, dst.String(), dport)
-
-				metrics := metrics.GetMetricsCollector()
-				metrics.RecordConnection("UDP", host, fmt.Sprintf("%s:%d", src, sport), fmt.Sprintf("%s:%d", dst, dport), matched)
-				metrics.RecordPacket(uint64(len(raw)))
+				log.Infof(",UDP,%s,%s,%s:%d,%s,%s:%d", sniTarget, host, srcStr, sport, ipTarget, dstStr, dport)
 
 				// Early exit for STUN
 				if isSTUN && set.UDP.FilterSTUN {
-					log.Tracef("STUN filtered: %s:%d -> %s:%d", src.String(), sport, dst.String(), dport)
 					_ = q.SetVerdict(id, nfqueue.NfAccept)
 					return 0
 				}
@@ -284,6 +270,10 @@ func (w *Worker) Start() error {
 					_ = q.SetVerdict(id, nfqueue.NfAccept)
 					return 0
 				}
+
+				metrics := metrics.GetMetricsCollector()
+				metrics.RecordConnection("UDP", host, srcStr, dstStr, matched)
+				metrics.RecordPacket(uint64(len(raw)))
 
 				// Apply configured UDP mode
 				switch set.UDP.Mode {

@@ -133,7 +133,7 @@ func (ts *CheckSuite) testDomain(domain string) CheckResult {
 		testURL = fmt.Sprintf(ts.Config.CheckURL, domain)
 	}
 
-	log.Tracef("Checking domain: %s (URL: %s)", domain, testURL)
+	log.Tracef("Testing: %s (timeout: %v)", testURL, ts.Config.Timeout)
 
 	start := time.Now()
 	bytesRead, statusCode, err := ts.fetchURL(testURL)
@@ -144,16 +144,25 @@ func (ts *CheckSuite) testDomain(domain string) CheckResult {
 	result.StatusCode = statusCode
 
 	if err != nil {
-		result.Status = CheckStatusFailed
-		result.Error = err.Error()
-		log.Tracef("Check failed for %s: %v", domain, err)
+		if bytesRead > 0 && statusCode > 0 {
+			result.Status = CheckStatusComplete
+			if duration.Seconds() > 0 {
+				result.Speed = float64(bytesRead) / duration.Seconds()
+			}
+			log.Tracef("✓ %s: %d bytes, status %d (error ignored: %v)",
+				domain, bytesRead, statusCode, err)
+		} else {
+			result.Status = CheckStatusFailed
+			result.Error = err.Error()
+			log.Tracef("✗ %s: connection failed: %v", domain, err)
+		}
 	} else {
 		result.Status = CheckStatusComplete
 		if duration.Seconds() > 0 {
 			result.Speed = float64(bytesRead) / duration.Seconds()
 		}
-		log.Tracef("Check completed for %s: %d bytes in %v (%.2f KB/s)",
-			domain, bytesRead, duration, result.Speed/1024)
+		log.Tracef("✓ %s: %d bytes in %v (%.2f KB/s, status: %d)",
+			domain, bytesRead, duration, result.Speed/1024, statusCode)
 	}
 
 	return result
@@ -169,26 +178,29 @@ func (ts *CheckSuite) fetchURL(url string) (int64, int, error) {
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
+			ResponseHeaderTimeout: ts.Config.Timeout / 2,
+			IdleConnTimeout:       30 * time.Second,
 		},
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, fmt.Errorf("request creation failed: %w", err)
 	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, fmt.Errorf("connection failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	statusCode := resp.StatusCode
 
-	// Read response body (limit to 1MB to avoid huge downloads)
-	bytesRead, err := io.CopyN(io.Discard, resp.Body, 1024*1024)
+	bytesRead, err := io.CopyN(io.Discard, resp.Body, 100*1024)
 	if err != nil && err != io.EOF {
-		return bytesRead, statusCode, nil // Partial read is ok
+		return bytesRead, statusCode, nil
 	}
 
 	return bytesRead, statusCode, nil

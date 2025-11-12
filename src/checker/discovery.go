@@ -10,6 +10,8 @@ import (
 	"github.com/daniellavrushin/b4/nfq"
 )
 
+const MAX_PRESETS_PER_DOMAIN = 3
+
 type DiscoverySuite struct {
 	*CheckSuite
 	pool           *nfq.Pool
@@ -78,7 +80,6 @@ func (ds *DiscoverySuite) RunDiscovery(domains []string) {
 		ds.mu.Unlock()
 	}
 
-	// Test each domain with each preset
 	for _, domain := range domains {
 		select {
 		case <-ds.cancel:
@@ -90,7 +91,10 @@ func (ds *DiscoverySuite) RunDiscovery(domains []string) {
 		default:
 		}
 
-		log.Infof("Testing domain: %s", domain)
+		log.Infof("Testing domain: %s (will stop after %d successful configs)", domain, MAX_PRESETS_PER_DOMAIN)
+
+		successfulCount := 0
+		testedCount := 0
 
 		for _, preset := range ds.presets {
 			select {
@@ -99,20 +103,47 @@ func (ds *DiscoverySuite) RunDiscovery(domains []string) {
 			default:
 			}
 
-			log.Tracef("  Testing %s with preset: %s", domain, preset.Name)
+			// Stop testing this domain if we found enough successful configs
+			if successfulCount >= MAX_PRESETS_PER_DOMAIN {
+				log.Infof("  Domain %s: Found %d successful configs, skipping remaining %d presets",
+					domain, successfulCount, len(ds.presets)-testedCount)
+
+				// Update total checks to reflect skipped presets
+				ds.CheckSuite.mu.Lock()
+				ds.TotalChecks -= (len(ds.presets) - testedCount)
+				ds.CheckSuite.mu.Unlock()
+				break
+			}
+
+			testedCount++
+			log.Tracef("  Testing %s with preset %d/%d: %s", domain, testedCount, len(ds.presets), preset.Name)
 
 			// Apply preset configuration
 			testConfig := ds.buildTestConfig(preset)
 			if err := ds.pool.UpdateConfig(testConfig); err != nil {
 				log.Errorf("Failed to update config for preset %s: %v", preset.Name, err)
+				ds.CheckSuite.mu.Lock()
+				ds.CompletedChecks++
+				ds.CheckSuite.mu.Unlock()
 				continue
 			}
 
 			// Wait for config to propagate
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(3 * time.Second)
 
-			// Test this specific domain
-			result := ds.testDomain(domain)
+			var result CheckResult
+			for attempt := 0; attempt < 2; attempt++ {
+				result = ds.testDomain(domain)
+
+				// If successful or it's the last attempt, use this result
+				if result.Status == CheckStatusComplete || attempt == 1 {
+					break
+				}
+
+				// First attempt failed, wait a bit longer for config to propagate
+				log.Tracef("  First attempt failed, retrying after additional delay...")
+				time.Sleep(300 * time.Millisecond)
+			}
 
 			// Store result for this domain+preset combination
 			ds.mu.Lock()
@@ -127,17 +158,27 @@ func (ds *DiscoverySuite) RunDiscovery(domains []string) {
 			}
 			ds.mu.Unlock()
 
+			// Count successful results
+			if result.Status == CheckStatusComplete {
+				successfulCount++
+				log.Infof("  ✓ %s with %s: %.2f KB/s (success %d/%d)",
+					domain, preset.Name, result.Speed/1024, successfulCount, MAX_PRESETS_PER_DOMAIN)
+			} else {
+				log.Tracef("  ✗ %s with %s: %s",
+					domain, preset.Name, result.Status)
+			}
+
 			// Update progress
 			ds.CheckSuite.mu.Lock()
 			ds.CompletedChecks++
 			ds.CheckSuite.mu.Unlock()
-
-			log.Tracef("  %s with %s: status=%s, speed=%.2f KB/s",
-				domain, preset.Name, result.Status, result.Speed/1024)
 		}
 
 		// Determine best preset for this domain
 		ds.determineBestPresetForDomain(domain)
+
+		log.Infof("Domain %s complete: tested %d presets, found %d successful configs",
+			domain, testedCount, successfulCount)
 	}
 
 	// Copy results to CheckSuite for JSON serialization

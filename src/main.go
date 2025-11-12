@@ -18,6 +18,7 @@ import (
 	"github.com/daniellavrushin/b4/http/handler"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/nfq"
+	"github.com/daniellavrushin/b4/quic"
 	"github.com/daniellavrushin/b4/tables"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -217,6 +218,8 @@ func gracefulShutdown(cfg *config.Config, pool *nfq.Pool, httpServer *http.Serve
 			log.Errorf("Netfilter queue pool stop timed out")
 			shutdownErrors <- fmt.Errorf("NFQueue stop timeout")
 		}
+
+		quic.Shutdown()
 	}()
 
 	// Clean up iptables/nftables rules

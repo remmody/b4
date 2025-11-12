@@ -330,7 +330,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
       )}
 
       {/* Results Grid */}
-      {suite && suite.results.length > 0 && (
+      {suite?.results && suite.results.length > 0 && (
         <Box>
           <Typography variant="h6" sx={{ mb: 2, color: colors.text.primary }}>
             Test Results

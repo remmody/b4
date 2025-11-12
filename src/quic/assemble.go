@@ -2,15 +2,17 @@ package quic
 
 import (
 	"sync"
+	"time"
 
 	"github.com/daniellavrushin/b4/log"
 )
 
 type cbuf struct {
-	mu   sync.Mutex
-	data []byte
-	mask []byte
-	head int
+	mu         sync.Mutex
+	data       []byte
+	mask       []byte
+	head       int
+	lastAccess time.Time
 }
 
 type cryptoFrame struct {
@@ -19,8 +21,59 @@ type cryptoFrame struct {
 }
 
 var (
-	cmap sync.Map
+	cmap         sync.Map
+	cleanupOnce  sync.Once
+	maxEntries   = 10000
+	entryTTL     = 30 * time.Second
+	cleanupTimer *time.Ticker
 )
+
+func init() {
+	cleanupOnce.Do(func() {
+		cleanupTimer = time.NewTicker(10 * time.Second)
+		go cleanupStaleEntries()
+	})
+}
+
+func cleanupStaleEntries() {
+	for range cleanupTimer.C {
+		now := time.Now()
+		totalCount := 0
+		staleCount := 0
+
+		cmap.Range(func(key, value interface{}) bool {
+			totalCount++
+			buf := value.(*cbuf)
+			buf.mu.Lock()
+			age := now.Sub(buf.lastAccess)
+			buf.mu.Unlock()
+
+			if age > entryTTL {
+				cmap.Delete(key)
+				staleCount++
+				totalCount--
+			}
+			return true
+		})
+
+		if totalCount > maxEntries {
+			excessCount := 0
+			cmap.Range(func(key, value interface{}) bool {
+				if totalCount-excessCount <= maxEntries {
+					return false
+				}
+				cmap.Delete(key)
+				excessCount++
+				return true
+			})
+			staleCount += excessCount
+		}
+
+		if staleCount > 0 {
+			log.Tracef("QUIC cleanup: removed %d entries (%d remain)", staleCount, totalCount-staleCount)
+		}
+	}
+}
 
 func readVarint(b []byte) (val uint64, n int) {
 	if len(b) == 0 {
@@ -96,6 +149,8 @@ func (b *cbuf) write(off int, p []byte) {
 	for b.head < len(b.mask) && b.mask[b.head] == 1 {
 		b.head++
 	}
+
+	b.lastAccess = time.Now()
 }
 
 func (b *cbuf) snapshot() ([]byte, bool) {
@@ -122,7 +177,11 @@ func AssembleCrypto(dcid, plain []byte) ([]byte, bool) {
 	if v, ok := cmap.Load(key); ok {
 		buf = v.(*cbuf)
 	} else {
-		buf = &cbuf{data: make([]byte, 0, 4096), mask: make([]byte, 0, 4096)}
+		buf = &cbuf{
+			data:       make([]byte, 0, 4096),
+			mask:       make([]byte, 0, 4096),
+			lastAccess: time.Now(),
+		}
 		cmap.Store(key, buf)
 	}
 	for _, f := range frames {
@@ -144,4 +203,10 @@ func ClearDCID(dcid []byte) {
 		return
 	}
 	cmap.Delete(string(dcid))
+}
+
+func Shutdown() {
+	if cleanupTimer != nil {
+		cleanupTimer.Stop()
+	}
 }
