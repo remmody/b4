@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Box,
   Button,
@@ -63,7 +62,6 @@ interface ConfigDetail {
 }
 
 export const DiscoveryRunner: React.FC = () => {
-  const navigate = useNavigate();
   const [running, setRunning] = useState(false);
   const [suiteId, setSuiteId] = useState<string | null>(null);
   const [suite, setSuite] = useState<DiscoverySuite | null>(null);
@@ -198,10 +196,6 @@ export const DiscoveryRunner: React.FC = () => {
         message: `✅ ${data.message}`,
         severity: "success",
       });
-
-      setTimeout(() => {
-        navigate("/settings");
-      }, 1500);
     } catch (err) {
       console.error("Failed to add strategy:", err);
       setSnackbar({
