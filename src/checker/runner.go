@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -178,8 +179,12 @@ func (ts *CheckSuite) fetchURL(url string) (int64, int, error) {
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
-			ResponseHeaderTimeout: ts.Config.Timeout / 2,
-			IdleConnTimeout:       30 * time.Second,
+			ResponseHeaderTimeout: ts.Config.Timeout,
+			IdleConnTimeout:       ts.Config.Timeout,
+			DialContext: (&net.Dialer{
+				Timeout:   ts.Config.Timeout,
+				KeepAlive: ts.Config.Timeout,
+			}).DialContext,
 		},
 	}
 

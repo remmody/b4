@@ -11,6 +11,7 @@ import (
 )
 
 const MAX_PRESETS_PER_DOMAIN = 3
+const DISCOVERY_TIMEOUT = 3 * time.Second
 
 type DiscoverySuite struct {
 	*CheckSuite
@@ -22,6 +23,8 @@ type DiscoverySuite struct {
 }
 
 func NewDiscoverySuite(checkConfig CheckConfig, pool *nfq.Pool, presets []ConfigPreset) *DiscoverySuite {
+	checkConfig.Timeout = DISCOVERY_TIMEOUT
+
 	suite := NewCheckSuite(checkConfig)
 	suite.DomainDiscoveryResults = make(map[string]*DomainDiscoveryResult)
 
@@ -118,8 +121,12 @@ func (ds *DiscoverySuite) RunDiscovery(domains []string) {
 			testedCount++
 			log.Tracef("  Testing %s with preset %d/%d: %s", domain, testedCount, len(ds.presets), preset.Name)
 
-			// Apply preset configuration
-			testConfig := ds.buildTestConfig(preset)
+			// Apply preset configuration by RESTARTING pool
+			testConfig := ds.buildTestConfig(preset, domain)
+
+			log.Tracef("  Applying config %s: stopping pool...", preset.Name)
+			ds.pool.Stop()
+
 			if err := ds.pool.UpdateConfig(testConfig); err != nil {
 				log.Errorf("Failed to update config for preset %s: %v", preset.Name, err)
 				ds.CheckSuite.mu.Lock()
@@ -128,8 +135,17 @@ func (ds *DiscoverySuite) RunDiscovery(domains []string) {
 				continue
 			}
 
-			// Wait for config to propagate
-			time.Sleep(3 * time.Second)
+			log.Tracef("  Restarting pool with new config...")
+			if err := ds.pool.Start(); err != nil {
+				log.Errorf("Failed to restart pool for preset %s: %v", preset.Name, err)
+				ds.CheckSuite.mu.Lock()
+				ds.CompletedChecks++
+				ds.CheckSuite.mu.Unlock()
+				continue
+			}
+
+			// Wait for workers to fully restart
+			time.Sleep(1000 * time.Millisecond)
 
 			var result CheckResult
 			for attempt := 0; attempt < 2; attempt++ {
@@ -237,45 +253,32 @@ func (ds *DiscoverySuite) determineBestPresetForDomain(domain string) {
 	domainResult.BestSuccess = bestSuccess
 }
 
-func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset) *config.Config {
-	// Deep copy to avoid modifying original
+func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset, testDomain string) *config.Config {
 	cfg := &config.Config{
 		ConfigPath: ds.originalConfig.ConfigPath,
 		Queue:      ds.originalConfig.Queue,
 		System:     ds.originalConfig.System,
 	}
 
-	// Copy MainSet
-	mainSet := *ds.originalConfig.MainSet
-
-	cfg.MainSet = &mainSet
-	cfg.MainSet.Targets = ds.originalConfig.MainSet.Targets
-	cfg.MainSet.Targets.DomainsToMatch = ds.originalConfig.MainSet.Targets.SNIDomains
-	if len(ds.originalConfig.MainSet.Targets.GeoSiteCategories) > 0 {
-		cfg.MainSet.Targets.DomainsToMatch = ds.originalConfig.MainSet.Targets.DomainsToMatch
-	}
-	cfg.MainSet.Targets.IpsToMatch = ds.originalConfig.MainSet.Targets.IPs
-
-	// Apply preset configuration to MainSet
-	cfg.MainSet.Fragmentation = preset.Config.Fragmentation
-	cfg.MainSet.Faking = preset.Config.Faking
-	cfg.MainSet.UDP = preset.Config.UDP
-	cfg.MainSet.TCP = preset.Config.TCP
-
-	// Keep targets from original
-	cfg.MainSet.Targets = ds.originalConfig.MainSet.Targets
-
-	// Copy sets
-	cfg.Sets = make([]*config.SetConfig, len(ds.originalConfig.Sets))
-	for i, set := range ds.originalConfig.Sets {
-		setCopy := *set
-		cfg.Sets[i] = &setCopy
+	mainSet := &config.SetConfig{
+		Id:            ds.originalConfig.MainSet.Id,
+		Name:          ds.originalConfig.MainSet.Name,
+		TCP:           preset.Config.TCP,
+		UDP:           preset.Config.UDP,
+		Fragmentation: preset.Config.Fragmentation,
+		Faking:        preset.Config.Faking,
+		Targets: config.TargetsConfig{
+			SNIDomains:        []string{testDomain},
+			DomainsToMatch:    []string{testDomain},
+			IPs:               []string{},
+			IpsToMatch:        []string{},
+			GeoSiteCategories: []string{},
+			GeoIpCategories:   []string{},
+		},
 	}
 
-	// Update MainSet in Sets if it's there
-	if len(cfg.Sets) > 0 {
-		cfg.Sets[0] = cfg.MainSet
-	}
+	cfg.MainSet = mainSet
+	cfg.Sets = []*config.SetConfig{mainSet}
 
 	return cfg
 }
