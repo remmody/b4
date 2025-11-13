@@ -17,8 +17,10 @@ type QueueConfig struct {
 }
 
 type TCPConfig struct {
-	ConnBytesLimit int `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
-	Seg2Delay      int `json:"seg2delay" bson:"seg2delay"`
+	ConnBytesLimit int  `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
+	Seg2Delay      int  `json:"seg2delay" bson:"seg2delay"`
+	SynFake        bool `json:"syn_fake" bson:"syn_fake"`
+	SynFakeLen     int  `json:"syn_fake_len" bson:"syn_fake_len"`
 }
 
 type UDPConfig struct {

@@ -81,6 +81,8 @@ func (c *Config) BindFlags(cmd *cobra.Command) {
 	// TCP bypass configuration
 	cmd.Flags().IntVar(&c.MainSet.TCP.ConnBytesLimit, "connbytes-limit", c.MainSet.TCP.ConnBytesLimit, "TCP connection bytes limit (default 19)")
 	cmd.Flags().IntVar(&c.MainSet.TCP.Seg2Delay, "seg2delay", c.MainSet.TCP.Seg2Delay, "Delay between segments in ms")
+	cmd.Flags().BoolVar(&c.MainSet.TCP.SynFake, "syn-fake", c.MainSet.TCP.SynFake, "Enable SYN fake packets (default false)")
+	cmd.Flags().IntVar(&c.MainSet.TCP.SynFakeLen, "syn-fake-len", c.MainSet.TCP.SynFakeLen, "SYN fake packet size in bytes (default 0)")
 
 	// UDP bypass configuration
 	cmd.Flags().StringVar(&c.MainSet.UDP.Mode, "udp-mode", c.MainSet.UDP.Mode, "UDP handling strategy (drop|fake)")

@@ -1,6 +1,10 @@
 package checker
 
-import "github.com/daniellavrushin/b4/config"
+import (
+	"strconv"
+
+	"github.com/daniellavrushin/b4/config"
+)
 
 type ConfigPreset struct {
 	Name        string
@@ -20,6 +24,8 @@ type PresetGenerator struct {
 	Seg2Delays      []int    // 0, 5, 10
 	SNIReverseFlags []bool   // true, false
 	MiddleSNIFlags  []bool   // true, false
+	SynFakeFlags    []bool   // true, false
+	SynFakeLens     []int    // 0, 64, 256, 512
 }
 
 // GetDefaultGenerator returns a generator with common parameter variations
@@ -35,6 +41,8 @@ func GetDefaultGenerator() PresetGenerator {
 		Seg2Delays:      []int{0, 5, 10},
 		SNIReverseFlags: []bool{true, false},
 		MiddleSNIFlags:  []bool{true, false},
+		SynFakeFlags:    []bool{true},
+		SynFakeLens:     []int{0, 64, 256, 512},
 	}
 }
 
@@ -43,7 +51,28 @@ func GetTestPresets() []ConfigPreset {
 	gen := GetDefaultGenerator()
 	presets := []ConfigPreset{}
 
-	// Strategy 1: TCP fragmentation variations
+	// Strategy: SYN fake variations
+	for _, synFake := range gen.SynFakeFlags {
+		for _, synLen := range gen.SynFakeLens {
+			if !synFake && synLen > 0 {
+				continue // Skip invalid combo
+			}
+			for _, reverse := range gen.SNIReverseFlags {
+				for _, middle := range gen.MiddleSNIFlags {
+					if reverse && middle {
+						continue // Skip conflicting flags
+					}
+					for _, snipos := range gen.SNIPositions {
+
+						preset := gen.generateSynFakePreset(synFake, synLen, reverse, middle, snipos)
+						presets = append(presets, preset)
+					}
+				}
+			}
+		}
+	}
+
+	// Strategy: TCP fragmentation variations
 	for _, pos := range gen.SNIPositions {
 		for _, reverse := range gen.SNIReverseFlags {
 			for _, middle := range gen.MiddleSNIFlags {
@@ -56,13 +85,13 @@ func GetTestPresets() []ConfigPreset {
 		}
 	}
 
-	// Strategy 2: IP fragmentation variations
+	// Strategy: IP fragmentation variations
 	for _, reverse := range gen.SNIReverseFlags {
 		preset := gen.generateIPFragPreset(reverse)
 		presets = append(presets, preset)
 	}
 
-	// Strategy 3: Fake packet variations
+	// Strategy: Fake packet variations
 	for _, strategy := range gen.FakeStrategies {
 		for _, ttl := range gen.FakeTTLs {
 			for _, seqLen := range gen.SNISeqLengths {
@@ -72,7 +101,7 @@ func GetTestPresets() []ConfigPreset {
 		}
 	}
 
-	// Strategy 4: UDP/QUIC variations
+	// Strategy: UDP/QUIC variations
 	for _, mode := range gen.UDPModes {
 		for _, filter := range gen.QUICFilters {
 			preset := gen.generateUDPPreset(mode, filter)
@@ -80,7 +109,7 @@ func GetTestPresets() []ConfigPreset {
 		}
 	}
 
-	// Strategy 5: Aggressive combinations
+	// Strategy: Aggressive combinations
 	for _, delay := range gen.Seg2Delays {
 		if delay > 0 {
 			preset := gen.generateAggressivePreset(delay)
@@ -88,11 +117,40 @@ func GetTestPresets() []ConfigPreset {
 		}
 	}
 
-	// Strategy 6: Minimal/stealth
+	// Strategy 99: Minimal/stealth
 	presets = append(presets, gen.generateMinimalPreset())
 	presets = append(presets, gen.generateNoFragPreset())
 
 	return presets
+}
+
+func (g *PresetGenerator) generateSynFakePreset(synFake bool, synLen int, reverse, middle bool, snipos int) ConfigPreset {
+	name := "syn-fake"
+	desc := "SYN fake packets"
+
+	if synFake {
+		name += "-enabled"
+		desc += " enabled"
+	} else {
+		name += "-disabled"
+		desc += " disabled"
+	}
+
+	if synFake && synLen > 0 {
+		name += "-len" + strconv.Itoa(synLen)
+		desc += " with length " + strconv.Itoa(synLen)
+	}
+
+	return ConfigPreset{
+		Name:        name,
+		Description: desc,
+		Config: config.SetConfig{
+			TCP:           config.TCPConfig{ConnBytesLimit: 19, Seg2Delay: 0, SynFake: synFake, SynFakeLen: synLen},
+			UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
+			Fragmentation: config.FragmentationConfig{Strategy: "tcp", SNIPosition: snipos, SNIReverse: reverse, MiddleSNI: middle},
+			Faking:        config.FakingConfig{SNI: true, TTL: 8, Strategy: "pastseq", SeqOffset: 10000, SNISeqLength: 1, SNIType: 2},
+		},
+	}
 }
 
 func (g *PresetGenerator) generateTCPFragPreset(pos int, reverse, middle bool) ConfigPreset {

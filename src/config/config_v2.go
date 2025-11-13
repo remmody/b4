@@ -38,6 +38,8 @@ var DefaultSetConfig = SetConfig{
 	TCP: TCPConfig{
 		ConnBytesLimit: 19,
 		Seg2Delay:      0,
+		SynFake:        false,
+		SynFakeLen:     0,
 	},
 
 	Fragmentation: FragmentationConfig{

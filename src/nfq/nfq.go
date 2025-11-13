@@ -150,6 +150,33 @@ func (w *Worker) Start() error {
 				sport := binary.BigEndian.Uint16(tcp[0:2])
 				dport := binary.BigEndian.Uint16(tcp[2:4])
 
+				tcpFlags := tcp[13]
+				isSyn := (tcpFlags & 0x02) != 0 // SYN flag
+				isAck := (tcpFlags & 0x10) != 0 // ACK flag
+
+				if isSyn && !isAck && dport == HTTPSPort {
+
+					if matched && set.TCP.SynFake {
+						log.Tracef("TCP SYN to %s:%d - sending fake SYN (set: %s)", dstStr, dport, set.Name)
+
+						metrics := metrics.GetMetricsCollector()
+						metrics.RecordConnection("TCP-SYN", "", srcStr, dstStr, true)
+
+						if v == IPv4 {
+							w.sendFakeSyn(set, raw, ihl, datOff)
+						} else {
+							w.sendFakeSynV6(set, raw, ihl, datOff)
+						}
+
+						_ = q.SetVerdict(id, nfqueue.NfDrop)
+						return 0
+					}
+
+					log.Tracef("TCP SYN to %s:%d - passing through", dstStr, dport)
+					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					return 0
+				}
+
 				host := ""
 				matchedIP := matched
 				matchedSNI := false

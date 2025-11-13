@@ -95,6 +95,8 @@ export interface CheckerConfig {
 export interface TcpConfig {
   conn_bytes_limit: number;
   seg2delay: number;
+  syn_fake: boolean;
+  syn_fake_len: number;
 }
 
 export interface WebServerConfig {
