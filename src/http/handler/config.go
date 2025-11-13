@@ -222,7 +222,13 @@ func (a *API) resetConfig(w http.ResponseWriter, r *http.Request) {
 		defaultCfg.Sets = append(defaultCfg.Sets, set)
 	}
 
-	defaultCfg.MainSet = defaultCfg.Sets[0]
+	err := defaultCfg.Validate()
+
+	if err != nil {
+		log.Errorf("Failed to validate reset config: %v", err)
+		http.Error(w, "Failed to reset config", http.StatusInternalServerError)
+		return
+	}
 
 	if err := a.saveAndPushConfig(&defaultCfg); err != nil {
 		log.Errorf("Failed to reset config: %v", err)

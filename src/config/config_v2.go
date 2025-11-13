@@ -7,6 +7,10 @@ import (
 	"github.com/daniellavrushin/b4/log"
 )
 
+var (
+	MAIN_SET_ID = "11111111-1111-1111-1111-111111111111"
+)
+
 type Config struct {
 	ConfigPath string `json:"-" bson:"-"`
 
@@ -17,7 +21,7 @@ type Config struct {
 }
 
 var DefaultSetConfig = SetConfig{
-	Id:   "11111111-1111-1111-1111-111111111111",
+	Id:   MAIN_SET_ID,
 	Name: "default",
 
 	UDP: UDPConfig{
