@@ -54,17 +54,11 @@ func GetTestPresets() []ConfigPreset {
 	// Strategy: SYN fake variations
 	for _, synFake := range gen.SynFakeFlags {
 		for _, synLen := range gen.SynFakeLens {
-			if !synFake && synLen > 0 {
-				continue // Skip invalid combo
-			}
 			for _, reverse := range gen.SNIReverseFlags {
 				for _, middle := range gen.MiddleSNIFlags {
-					if reverse && middle {
-						continue // Skip conflicting flags
-					}
-					for _, snipos := range gen.SNIPositions {
+					for _, ttls := range gen.FakeTTLs {
 
-						preset := gen.generateSynFakePreset(synFake, synLen, reverse, middle, snipos)
+						preset := gen.generateSynFakePreset(synFake, synLen, reverse, middle, ttls)
 						presets = append(presets, preset)
 					}
 				}
@@ -124,7 +118,7 @@ func GetTestPresets() []ConfigPreset {
 	return presets
 }
 
-func (g *PresetGenerator) generateSynFakePreset(synFake bool, synLen int, reverse, middle bool, snipos int) ConfigPreset {
+func (g *PresetGenerator) generateSynFakePreset(synFake bool, synLen int, reverse, middle bool, ttls uint8) ConfigPreset {
 	name := "syn-fake"
 	desc := "SYN fake packets"
 
@@ -147,8 +141,8 @@ func (g *PresetGenerator) generateSynFakePreset(synFake bool, synLen int, revers
 		Config: config.SetConfig{
 			TCP:           config.TCPConfig{ConnBytesLimit: 19, Seg2Delay: 0, SynFake: synFake, SynFakeLen: synLen},
 			UDP:           config.UDPConfig{Mode: "fake", FakeSeqLength: 6, FakeLen: 64, FakingStrategy: "none", FilterQUIC: "disabled", FilterSTUN: true, ConnBytesLimit: 8},
-			Fragmentation: config.FragmentationConfig{Strategy: "tcp", SNIPosition: snipos, SNIReverse: reverse, MiddleSNI: middle},
-			Faking:        config.FakingConfig{SNI: true, TTL: 8, Strategy: "pastseq", SeqOffset: 10000, SNISeqLength: 1, SNIType: 2},
+			Fragmentation: config.FragmentationConfig{Strategy: "tcp", SNIPosition: 1, SNIReverse: reverse, MiddleSNI: middle},
+			Faking:        config.FakingConfig{SNI: true, TTL: ttls, Strategy: "pastseq", SeqOffset: 10000, SNISeqLength: 1, SNIType: 2},
 		},
 	}
 }

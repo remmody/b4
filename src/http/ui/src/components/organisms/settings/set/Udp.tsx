@@ -266,29 +266,6 @@ export const UdpSettings: React.FC<UdpSettingsProps> = ({
             </Grid>
           </>
         )}
-
-        {/* Overall explanation */}
-        <Grid size={{ xs: 12 }}>
-          <Box
-            sx={{ mt: 2, p: 2, bgcolor: "background.paper", borderRadius: 1 }}
-          >
-            <Alert
-              severity="info"
-              icon={<InfoIcon />}
-              sx={{ bgcolor: "transparent" }}
-            >
-              <strong>How UDP processing works:</strong>
-              <br />
-              1. Packets are matched by QUIC filter, port filter, or IP targets
-              <br />
-              2. STUN packets are excluded if STUN filtering is enabled
-              <br />
-              3. Matched packets are handled according to the action mode
-              <br />
-              4. Only the first N packets of each connection are processed
-            </Alert>
-          </Box>
-        </Grid>
       </Grid>
     </SettingSection>
   );
