@@ -1,5 +1,5 @@
 import React from "react";
-import { Grid, Alert, Divider, Chip, Box } from "@mui/material";
+import { Grid, Alert, Divider, Chip } from "@mui/material";
 import {
   Dns as DnsIcon,
   Warning as WarningIcon,
