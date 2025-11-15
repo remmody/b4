@@ -43,11 +43,11 @@ export function useIpActions() {
       open: false,
       ip: "",
       variants: [],
-      selected: "",
+      selected: [] as string[],
     });
   }, []);
 
-  const selectVariant = useCallback((variant: string) => {
+  const selectVariant = useCallback((variant: string | string[]) => {
     setModalState((prev) => ({ ...prev, selected: variant }));
   }, []);
 

@@ -48,7 +48,7 @@ interface AddIpModalProps {
   selected: string;
   ipInfoToken?: string;
   onClose: () => void;
-  onSelectVariant: (variant: string) => void;
+  onSelectVariant: (variant: string | string[]) => void;
   onAdd: (setId: string) => void;
   onAddHostname?: (hostname: string) => void;
 }
@@ -138,7 +138,7 @@ export const AddIpModal: React.FC<AddIpModalProps> = ({
     }
   };
 
-  const loadRipePrefixes = async () => {
+  const loadRipePrefixes = React.useCallback(async () => {
     if (!asn) return;
 
     setLoadingPrefixes(true);
@@ -159,21 +159,17 @@ export const AddIpModal: React.FC<AddIpModalProps> = ({
     } finally {
       setLoadingPrefixes(false);
     }
-  };
+  }, [asn]);
 
   const handleAdd = () => {
-    if (addMode === "all" && prefixes.length > 0) {
-      onAdd(selectedSetId);
-    } else {
-      onAdd(selectedSetId);
-    }
+    onAdd(selectedSetId);
   };
 
   React.useEffect(() => {
     if (asn && open) {
       void loadRipePrefixes();
     }
-  }, [asn, open]);
+  }, [asn, loadRipePrefixes, open]);
 
   const handleAddHostname = () => {
     if (ipInfo?.hostname && onAddHostname) {
@@ -325,8 +321,11 @@ export const AddIpModal: React.FC<AddIpModalProps> = ({
             </Typography>
             <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
               <Chip
-                label={`Add single IP/CIDR (${selected})`}
-                onClick={() => setAddMode("single")}
+                label={`Add ${ip} only`}
+                onClick={() => {
+                  setAddMode("single");
+                  onSelectVariant(initialVariants[0]);
+                }}
                 sx={{
                   bgcolor:
                     addMode === "single"
@@ -344,7 +343,10 @@ export const AddIpModal: React.FC<AddIpModalProps> = ({
               />
               <Chip
                 label={`Add all ${prefixes.length} prefixes`}
-                onClick={() => setAddMode("all")}
+                onClick={() => {
+                  setAddMode("all");
+                  onSelectVariant(prefixes);
+                }}
                 sx={{
                   bgcolor:
                     addMode === "all"
