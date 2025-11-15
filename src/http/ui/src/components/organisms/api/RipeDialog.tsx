@@ -109,7 +109,6 @@ export const RipeDialog: React.FC<RipeDialogProps> = ({
   }, [open, ip]);
 
   const handleAdd = async () => {
-    console.log("Adding prefixes:", prefixes, "to set:", selectedSetId);
     if (prefixes.length === 0 || !selectedSetId) return;
     setAdding(true);
     try {
