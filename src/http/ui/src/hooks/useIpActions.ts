@@ -52,7 +52,7 @@ export function useIpActions() {
   }, []);
 
   const addIp = useCallback(
-    async (setId: string) => {
+    async (setId: string, setName?: string) => {
       if (!modalState.selected) return;
 
       try {
@@ -66,6 +66,7 @@ export function useIpActions() {
               ? modalState.selected
               : [modalState.selected],
             set_id: setId,
+            set_name: setName,
           }),
         });
 

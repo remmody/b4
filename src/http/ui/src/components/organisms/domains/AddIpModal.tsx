@@ -49,7 +49,7 @@ interface AddIpModalProps {
   ipInfoToken?: string;
   onClose: () => void;
   onSelectVariant: (variant: string | string[]) => void;
-  onAdd: (setId: string) => void;
+  onAdd: (setId: string, setName?: string) => void;
   onAddHostname?: (hostname: string) => void;
 }
 
@@ -73,6 +73,7 @@ export const AddIpModal: React.FC<AddIpModalProps> = ({
   const [asn, setAsn] = React.useState<string>("");
   const [prefixes, setPrefixes] = React.useState<string[]>([]);
   const [addMode, setAddMode] = React.useState<"single" | "all">("single");
+  const [newSetName, setNewSetName] = React.useState<string>("");
 
   React.useEffect(() => {
     if (open) {
@@ -153,16 +154,17 @@ export const AddIpModal: React.FC<AddIpModalProps> = ({
         const loadedPrefixes = data.data.prefixes.map((p) => p.prefix);
         setPrefixes(loadedPrefixes);
         setAddMode("all");
+        onSelectVariant(loadedPrefixes);
       }
     } catch (error) {
       console.error("Failed to load RIPE prefixes:", error);
     } finally {
       setLoadingPrefixes(false);
     }
-  }, [asn]);
+  }, [asn, onSelectVariant]);
 
   const handleAdd = () => {
-    onAdd(selectedSetId);
+    onAdd(selectedSetId, newSetName);
   };
 
   React.useEffect(() => {
@@ -215,7 +217,6 @@ export const AddIpModal: React.FC<AddIpModalProps> = ({
           information to load all ASN prefixes.
         </Alert>
 
-        {/* Original IP and Enrichment section */}
         <Box sx={{ mb: 3 }}>
           {!ipInfo ? (
             <Stack direction="row" spacing={2} alignItems="center">
@@ -306,7 +307,10 @@ export const AddIpModal: React.FC<AddIpModalProps> = ({
           <SetSelector
             sets={sets}
             value={selectedSetId}
-            onChange={setSelectedSetId}
+            onChange={(setId, name) => {
+              setSelectedSetId(setId);
+              if (name) setNewSetName(name);
+            }}
           />
         )}
 

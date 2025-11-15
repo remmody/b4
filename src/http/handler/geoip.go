@@ -11,8 +11,9 @@ import (
 )
 
 type AddGeoIpRequest struct {
-	Cidr  []string `json:"cidr"`
-	SetId string   `json:"set_id,omitempty"`
+	Cidr    []string `json:"cidr"`
+	SetId   string   `json:"set_id,omitempty"`
+	SetName string   `json:"set_name,omitempty"`
 }
 
 type AddIpResponse struct {
@@ -59,7 +60,13 @@ func (a *API) AddGeoIpTag(w http.ResponseWriter, r *http.Request) {
 	if set == nil && req.SetId == config.NEW_SET_ID {
 		set = &config.DefaultSetConfig
 		set.Id = uuid.New().String()
+
 		a.cfg.Sets = append(a.cfg.Sets, set)
+		if req.SetName != "" {
+			set.Name = req.SetName
+		} else {
+			set.Name = "Set " + fmt.Sprintf("%d", len(a.cfg.Sets)+1)
+		}
 	}
 	if set == nil {
 		http.Error(w, fmt.Sprintf("Set with ID '%s' not found", req.SetId), http.StatusBadRequest)
