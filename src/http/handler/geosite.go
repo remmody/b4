@@ -9,6 +9,7 @@ import (
 
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/log"
+	"github.com/google/uuid"
 )
 
 func (api *API) RegisterGeositeApi() {
@@ -46,6 +47,12 @@ func (a *API) addGeositeDomain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	set := a.cfg.GetSetById(req.SetId)
+
+	if set == nil && req.SetId == config.NEW_SET_ID {
+		set = &config.DefaultSetConfig
+		set.Id = uuid.New().String()
+		a.cfg.Sets = append(a.cfg.Sets, set)
+	}
 	if set == nil {
 		http.Error(w, fmt.Sprintf("Set with ID '%s' not found", req.SetId), http.StatusBadRequest)
 		return

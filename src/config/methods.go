@@ -302,21 +302,25 @@ func (set *SetConfig) ResetToDefaults() {
 	set.Targets = targets
 }
 
-func (t *TargetsConfig) AppendIP(ip string) error {
+func (t *TargetsConfig) AppendIP(ip []string) error {
 
 	for _, existingIP := range t.IPs {
-		if existingIP == ip {
-			return log.Errorf("IP '%s' already exists in the set", ip)
+		for _, newIP := range ip {
+			if existingIP == newIP {
+				return log.Errorf("IP '%s' already exists in the set", newIP)
+			}
 		}
 	}
-	t.IPs = append(t.IPs, ip)
+	t.IPs = append(t.IPs, ip...)
 
 	for _, existingIP := range t.IpsToMatch {
-		if existingIP == ip {
-			return log.Errorf("IP '%s' already exists in the set", ip)
+		for _, newIP := range ip {
+			if existingIP == newIP {
+				return log.Errorf("IP '%s' already exists in the set", newIP)
+			}
 		}
 	}
-	t.IpsToMatch = append(t.IpsToMatch, ip)
+	t.IpsToMatch = append(t.IpsToMatch, ip...)
 	return nil
 }
 

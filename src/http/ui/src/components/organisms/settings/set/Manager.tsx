@@ -42,7 +42,7 @@ import { B4Dialog } from "@molecules/common/B4Dialog";
 import { SetEditor } from "./Editor";
 
 import { colors, radius, button_secondary } from "@design";
-import { B4Config, B4SetConfig } from "@models/Config";
+import { B4Config, B4SetConfig, MAIN_SET_ID } from "@models/Config";
 
 export interface SetStats {
   manual_domains: number;
@@ -87,7 +87,6 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
     open: false,
     setId: null,
   });
-  const mainSetId = "11111111-1111-1111-1111-111111111111";
   const setsData = config.sets || [];
   const sets = setsData.map((s) => ("set" in s ? s.set : s)) as B4SetConfig[];
   const setsStats = setsData.map((s) =>
@@ -258,7 +257,7 @@ export const SetsManager: React.FC<SetsManagerProps> = ({
         <List sx={{ p: 0 }}>
           <Stack spacing={2}>
             {sets.map((set, index) => {
-              const isMain = set.id === mainSetId;
+              const isMain = set.id === MAIN_SET_ID;
               const isExpanded = expandedSet === set.id;
               const domainCount = getDomainCount(set, index);
               const ipCount = getIpCount(set, index);

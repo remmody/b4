@@ -7,17 +7,17 @@ import (
 
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/log"
+	"github.com/google/uuid"
 )
 
 type AddGeoIpRequest struct {
-	Cidr  string `json:"cidr"`
-	SetId string `json:"set_id,omitempty"`
+	Cidr  []string `json:"cidr"`
+	SetId string   `json:"set_id,omitempty"`
 }
 
 type AddIpResponse struct {
 	Success     bool     `json:"success"`
 	Message     string   `json:"message"`
-	Cidr        string   `json:"cidr"`
 	TotalCidrs  int      `json:"total_cidrs"`
 	ManualCidrs []string `json:"manual_cidrs,omitempty"`
 }
@@ -55,12 +55,18 @@ func (a *API) AddGeoIpTag(w http.ResponseWriter, r *http.Request) {
 	}
 
 	set := a.cfg.GetSetById(req.SetId)
+
+	if set == nil && req.SetId == config.NEW_SET_ID {
+		set = &config.DefaultSetConfig
+		set.Id = uuid.New().String()
+		a.cfg.Sets = append(a.cfg.Sets, set)
+	}
 	if set == nil {
 		http.Error(w, fmt.Sprintf("Set with ID '%s' not found", req.SetId), http.StatusBadRequest)
 		return
 	}
 
-	if req.Cidr == "" {
+	if len(req.Cidr) == 0 {
 		http.Error(w, "CIDR cannot be empty", http.StatusBadRequest)
 		return
 	}
@@ -84,7 +90,6 @@ func (a *API) AddGeoIpTag(w http.ResponseWriter, r *http.Request) {
 	response := AddIpResponse{
 		Success:     true,
 		Message:     fmt.Sprintf("Successfully added CIDR '%s'", req.Cidr),
-		Cidr:        req.Cidr,
 		TotalCidrs:  len(set.Targets.IPs),
 		ManualCidrs: set.Targets.IPs,
 	}

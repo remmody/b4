@@ -4,7 +4,8 @@ import { DomainsControlBar } from "@/components/organisms/domains/ControlBar";
 import { AddSniModal } from "@/components/organisms/domains/AddSniModal";
 import { DomainsTable, SortColumn } from "@organisms/domains/Table";
 import { SortDirection } from "@atoms/common/SortableTableCell";
-import { IpInfoModal } from "../organisms/api/IpInfoDialog";
+import { IpInfoModal } from "@organisms/api/IpInfoDialog";
+import { RipeDialog } from "@organisms/api/RipeDialog";
 import {
   useDomainActions,
   useParsedLogs,
@@ -90,6 +91,30 @@ export default function Domains() {
   });
 
   const [ipInfoToken, setIpInfoToken] = useState<string>("");
+
+  const [ripeModalState, setRipeModalState] = useState<{
+    open: boolean;
+    ip: string;
+  }>({
+    open: false,
+    ip: "",
+  });
+
+  const handleRipeClick = (ip: string) => {
+    setRipeModalState({ open: true, ip });
+  };
+
+  const handleRipeClose = () => {
+    setRipeModalState({ open: false, ip: "" });
+  };
+
+  const handleAddPrefixesFromRipe = async (
+    setId: string,
+    prefixes: string[]
+  ) => {
+    modalIpState.selected = prefixes;
+    await addIp(setId);
+  };
 
   useEffect(() => {
     const fetchSets = async () => {
@@ -246,6 +271,7 @@ export default function Domains() {
           onScroll={handleScroll}
           hasIpInfoToken={!!ipInfoToken}
           onIpInfoClick={handleIpInfoClick}
+          onRipeClick={handleRipeClick}
         />
       </Paper>
 
@@ -266,7 +292,7 @@ export default function Domains() {
         open={modalIpState.open}
         ip={modalIpState.ip}
         variants={modalIpState.variants}
-        selected={modalIpState.selected}
+        selected={modalIpState.selected as string}
         sets={availableSets}
         onClose={closeIpModal}
         onSelectVariant={selectIpVariant}
@@ -281,6 +307,14 @@ export default function Domains() {
         token={ipInfoToken}
         onClose={handleIpInfoClose}
         onAddHostname={handleAddHostnameFromIpInfo}
+      />
+
+      <RipeDialog
+        open={ripeModalState.open}
+        ip={ripeModalState.ip}
+        sets={availableSets}
+        onClose={handleRipeClose}
+        onAdd={handleAddPrefixesFromRipe}
       />
 
       <Snackbar

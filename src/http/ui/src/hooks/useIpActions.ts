@@ -4,7 +4,7 @@ interface IpModalState {
   open: boolean;
   ip: string;
   variants: string[];
-  selected: string;
+  selected: string | string[];
 }
 
 interface SnackbarState {
@@ -62,7 +62,9 @@ export function useIpActions() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            cidr: modalState.selected,
+            cidr: Array.isArray(modalState.selected)
+              ? modalState.selected
+              : [modalState.selected],
             set_id: setId,
           }),
         });
@@ -70,7 +72,11 @@ export function useIpActions() {
         if (response.ok) {
           setSnackbar({
             open: true,
-            message: `Successfully added "${modalState.selected}" to manual ips`,
+            message: `Successfully added "${
+              Array.isArray(modalState.selected)
+                ? modalState.selected.length + " IPs"
+                : modalState.selected
+            }" to manual ips`,
             severity: "success",
           });
           closeModal();

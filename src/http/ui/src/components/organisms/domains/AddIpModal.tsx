@@ -10,17 +10,14 @@ import {
   ListItemIcon,
   Radio,
   Box,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DomainIcon from "@mui/icons-material/Language";
 import { colors, button_primary, button_secondary } from "@design";
 import { B4Dialog } from "@molecules/common/B4Dialog";
 import { B4Badge } from "@/components/atoms/common/B4Badge";
-import { B4SetConfig } from "@/models/Config";
+import { B4SetConfig, MAIN_SET_ID } from "@/models/Config";
+import { SetSelector } from "@molecules/common/SetSelector";
 
 interface AddIpModalProps {
   open: boolean;
@@ -50,7 +47,7 @@ export const AddIpModal: React.FC<AddIpModalProps> = ({
 
   React.useEffect(() => {
     if (open && sets.length > 0) {
-      setSelectedSetId("11111111-1111-1111-1111-111111111111");
+      setSelectedSetId(MAIN_SET_ID);
     }
   }, [open, sets]);
 
@@ -93,26 +90,11 @@ export const AddIpModal: React.FC<AddIpModalProps> = ({
           Original IP: <B4Badge label={ip} badgeVariant="secondary" />
         </Typography>
         {sets.length > 0 && (
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Target Set</InputLabel>
-            <Select
-              value={selectedSetId}
-              label="Target Set"
-              onChange={(e) => setSelectedSetId(e.target.value)}
-              sx={{
-                bgcolor: colors.background.dark,
-                "& fieldset": {
-                  borderColor: `${colors.border.default} !important`,
-                },
-              }}
-            >
-              {sets.map((set) => (
-                <MenuItem key={set.id} value={set.id}>
-                  {set.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <SetSelector
+            sets={sets}
+            value={selectedSetId}
+            onChange={setSelectedSetId}
+          />
         )}
         <List>
           {variants.map((variant) => (
