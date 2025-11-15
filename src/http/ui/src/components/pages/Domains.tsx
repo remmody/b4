@@ -5,6 +5,7 @@ import { AddSniModal } from "@/components/organisms/domains/AddSniModal";
 import { DomainsTable, SortColumn } from "@organisms/domains/Table";
 import { SortDirection } from "@atoms/common/SortableTableCell";
 import { IpInfoModal } from "../organisms/api/IpInfoDialog";
+import { BdcModal } from "../organisms/api/BdcModal";
 import {
   useDomainActions,
   useParsedLogs,
@@ -89,7 +90,16 @@ export default function Domains() {
     ip: "",
   });
 
+  const [bdcModalState, setBdcModalState] = useState<{
+    open: boolean;
+    ip: string;
+  }>({
+    open: false,
+    ip: "",
+  });
+
   const [ipInfoToken, setIpInfoToken] = useState<string>("");
+  const [bdcToken, setBdcToken] = useState<string>("");
 
   useEffect(() => {
     const fetchSets = async () => {
@@ -103,6 +113,9 @@ export default function Domains() {
           if (data.system?.api?.ipinfo_token) {
             setIpInfoToken(data.system.api.ipinfo_token);
           }
+          if (data.system?.api?.bdc_key) {
+            setBdcToken(data.system.api.bdc_key);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch sets:", error);
@@ -110,6 +123,13 @@ export default function Domains() {
     };
     void fetchSets();
   }, []);
+
+  const handleBdcClick = (ip: string) => {
+    setBdcModalState({ open: true, ip });
+  };
+  const handleBdcClose = () => {
+    setBdcModalState({ open: false, ip: "" });
+  };
 
   const handleIpInfoClick = (ip: string) => {
     setIpInfoModalState({ open: true, ip });
@@ -245,7 +265,9 @@ export default function Domains() {
           tableRef={tableRef}
           onScroll={handleScroll}
           hasIpInfoToken={!!ipInfoToken}
+          hasBdcToken={!!bdcToken}
           onIpInfoClick={handleIpInfoClick}
+          onBdcClick={handleBdcClick}
         />
       </Paper>
 
@@ -281,6 +303,13 @@ export default function Domains() {
         token={ipInfoToken}
         onClose={handleIpInfoClose}
         onAddHostname={handleAddHostnameFromIpInfo}
+      />
+
+      <BdcModal
+        open={bdcModalState.open}
+        ip={bdcModalState.ip}
+        token={bdcToken}
+        onClose={handleBdcClose}
       />
 
       <Snackbar

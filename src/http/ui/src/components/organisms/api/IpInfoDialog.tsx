@@ -124,7 +124,15 @@ export const IpInfoModal: React.FC<IpInfoModalProps> = ({
                 <Typography variant="caption" color="text.secondary">
                   Organization
                 </Typography>
-                <Typography variant="body1">{ipInfo.org}</Typography>
+                <Typography variant="body1">
+                  <a
+                    href={"https://ipinfo.io/" + ipInfo.org.split(" ")[0]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {ipInfo.org}
+                  </a>
+                </Typography>
               </Box>
             )}
 
@@ -144,7 +152,13 @@ export const IpInfoModal: React.FC<IpInfoModalProps> = ({
                 IP Address
               </Typography>
               <Typography variant="body1" fontFamily="monospace">
-                {ipInfo.ip}
+                <a
+                  href={"https://ipinfo.io/" + ipInfo.ip}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {ipInfo.ip}
+                </a>
               </Typography>
             </Box>
 

@@ -126,6 +126,11 @@ func (w *Worker) Start() error {
 				src = net.IP(raw[8:24])
 				dst = net.IP(raw[24:40])
 			}
+
+			if src.IsLoopback() || dst.IsLoopback() {
+				_ = q.SetVerdict(id, nfqueue.NfAccept)
+				return 0
+			}
 			srcStr := src.String()
 			dstStr := dst.String()
 
@@ -232,6 +237,12 @@ func (w *Worker) Start() error {
 				payload := udp[8:]
 				sport := binary.BigEndian.Uint16(udp[0:2])
 				dport := binary.BigEndian.Uint16(udp[2:4])
+
+				// Early exit for DNS
+				if dport == 53 || sport == 53 {
+					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					return 0
+				}
 
 				if set == nil {
 					set = cfg.MainSet

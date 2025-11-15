@@ -9,12 +9,8 @@ import {
   Typography,
   Stack,
   Box,
-  IconButton,
 } from "@mui/material";
-import {
-  Add as AddIcon,
-  InfoOutlined as InfoOutlinedIcon,
-} from "@mui/icons-material";
+import { Add as AddIcon } from "@mui/icons-material";
 import {
   SortableTableCell,
   SortDirection,
@@ -25,8 +21,8 @@ import { B4Badge } from "@/components/atoms/common/B4Badge";
 
 export type SortColumn =
   | "timestamp"
-  | "protocol"
   | "set"
+  | "protocol"
   | "domain"
   | "source"
   | "destination";
@@ -53,6 +49,8 @@ interface DomainsTableProps {
   onScroll: () => void;
   hasIpInfoToken: boolean;
   onIpInfoClick: (ip: string) => void;
+  hasBdcToken: boolean;
+  onBdcClick: (ip: string) => void;
 }
 
 export const DomainsTable: React.FC<DomainsTableProps> = ({
@@ -66,6 +64,8 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
   onScroll,
   hasIpInfoToken,
   onIpInfoClick,
+  hasBdcToken,
+  onBdcClick,
 }) => {
   return (
     <TableContainer
@@ -90,6 +90,12 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
               active={sortColumn === "protocol"}
               direction={sortColumn === "protocol" ? sortDirection : null}
               onSort={() => onSort("protocol")}
+            />{" "}
+            <SortableTableCell
+              label="Set"
+              active={sortColumn === "set"}
+              direction={sortColumn === "set" ? sortDirection : null}
+              onSort={() => onSort("set")}
             />
             <SortableTableCell
               label="Domain"
@@ -155,7 +161,18 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
                 >
                   <ProtocolChip protocol={log.protocol} />
                 </TableCell>
-
+                <TableCell
+                  sx={{
+                    borderBottom: `1px solid ${colors.border.light}`,
+                  }}
+                >
+                  {(log.ipSet || log.hostSet) && (
+                    <B4Badge
+                      badgeVariant="secondary"
+                      label={log.ipSet || log.hostSet}
+                    />
+                  )}
+                </TableCell>
                 <TableCell
                   sx={{
                     color: "text.primary",
@@ -228,24 +245,7 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
                       {log.destination}
                     </Box>
                     <Box sx={{ flex: 1 }} />
-                    {hasIpInfoToken && (
-                      <IconButton
-                        size="small"
-                        onClick={() => onIpInfoClick(log.destination)}
-                        sx={{
-                          color: colors.tertiary,
-                          "&:hover": {
-                            color: colors.secondary,
-                            bgcolor: colors.accent.secondaryHover,
-                          },
-                        }}
-                      >
-                        <InfoOutlinedIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                    {log.ipSet ? (
-                      <B4Badge badgeVariant="secondary" label={log.ipSet} />
-                    ) : (
+                    {!log.ipSet && (
                       <AddIcon
                         onClick={() => onIpClick(log.destination)}
                         sx={{
@@ -255,6 +255,36 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
                           borderRadius: "50%",
                           "&:hover": {
                             bgcolor: colors.secondary,
+                          },
+                        }}
+                      />
+                    )}
+                    {hasIpInfoToken && (
+                      <B4Badge
+                        onClick={() => onIpInfoClick(log.destination)}
+                        badgeVariant="primary"
+                        label="IPI"
+                        sx={{
+                          bgcolor: colors.accent.primary,
+                          border: `1px solid ${colors.primary}`,
+                          color: colors.secondary,
+                          "& .MuiChip-deleteIcon": {
+                            color: colors.secondary,
+                          },
+                        }}
+                      />
+                    )}
+                    {hasBdcToken && (
+                      <B4Badge
+                        onClick={() => onBdcClick(log.destination)}
+                        badgeVariant="primary"
+                        label="BDC"
+                        sx={{
+                          bgcolor: colors.accent.primary,
+                          border: `1px solid ${colors.primary}`,
+                          color: colors.secondary,
+                          "& .MuiChip-deleteIcon": {
+                            color: colors.secondary,
                           },
                         }}
                       />
