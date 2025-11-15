@@ -1,13 +1,10 @@
 export const formatBytes = (
   bytes: number | string | null | undefined
 ): string => {
-  // Handle null/undefined/invalid values
   if (bytes === null || bytes === undefined) return "0 B";
 
-  // Convert to number safely
   const num = typeof bytes === "string" ? parseFloat(bytes) : Number(bytes);
 
-  // Check for invalid numbers
   if (isNaN(num) || !isFinite(num) || num < 0) return "0 B";
 
   if (num === 0) return "0 B";
@@ -17,23 +14,18 @@ export const formatBytes = (
   const i = Math.min(Math.floor(Math.log(num) / Math.log(k)), sizes.length - 1);
   const value = num / Math.pow(k, i);
 
-  // Safe formatting
   return (isFinite(value) ? value.toFixed(2) : "0") + " " + sizes[i];
 };
 
 export const formatNumber = (
   num: number | string | null | undefined
 ): string => {
-  // Handle null/undefined/invalid values
   if (num === null || num === undefined) return "0";
 
-  // Convert to number safely
   const value = typeof num === "string" ? parseFloat(num) : Number(num);
 
-  // Check for invalid numbers
   if (isNaN(value) || !isFinite(value)) return "0";
 
-  // Handle negative numbers
   const absValue = Math.abs(value);
   const sign = value < 0 ? "-" : "";
 

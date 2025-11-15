@@ -25,6 +25,7 @@ import { B4Dialog } from "@molecules/common/B4Dialog";
 import { B4Badge } from "@/components/atoms/common/B4Badge";
 import { B4SetConfig, MAIN_SET_ID } from "@/models/Config";
 import { SetSelector } from "@molecules/common/SetSelector";
+import { asnStorage } from "@utils";
 
 interface IpInfo {
   ip: string;
@@ -153,6 +154,10 @@ export const AddIpModal: React.FC<AddIpModalProps> = ({
         };
         const loadedPrefixes = data.data.prefixes.map((p) => p.prefix);
         setPrefixes(loadedPrefixes);
+        setAddMode("all");
+        onSelectVariant(loadedPrefixes);
+        asnStorage.addAsn(asn, ipInfo?.org || `AS${asn}`, loadedPrefixes);
+
         setAddMode("all");
         onSelectVariant(loadedPrefixes);
       }
