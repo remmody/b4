@@ -188,19 +188,16 @@ export const DomainsTable: React.FC<DomainsTableProps> = ({
                   >
                     {log.domain && <Typography>{log.domain}</Typography>}
                     <Box sx={{ flex: 1 }} />
-                    {log.domain &&
-                      (log.hostSet ? (
-                        <B4Badge badgeVariant="secondary" label={log.hostSet} />
-                      ) : (
-                        <AddIcon
-                          sx={{
-                            fontSize: 16,
-                            bgcolor: `${colors.secondary}88`,
-                            color: colors.background.default,
-                            borderRadius: "50%",
-                          }}
-                        />
-                      ))}
+                    {log.domain && !log.hostSet && (
+                      <AddIcon
+                        sx={{
+                          fontSize: 16,
+                          bgcolor: `${colors.secondary}88`,
+                          color: colors.background.default,
+                          borderRadius: "50%",
+                        }}
+                      />
+                    )}
                   </Stack>
                 </TableCell>
                 <TableCell
