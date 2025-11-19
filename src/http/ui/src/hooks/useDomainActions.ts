@@ -53,7 +53,7 @@ export function useDomainActions() {
   }, []);
 
   const addDomain = useCallback(
-    async (setId: string) => {
+    async (setId: string, setName?: string) => {
       if (!modalState.selected) return;
 
       try {
@@ -65,6 +65,7 @@ export function useDomainActions() {
           body: JSON.stringify({
             domain: modalState.selected,
             set_id: setId,
+            set_name: setName,
           }),
         });
 

@@ -53,7 +53,7 @@ export const GeoSettings: React.FC<GeoSettingsProps> = ({ config }) => {
   useEffect(() => {
     void loadSources();
     setDestPath(extractDir(config.system.geo.sitedat_path) || "/etc/b4");
-  }, []);
+  }, [config.system.geo.sitedat_path]);
 
   const checkFileStatus = useCallback(async () => {
     if (config.system.geo.sitedat_path) {

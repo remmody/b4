@@ -5,7 +5,8 @@
 - ADDED: Asynchronous packet injection for TCP and UDP traffic. Verdict is now sent to kernel immediately, with packet manipulation performed in parallel. Eliminates kernel queue blocking that previously caused video streaming hangs and site loading delays.
 - FIXED: Critical performance bottleneck where each QUIC/UDP packet with default configuration (FakeSeqLength: 6) would block the kernel for 6ms minimum. This caused YouTube and other video services to buffer or hang intermittently.
 - FIXED: IPv6 QUIC packet processing incorrectly used TCP delay settings instead of UDP delay settings.
-- IMPROVED: Removed unnecessary 1ms sleep delays when `Seg2Delay` is set to 0, reducing packet processing latency by up to 6ms per QUIC packet.
+- FIXED: New configuration sets created from the Domains page were not saving custom names, defaulting to generic "Set 1/2/3" names instead.
+- IMPROVED: Removed unnecessary `1ms` sleep delays when `Seg2Delay` is set to `0`, reducing packet processing latency by up to `6ms` per QUIC packet.
 
 ## [1.16.0] - 2024-11-17
 
