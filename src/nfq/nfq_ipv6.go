@@ -11,7 +11,7 @@ import (
 
 // dropAndInjectQUIV6 handles QUIC (UDP) packet manipulation for IPv6
 func (w *Worker) dropAndInjectQUICV6(cfg *config.SetConfig, raw []byte, dst net.IP) {
-	seg2d := cfg.TCP.Seg2Delay
+	seg2d := cfg.UDP.Seg2Delay
 	if cfg.UDP.Mode != "fake" {
 		return
 	}
@@ -32,8 +32,6 @@ func (w *Worker) dropAndInjectQUICV6(cfg *config.SetConfig, raw []byte, dst net.
 				_ = w.sock.SendIPv6(fake, dst)
 				if seg2d > 0 {
 					time.Sleep(time.Duration(seg2d) * time.Millisecond)
-				} else {
-					time.Sleep(1 * time.Millisecond)
 				}
 			}
 		}

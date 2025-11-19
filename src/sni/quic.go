@@ -1,7 +1,6 @@
 package sni
 
 import (
-	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/quic"
 	"golang.org/x/crypto/cryptobyte"
 )
@@ -18,7 +17,6 @@ func ParseQUICClientHelloSNI(payload []byte) (string, bool) {
 	}
 	crypto, ok := assembleSafe(dcid, plain)
 	if !ok || len(crypto) == 0 {
-		log.Tracef("QUIC: no CRYPTO frames")
 		return "", false
 	}
 	host, err := extractSNIFromQUIC(crypto)

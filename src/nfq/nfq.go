@@ -213,12 +213,21 @@ func (w *Worker) Start() error {
 					metrics.RecordConnection("TCP", host, srcStr, dstStr, true)
 					metrics.RecordPacket(uint64(len(raw)))
 
-					if v == 4 {
-						w.dropAndInjectTCP(set, raw, dst)
-					} else {
-						w.dropAndInjectTCPv6(set, raw, dst)
-					}
+					packetCopy := make([]byte, len(raw))
+					copy(packetCopy, raw)
+					dstCopy := make(net.IP, len(dst))
+					copy(dstCopy, dst)
+					setCopy := set
+
 					_ = q.SetVerdict(id, nfqueue.NfDrop)
+
+					go func(s *config.SetConfig, pkt []byte, d net.IP) {
+						if v == 4 {
+							w.dropAndInjectTCP(s, pkt, d)
+						} else {
+							w.dropAndInjectTCPv6(s, pkt, d)
+						}
+					}(setCopy, packetCopy, dstCopy)
 					return 0
 				}
 
@@ -320,12 +329,21 @@ func (w *Worker) Start() error {
 					return 0
 
 				case "fake":
-					if v == IPv4 {
-						w.dropAndInjectQUIC(set, raw, dst)
-					} else {
-						w.dropAndInjectQUICV6(set, raw, dst)
-					}
+					packetCopy := make([]byte, len(raw))
+					copy(packetCopy, raw)
+					dstCopy := make(net.IP, len(dst))
+					copy(dstCopy, dst)
+					setCopy := set
+
 					_ = q.SetVerdict(id, nfqueue.NfDrop)
+
+					go func(s *config.SetConfig, pkt []byte, d net.IP) {
+						if v == IPv4 {
+							w.dropAndInjectQUIC(s, pkt, d)
+						} else {
+							w.dropAndInjectQUICV6(s, pkt, d)
+						}
+					}(setCopy, packetCopy, dstCopy)
 					return 0
 
 				default:
@@ -378,8 +396,6 @@ func (w *Worker) dropAndInjectQUIC(cfg *config.SetConfig, raw []byte, dst net.IP
 				_ = w.sock.SendIPv4(fake, dst)
 				if seg2d > 0 {
 					time.Sleep(time.Duration(seg2d) * time.Millisecond)
-				} else {
-					time.Sleep(1 * time.Millisecond)
 				}
 			}
 		}
