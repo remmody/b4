@@ -53,6 +53,9 @@ var DefaultSetConfig = SetConfig{
 		SNIReverse:  true,
 		MiddleSNI:   true,
 		SNIPosition: 1,
+		OOBPosition: 0,
+		OOBReverse:  false,
+		OOBChar:     'x',
 	},
 
 	Faking: FakingConfig{

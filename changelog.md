@@ -1,5 +1,9 @@
 # B4 - Bye Bye Big Bro
 
+## [1.17.0] - 2024-xx-xx
+
+- ADDED: `Out-of-Band` (OOB) data handling with configurable position, reverse order, and character.
+
 ## [1.16.1] - 2024-11-20
 
 - ADDED: Asynchronous packet injection for TCP and UDP traffic. Verdict is now sent to kernel immediately, with packet manipulation performed in parallel. Eliminates kernel queue blocking that previously caused video streaming hangs and site loading delays.

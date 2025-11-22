@@ -444,6 +444,12 @@ func (w *Worker) dropAndInjectTCP(cfg *config.SetConfig, raw []byte, dst net.IP)
 		return
 	}
 
+	if cfg.Fragmentation.OOBPosition > 0 {
+		if w.sendWithOOB(cfg, raw, dst) {
+			return
+		}
+	}
+
 	ipHdrLen := int((raw[0] & 0x0F) * 4)
 	tcpHdrLen := int((raw[ipHdrLen+12] >> 4) * 4)
 	payloadStart := ipHdrLen + tcpHdrLen
