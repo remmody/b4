@@ -1,13 +1,18 @@
-// src/capture/manager.go
 package capture
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/daniellavrushin/b4/config"
+	"github.com/daniellavrushin/b4/log"
 )
 
 var (
@@ -16,176 +21,326 @@ var (
 )
 
 type Manager struct {
-	mu         sync.RWMutex
-	sessions   map[string]*CaptureSession
-	outputPath string
+	mu           sync.RWMutex
+	metadata     map[string]map[string]*CaptureMetadata
+	outputPath   string
+	metadataFile string
+	activeProbes map[string]time.Time
 }
 
-type CaptureSession struct {
-	ID         string    `json:"id"`
-	Domain     string    `json:"domain"`
-	Protocol   string    `json:"protocol"` // "tls", "quic", or "both"
-	MaxPackets int       `json:"max_packets"`
-	Count      int       `json:"count"`
-	StartTime  time.Time `json:"start_time"`
-	Active     bool      `json:"active"`
-	Captures   []Capture `json:"captures"`
-	mu         sync.Mutex
+type CaptureMetadata struct {
+	Timestamp time.Time `json:"timestamp"`
+	Size      int       `json:"size"`
+	Filepath  string    `json:"filepath"`
 }
 
+// API response structure
 type Capture struct {
 	Protocol  string    `json:"protocol"`
 	Domain    string    `json:"domain"`
 	Timestamp time.Time `json:"timestamp"`
 	Size      int       `json:"size"`
 	Filepath  string    `json:"filepath"`
-	HexData   string    `json:"hex_data,omitempty"`
+	HexData   string    `json:"hex_data"`
 }
 
-func GetManager() *Manager {
+func GetManager(cfg *config.Config) *Manager {
 	once.Do(func() {
+		baseDirPath := filepath.Dir(cfg.ConfigPath)
+		outputPath := filepath.Join(baseDirPath, "captures")
+
 		instance = &Manager{
-			sessions:   make(map[string]*CaptureSession),
-			outputPath: "./captures",
+			metadata:     make(map[string]map[string]*CaptureMetadata),
+			outputPath:   outputPath,
+			metadataFile: filepath.Join(outputPath, "payloads.json"),
+			activeProbes: make(map[string]time.Time),
 		}
+
 		os.MkdirAll(instance.outputPath, 0755)
+
+		instance.loadMetadata()
+		go instance.cleanupExpiredProbes()
 	})
 	return instance
 }
 
-func (m *Manager) StartSession(domain, protocol string, maxPackets int) (*CaptureSession, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	sessionID := fmt.Sprintf("cap_%d", time.Now().Unix())
-
-	session := &CaptureSession{
-		ID:         sessionID,
-		Domain:     domain,
-		Protocol:   protocol,
-		MaxPackets: maxPackets,
-		StartTime:  time.Now(),
-		Active:     true,
-		Captures:   []Capture{},
-	}
-
-	m.sessions[sessionID] = session
-	return session, nil
+func (m *Manager) GetOutputPath() string {
+	return m.outputPath
 }
 
-func (m *Manager) GetSession(id string) (*CaptureSession, bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	session, ok := m.sessions[id]
-	return session, ok
+func (m *Manager) cleanupExpiredProbes() {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		m.mu.Lock()
+		now := time.Now()
+		for key, expiry := range m.activeProbes {
+			if now.After(expiry) {
+				delete(m.activeProbes, key)
+				log.Tracef("Probe expired for %s", key)
+			}
+		}
+		m.mu.Unlock()
+	}
 }
 
-func (m *Manager) ListSessions() []*CaptureSession {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	sessions := make([]*CaptureSession, 0, len(m.sessions))
-	for _, s := range m.sessions {
-		sessions = append(sessions, s)
+func (m *Manager) loadMetadata() {
+	data, err := os.ReadFile(m.metadataFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Errorf("Failed to read metadata: %v", err)
+		}
+		return
 	}
-	return sessions
+
+	if err := json.Unmarshal(data, &m.metadata); err != nil {
+		log.Errorf("Failed to parse metadata: %v", err)
+	}
 }
 
-func (m *Manager) StopSession(id string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	session, ok := m.sessions[id]
-	if !ok {
-		return fmt.Errorf("session not found")
+func (m *Manager) saveMetadata() error {
+	if m.metadata == nil {
+		m.metadata = make(map[string]map[string]*CaptureMetadata)
 	}
+	data, err := json.MarshalIndent(m.metadata, "", "  ")
+	if err != nil {
+		return err
+	}
+	file, err := os.OpenFile(m.metadataFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return log.Errorf("failed to create config file: %v", err)
+	}
+	defer file.Close()
 
-	session.Active = false
+	_, err = file.Write(data)
+	if err != nil {
+		return log.Errorf("failed to write config file: %v", err)
+	}
 	return nil
 }
 
+// CapturePayload called from nfq when packet matches
 func (m *Manager) CapturePayload(domain, protocol string, payload []byte) bool {
-	m.mu.RLock()
-	activeSessions := []*CaptureSession{}
-	for _, session := range m.sessions {
-		if session.Active {
-			activeSessions = append(activeSessions, session)
-		}
+	if domain == "" {
+		return false
 	}
-	m.mu.RUnlock()
 
-	captured := false
-	for _, session := range activeSessions {
-		if session.shouldCapture(domain, protocol) {
-			if err := m.saveCapture(session, protocol, domain, payload); err == nil {
-				captured = true
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Check if we're actively probing
+	var matchedKey string
+	now := time.Now()
+
+	exactKey := fmt.Sprintf("%s:%s", protocol, domain)
+	if expiry, exists := m.activeProbes[exactKey]; exists && now.Before(expiry) {
+		matchedKey = exactKey
+	} else {
+		// Try flexible matching
+		for key, expiry := range m.activeProbes {
+			if now.After(expiry) {
+				continue
+			}
+			parts := strings.SplitN(key, ":", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			probeProtocol := parts[0]
+			probeDomain := parts[1]
+
+			if probeProtocol == protocol &&
+				(probeDomain == domain ||
+					strings.HasSuffix(domain, probeDomain) ||
+					strings.HasSuffix(probeDomain, domain)) {
+				matchedKey = key
+				break
 			}
 		}
 	}
 
-	return captured
-}
-
-func (s *CaptureSession) shouldCapture(domain, protocol string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if !s.Active || s.Count >= s.MaxPackets {
+	if matchedKey == "" {
 		return false
 	}
 
-	// Check domain match (support wildcards)
-	if s.Domain != "*" && s.Domain != domain {
+	// Check if already captured
+	if m.metadata[domain] != nil && m.metadata[domain][protocol] != nil {
+		delete(m.activeProbes, matchedKey)
 		return false
 	}
 
-	// Check protocol match
-	if s.Protocol != "both" && s.Protocol != protocol {
+	// Simple filename: protocol_domain.bin
+	filename := fmt.Sprintf("%s_%s.bin", protocol, sanitizeDomain(domain))
+	filepath := filepath.Join(m.outputPath, filename)
+
+	// Save binary only
+	if err := os.WriteFile(filepath, payload, 0644); err != nil {
+		log.Errorf("Failed to save capture: %v", err)
 		return false
 	}
 
+	// Update metadata
+	if m.metadata[domain] == nil {
+		m.metadata[domain] = make(map[string]*CaptureMetadata)
+	}
+
+	m.metadata[domain][protocol] = &CaptureMetadata{
+		Timestamp: time.Now(),
+		Size:      len(payload),
+		Filepath:  filename,
+	}
+
+	// Save metadata to JSON
+	if err := m.saveMetadata(); err != nil {
+		log.Errorf("Failed to save metadata: %v", err)
+	}
+
+	delete(m.activeProbes, matchedKey)
+	log.Infof("✓ Captured %s payload for %s (%d bytes)", protocol, domain, len(payload))
 	return true
 }
 
-func (m *Manager) saveCapture(session *CaptureSession, protocol, domain string, payload []byte) error {
-	session.mu.Lock()
-	defer session.mu.Unlock()
+// ProbeCapture triggers traffic to capture payload
+func (m *Manager) ProbeCapture(domain, protocol string) error {
+	key := fmt.Sprintf("%s:%s", protocol, domain)
 
-	if session.Count >= session.MaxPackets {
-		return fmt.Errorf("max packets reached")
+	m.mu.Lock()
+	// Check if already captured
+	if m.metadata[domain] != nil && m.metadata[domain][protocol] != nil {
+		m.mu.Unlock()
+		return fmt.Errorf("already captured")
 	}
 
-	timestamp := time.Now()
-	filename := fmt.Sprintf("%s_%s_%s_%d.bin",
-		session.ID, protocol, sanitizeDomain(domain), timestamp.Unix())
-	filepath := filepath.Join(m.outputPath, filename)
+	m.activeProbes[key] = time.Now().Add(10 * time.Second)
+	log.Infof("Enabled capture for %s (expires in 10s)", key)
+	m.mu.Unlock()
 
-	// Save binary
-	if err := os.WriteFile(filepath, payload, 0644); err != nil {
-		return err
-	}
+	url := fmt.Sprintf("https://%s", domain)
+	cmd := exec.Command("curl", "-k", "--connect-timeout", "3", "-m", "5", url)
+	cmd.Stdout = nil
+	cmd.Stderr = nil
 
-	capture := Capture{
-		Protocol:  protocol,
-		Domain:    domain,
-		Timestamp: timestamp,
-		Size:      len(payload),
-		Filepath:  filepath,
-		HexData:   hex.EncodeToString(payload),
-	}
-
-	session.Captures = append(session.Captures, capture)
-	session.Count++
-
-	if session.Count >= session.MaxPackets {
-		session.Active = false
-	}
+	log.Infof("Probing %s to capture %s payload...", domain, protocol)
+	go cmd.Run()
 
 	return nil
 }
 
+// ListCaptures returns all captured payloads for API
+func (m *Manager) ListCaptures() []*Capture {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var captures []*Capture
+
+	for domain, protocols := range m.metadata {
+		for protocol, meta := range protocols {
+			// Read hex data on demand
+			filepath := filepath.Join(m.outputPath, meta.Filepath)
+			data, err := os.ReadFile(filepath)
+			var hexData string
+			if err == nil {
+				hexData = hex.EncodeToString(data)
+			}
+
+			captures = append(captures, &Capture{
+				Protocol:  protocol,
+				Domain:    domain,
+				Timestamp: meta.Timestamp,
+				Size:      meta.Size,
+				Filepath:  filepath,
+				HexData:   hexData,
+			})
+		}
+	}
+
+	return captures
+}
+
+// GetCapture returns specific capture
+func (m *Manager) GetCapture(protocol, domain string) (*Capture, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.metadata[domain] == nil || m.metadata[domain][protocol] == nil {
+		return nil, false
+	}
+
+	meta := m.metadata[domain][protocol]
+	filepath := filepath.Join(m.outputPath, meta.Filepath)
+	data, err := os.ReadFile(filepath)
+	var hexData string
+	if err == nil {
+		hexData = hex.EncodeToString(data)
+	}
+
+	capture := &Capture{
+		Protocol:  protocol,
+		Domain:    domain,
+		Timestamp: meta.Timestamp,
+		Size:      meta.Size,
+		Filepath:  filepath,
+		HexData:   hexData,
+	}
+
+	return capture, true
+}
+
+// DeleteCapture removes a capture
+func (m *Manager) DeleteCapture(protocol, domain string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.metadata[domain] == nil || m.metadata[domain][protocol] == nil {
+		return fmt.Errorf("capture not found")
+	}
+
+	// Delete file
+	meta := m.metadata[domain][protocol]
+	filepath := filepath.Join(m.outputPath, meta.Filepath)
+	os.Remove(filepath)
+
+	// Update metadata
+	delete(m.metadata[domain], protocol)
+	if len(m.metadata[domain]) == 0 {
+		delete(m.metadata, domain)
+	}
+
+	// Save updated metadata
+	if err := m.saveMetadata(); err != nil {
+		log.Errorf("Failed to save metadata: %v", err)
+	}
+
+	log.Infof("Deleted capture for %s:%s", protocol, domain)
+	return nil
+}
+
+// ClearAll removes all captures
+func (m *Manager) ClearAll() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Delete all binary files
+	for _, protocols := range m.metadata {
+		for _, meta := range protocols {
+			filepath := filepath.Join(m.outputPath, meta.Filepath)
+			os.Remove(filepath)
+		}
+	}
+
+	// Clear metadata
+	m.metadata = make(map[string]map[string]*CaptureMetadata)
+
+	// Save empty metadata
+	if err := m.saveMetadata(); err != nil {
+		log.Errorf("Failed to save metadata: %v", err)
+	}
+
+	log.Infof("Cleared all captures")
+	return nil
+}
+
 func sanitizeDomain(domain string) string {
-	// Replace dots and special chars for filename
 	result := ""
 	for _, ch := range domain {
 		if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||

@@ -1,4 +1,3 @@
-// src/http/handler/capture.go
 package handler
 
 import (
@@ -13,83 +12,130 @@ import (
 	"github.com/daniellavrushin/b4/log"
 )
 
-type StartCaptureRequest struct {
-	Domain     string `json:"domain"`   // Domain to capture (or "*" for all)
-	Protocol   string `json:"protocol"` // "tls", "quic", or "both"
-	MaxPackets int    `json:"max_packets"`
-}
-
-type CaptureSessionResponse struct {
-	ID         string            `json:"id"`
-	Active     bool              `json:"active"`
-	Count      int               `json:"count"`
-	MaxPackets int               `json:"max_packets"`
-	Captures   []capture.Capture `json:"captures"`
+type CaptureRequest struct {
+	Domain   string `json:"domain"`
+	Protocol string `json:"protocol"` // "tls", "quic", or "both"
 }
 
 func (api *API) RegisterCaptureApi() {
-	api.mux.HandleFunc("/api/capture/start", api.handleStartCapture)
-	api.mux.HandleFunc("/api/capture/stop", api.handleStopCapture)
-	api.mux.HandleFunc("/api/capture/status", api.handleCaptureStatus)
+	api.mux.HandleFunc("/api/capture/probe", api.handleProbeCapture)
 	api.mux.HandleFunc("/api/capture/list", api.handleListCaptures)
+	api.mux.HandleFunc("/api/capture/delete", api.handleDeleteCapture)
+	api.mux.HandleFunc("/api/capture/clear", api.handleClearCaptures)
 	api.mux.HandleFunc("/api/capture/download", api.handleDownloadCapture)
 }
 
-func (api *API) handleStartCapture(w http.ResponseWriter, r *http.Request) {
+// Trigger traffic to capture payload
+func (api *API) handleProbeCapture(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
-	var req StartCaptureRequest
+	var req CaptureRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	// Set defaults
-	if req.Protocol == "" {
-		req.Protocol = "both"
-	}
-	if req.MaxPackets <= 0 {
-		req.MaxPackets = 5
-	}
 	if req.Domain == "" {
-		req.Domain = "*"
-	}
-
-	manager := capture.GetManager()
-	session, err := manager.StartSession(req.Domain, req.Protocol, req.MaxPackets)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Domain required", http.StatusBadRequest)
 		return
 	}
 
-	log.Infof("Started capture session %s for domain '%s', protocol '%s', max %d packets",
-		session.ID, req.Domain, req.Protocol, req.MaxPackets)
+	// Normalize domain (lowercase, no protocol)
+	req.Domain = strings.ToLower(strings.TrimSpace(req.Domain))
+	req.Domain = strings.TrimPrefix(req.Domain, "http://")
+	req.Domain = strings.TrimPrefix(req.Domain, "https://")
+	req.Domain = strings.Split(req.Domain, "/")[0] // Remove path if any
+
+	if req.Protocol == "" {
+		req.Protocol = "both"
+	}
+
+	manager := capture.GetManager(api.cfg)
+
+	var errors []string
+
+	// Probe for the requested protocol(s)
+	if req.Protocol == "both" || req.Protocol == "tls" {
+		if err := manager.ProbeCapture(req.Domain, "tls"); err != nil {
+			errors = append(errors, fmt.Sprintf("TLS: %v", err))
+			log.Tracef("TLS probe error for %s: %v", req.Domain, err)
+		}
+	}
+
+	if req.Protocol == "both" || req.Protocol == "quic" {
+		if err := manager.ProbeCapture(req.Domain, "quic"); err != nil {
+			errors = append(errors, fmt.Sprintf("QUIC: %v", err))
+			log.Tracef("QUIC probe error for %s: %v", req.Domain, err)
+		}
+	}
+
+	// If all probes failed with "already captured", that's actually fine
+	if len(errors) > 0 {
+		allAlreadyCaptured := true
+		for _, err := range errors {
+			if !strings.Contains(err, "already captured") {
+				allAlreadyCaptured = false
+				break
+			}
+		}
+
+		if allAlreadyCaptured {
+			setJsonHeader(w)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success":          true,
+				"message":          fmt.Sprintf("Payload for %s already captured", req.Domain),
+				"already_captured": true,
+			})
+			return
+		}
+	}
 
 	setJsonHeader(w)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":    true,
-		"session_id": session.ID,
-		"message":    "Capture session started",
+		"success": true,
+		"message": fmt.Sprintf("Probing %s for %s payload", req.Domain, req.Protocol),
+		"errors":  errors,
 	})
 }
 
-func (api *API) handleStopCapture(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+// List all captures
+func (api *API) handleListCaptures(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
-	sessionID := r.URL.Query().Get("id")
-	if sessionID == "" {
-		http.Error(w, "Session ID required", http.StatusBadRequest)
+	manager := capture.GetManager(api.cfg)
+	captures := manager.ListCaptures()
+
+	if captures == nil {
+		captures = make([]*capture.Capture, 0)
+	}
+
+	setJsonHeader(w)
+	json.NewEncoder(w).Encode(captures)
+}
+
+// Delete specific capture
+func (api *API) handleDeleteCapture(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
-	manager := capture.GetManager()
-	if err := manager.StopSession(sessionID); err != nil {
+	protocol := r.URL.Query().Get("protocol")
+	domain := r.URL.Query().Get("domain")
+
+	if protocol == "" || domain == "" {
+		http.Error(w, "Protocol and domain required", http.StatusBadRequest)
+		return
+	}
+
+	manager := capture.GetManager(api.cfg)
+	if err := manager.DeleteCapture(protocol, domain); err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -97,56 +143,31 @@ func (api *API) handleStopCapture(w http.ResponseWriter, r *http.Request) {
 	setJsonHeader(w)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
-		"message": "Capture session stopped",
+		"message": "Capture deleted",
 	})
 }
 
-func (api *API) handleCaptureStatus(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+// Clear all captures
+func (api *API) handleClearCaptures(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
-	sessionID := r.URL.Query().Get("id")
-	if sessionID == "" {
-		// Return all sessions
-		manager := capture.GetManager()
-		sessions := manager.ListSessions()
-
-		setJsonHeader(w)
-		json.NewEncoder(w).Encode(sessions)
-		return
-	}
-
-	// Return specific session
-	manager := capture.GetManager()
-	session, ok := manager.GetSession(sessionID)
-	if !ok {
-		http.Error(w, "Session not found", http.StatusNotFound)
+	manager := capture.GetManager(api.cfg)
+	if err := manager.ClearAll(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	setJsonHeader(w)
-	json.NewEncoder(w).Encode(session)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "All captures cleared",
+	})
 }
 
-func (api *API) handleListCaptures(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	manager := capture.GetManager()
-	sessions := manager.ListSessions()
-
-	allCaptures := []capture.Capture{}
-	for _, session := range sessions {
-		allCaptures = append(allCaptures, session.Captures...)
-	}
-
-	setJsonHeader(w)
-	json.NewEncoder(w).Encode(allCaptures)
-}
+// Download capture file
 func (api *API) handleDownloadCapture(w http.ResponseWriter, r *http.Request) {
 	filePath := r.URL.Query().Get("file")
 	if filePath == "" {
@@ -154,32 +175,47 @@ func (api *API) handleDownloadCapture(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Security: ensure file is in captures directory
-	capturesDir := "./captures"
+	// Get the captures directory from manager
+	manager := capture.GetManager(api.cfg)
+	capturesDir := manager.GetOutputPath()
+
+	// Security check - ensure the requested file is in the captures directory
 	absPath, err := filepath.Abs(filePath)
 	if err != nil {
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
 
-	absCapturesDir, _ := filepath.Abs(capturesDir)
+	absCapturesDir, err := filepath.Abs(capturesDir)
+	if err != nil {
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Check that the file is within the captures directory
 	if !strings.HasPrefix(absPath, absCapturesDir) {
 		http.Error(w, "Access denied", http.StatusForbidden)
 		return
 	}
 
-	// Check if file exists
-	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+	// Check file exists and is a .bin file
+	info, err := os.Stat(absPath)
+	if os.IsNotExist(err) {
 		http.Error(w, "File not found", http.StatusNotFound)
 		return
 	}
 
-	// Extract filename from path
-	filename := filepath.Base(absPath)
+	if info.IsDir() || !strings.HasSuffix(absPath, ".bin") {
+		http.Error(w, "Invalid file type", http.StatusBadRequest)
+		return
+	}
 
-	// Set headers for download
+	// Serve the file
+	filename := filepath.Base(absPath)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", info.Size()))
 
 	http.ServeFile(w, r, absPath)
+	log.Tracef("Served capture file: %s", filename)
 }

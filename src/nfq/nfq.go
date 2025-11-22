@@ -192,7 +192,7 @@ func (w *Worker) Start() error {
 				if dport == HTTPSPort && len(payload) > 0 {
 					if h, ok := sni.ParseTLSClientHelloSNI(payload); ok {
 						host = h
-						if captureManager := capture.GetManager(); captureManager != nil {
+						if captureManager := capture.GetManager(cfg); captureManager != nil {
 							go captureManager.CapturePayload(host, "tls", payload)
 						}
 
@@ -304,7 +304,7 @@ func (w *Worker) Start() error {
 					}
 				}
 
-				if captureManager := capture.GetManager(); captureManager != nil {
+				if captureManager := capture.GetManager(cfg); captureManager != nil {
 					go captureManager.CapturePayload(host, "quic", payload)
 				}
 
