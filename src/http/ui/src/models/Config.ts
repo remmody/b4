@@ -29,7 +29,7 @@ export interface FragmentationConfig {
   middle_sni: boolean;
   oob_position: number;
   oob_reverse: boolean;
-  oob_char: string;
+  oob_char: number;
 }
 
 export enum LogLevel {

@@ -122,10 +122,13 @@ export const FragmentationSettings: React.FC<FragmentationSettingsProps> = ({
         <Grid size={{ xs: 12, md: 4 }}>
           <B4TextField
             label="OOB Character"
-            value={config.fragmentation.oob_char || "x"}
+            value={String.fromCharCode(config.fragmentation.oob_char || 120)}
             onChange={(e) => {
               const char = e.target.value.slice(0, 1);
-              onChange("fragmentation.oob_char", char || "x");
+              onChange(
+                "fragmentation.oob_char",
+                char ? char.charCodeAt(0) : 120
+              );
             }}
             placeholder="x"
             helperText="Character to append as OOB data"
