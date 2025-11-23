@@ -1,5 +1,9 @@
 # B4 - Bye Bye Big Bro
 
+## [1.17.1] - 2025-11-23
+
+- FIXED: update default fake SNI payload to use new format.
+
 ## [1.17.0] - 2025-11-23
 
 - ADDED: `Out-of-Band` (OOB) data handling with configurable position, reverse order, and character (`--frag=oob`).

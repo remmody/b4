@@ -23,7 +23,7 @@ func BuildFakeSNIPacketV4(original []byte, cfg *config.SetConfig) []byte {
 	case config.FakePayloadCustom:
 		fakePayload = []byte(cfg.Faking.CustomPayload)
 	default:
-		fakePayload = FakeSNIOld
+		fakePayload = FakeSNI
 	}
 
 	fakeLen := ipHdrLen + tcpHdrLen + len(fakePayload)
