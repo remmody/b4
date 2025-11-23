@@ -176,13 +176,11 @@ remove_b4() {
             print_info "Removing binary: $dir/$BINARY_NAME"
             rm -f "$dir/$BINARY_NAME"
             print_success "Binary removed from $dir"
-        fi
-    done
 
-    # Remove backup binaries
-    print_info "Removing backup binaries..."
-    for dir in $POSSIBLE_DIRS; do
-        rm -f "$dir/${BINARY_NAME}.backup."* 2>/dev/null || true
+            # Remove any backup files
+            rm -f "$dir/"${BINARY_NAME}.backup.* 2>/dev/null || true
+
+        fi
     done
 
     # Remove service files
