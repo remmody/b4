@@ -12,6 +12,7 @@
 - IMPROVED: `Geodat` download workflow - files now immediately available in sets manager without restart, config auto-reloads after download.
 - IMPROVED: Set `Fragmentation` tab refactored.
 - FIXED: Logs level can be switched witout reloading the app.
+- FIXED: Config validation bug where Main Set was compared against itself, causing startup failure with `TCP ConnBytesLimit greater than main set` error.
 - CHANGED: Renamed `--frag-sni-reverse` to `--frag-reverse` and update related configurations.
 
 ## [1.16.1] - 2025-11-20

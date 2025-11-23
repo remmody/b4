@@ -119,19 +119,22 @@ func (c *Config) Validate() error {
 	}
 
 	if len(c.Sets) > 1 {
-		for index, set := range c.Sets {
+		for _, set := range c.Sets {
 			if set.Id == "" {
 				return fmt.Errorf("each set must have a unique non-empty ID")
 			}
 
-			if index > 1 {
-				if set.TCP.ConnBytesLimit > c.MainSet.TCP.ConnBytesLimit {
-					return fmt.Errorf("set '%s' has TCP ConnBytesLimit greater than main set", set.Name)
-				}
+			if set.Id == MAIN_SET_ID {
+				set.UDP.DPortFilter = utils.ValidatePorts(set.UDP.DPortFilter)
+				continue
+			}
 
-				if set.UDP.ConnBytesLimit > c.MainSet.UDP.ConnBytesLimit {
-					return fmt.Errorf("set '%s' has UDP ConnBytesLimit greater than main set", set.Name)
-				}
+			if set.TCP.ConnBytesLimit > c.MainSet.TCP.ConnBytesLimit {
+				return fmt.Errorf("set '%s' has TCP ConnBytesLimit greater than main set", set.Name)
+			}
+
+			if set.UDP.ConnBytesLimit > c.MainSet.UDP.ConnBytesLimit {
+				return fmt.Errorf("set '%s' has UDP ConnBytesLimit greater than main set", set.Name)
 			}
 
 			set.UDP.DPortFilter = utils.ValidatePorts(set.UDP.DPortFilter)
