@@ -10,16 +10,18 @@ import (
 	"github.com/daniellavrushin/b4/sock"
 )
 
-// sendWithOOB sends TCP packet with OOB (urgent) data
+// sendOOBFragments sends TCP packet with OOB (urgent) data
 // Supports both normal and reverse order based on config.OOBReverse flag
-func (w *Worker) sendOOBFragments(cfg *config.SetConfig, packet []byte, dst net.IP) bool {
+func (w *Worker) sendOOBFragments(cfg *config.SetConfig, packet []byte, dst net.IP) {
 	if cfg.Fragmentation.OOBPosition <= 0 {
-		return false
+		_ = w.sock.SendIPv4(packet, dst)
+		return
 	}
 
 	ipHdrLen := int((packet[0] & 0x0F) * 4)
 	if len(packet) < ipHdrLen+20 {
-		return false
+		_ = w.sock.SendIPv4(packet, dst)
+		return
 	}
 
 	tcpHdrLen := int((packet[ipHdrLen+12] >> 4) * 4)
@@ -27,7 +29,8 @@ func (w *Worker) sendOOBFragments(cfg *config.SetConfig, packet []byte, dst net.
 	payloadLen := len(packet) - payloadStart
 
 	if payloadLen <= 0 {
-		return false
+		_ = w.sock.SendIPv4(packet, dst)
+		return
 	}
 
 	oobPos := cfg.Fragmentation.OOBPosition
@@ -52,41 +55,56 @@ func (w *Worker) sendOOBFragments(cfg *config.SetConfig, packet []byte, dst net.
 		oobChar = 'x' // default
 	}
 
-	// Build segment with OOB byte (first oobPos bytes + OOB char)
-	oobSegLen := payloadStart + oobPos + 1 // +1 for the OOB byte
+	// Build segment with OOB byte (first oobPos bytes with last byte replaced)
+	oobSegLen := payloadStart + oobPos
 	oobSeg := make([]byte, oobSegLen)
 
-	// Copy headers and first oobPos bytes of payload
+	// Copy headers and first oobPos-1 bytes of payload
 	copy(oobSeg[:payloadStart], packet[:payloadStart])
-	copy(oobSeg[payloadStart:payloadStart+oobPos], packet[payloadStart:payloadStart+oobPos])
+	copy(oobSeg[payloadStart:payloadStart+oobPos-1], packet[payloadStart:payloadStart+oobPos-1])
 
-	oobSeg[payloadStart+oobPos] = oobChar
+	// Replace last byte with OOB character
+	oobSeg[payloadStart+oobPos-1] = oobChar
 
+	// Set URG flag
 	oobSeg[ipHdrLen+13] |= 0x20
 
-	binary.BigEndian.PutUint16(oobSeg[ipHdrLen+18:ipHdrLen+20], uint16(oobPos+1))
+	// Set urgent pointer to last byte of urgent data
+	binary.BigEndian.PutUint16(oobSeg[ipHdrLen+18:ipHdrLen+20], uint16(oobPos))
 
+	// Update IP total length
 	binary.BigEndian.PutUint16(oobSeg[2:4], uint16(oobSegLen))
 
+	// Build regular segment (remaining bytes)
 	regularSegLen := payloadStart + (payloadLen - oobPos)
 	regularSeg := make([]byte, regularSegLen)
 
 	// Copy headers
 	copy(regularSeg[:payloadStart], packet[:payloadStart])
+	// Copy remaining payload
 	copy(regularSeg[payloadStart:], packet[payloadStart+oobPos:])
 
+	// Get original sequence and ID
 	seq := binary.BigEndian.Uint32(packet[ipHdrLen+4 : ipHdrLen+8])
 	id := binary.BigEndian.Uint16(packet[4:6])
 
 	if cfg.Fragmentation.ReverseOrder {
-		binary.BigEndian.PutUint32(oobSeg[ipHdrLen+4:ipHdrLen+8], seq)
+		// Regular segment keeps original seq, gets original ID
+		binary.BigEndian.PutUint32(regularSeg[ipHdrLen+4:ipHdrLen+8], seq)
+		binary.BigEndian.PutUint16(regularSeg[4:6], id)
+		// OOB segment gets adjusted seq, gets incremented ID
+		binary.BigEndian.PutUint32(oobSeg[ipHdrLen+4:ipHdrLen+8], seq+uint32(oobPos))
 		binary.BigEndian.PutUint16(oobSeg[4:6], id+1)
-		binary.BigEndian.PutUint32(regularSeg[ipHdrLen+4:ipHdrLen+8], seq+uint32(oobPos))
 	} else {
+		// OOB segment keeps original seq and ID
+		binary.BigEndian.PutUint32(oobSeg[ipHdrLen+4:ipHdrLen+8], seq)
+		binary.BigEndian.PutUint16(oobSeg[4:6], id)
+		// Regular segment gets adjusted seq and incremented ID
 		binary.BigEndian.PutUint32(regularSeg[ipHdrLen+4:ipHdrLen+8], seq+uint32(oobPos))
 		binary.BigEndian.PutUint16(regularSeg[4:6], id+1)
 	}
 
+	// Update regular segment IP total length
 	binary.BigEndian.PutUint16(regularSeg[2:4], uint16(regularSegLen))
 
 	// Fix checksums AFTER all modifications
@@ -112,18 +130,18 @@ func (w *Worker) sendOOBFragments(cfg *config.SetConfig, packet []byte, dst net.
 		_ = w.sock.SendIPv4(regularSeg, dst)
 		log.Tracef("OOB: Sent %d + %d bytes (normal)", len(oobSeg), len(regularSeg))
 	}
-
-	return true
 }
 
-func (w *Worker) sendOOBFragmentsV6(cfg *config.SetConfig, packet []byte, dst net.IP) bool {
+func (w *Worker) sendOOBFragmentsV6(cfg *config.SetConfig, packet []byte, dst net.IP) {
 	if cfg.Fragmentation.OOBPosition <= 0 {
-		return false
+		_ = w.sock.SendIPv6(packet, dst)
+		return
 	}
 
 	ipv6HdrLen := 40
 	if len(packet) < ipv6HdrLen+20 {
-		return false
+		_ = w.sock.SendIPv6(packet, dst)
+		return
 	}
 
 	tcpHdrLen := int((packet[ipv6HdrLen+12] >> 4) * 4)
@@ -131,7 +149,8 @@ func (w *Worker) sendOOBFragmentsV6(cfg *config.SetConfig, packet []byte, dst ne
 	payloadLen := len(packet) - payloadStart
 
 	if payloadLen <= 0 {
-		return false
+		_ = w.sock.SendIPv6(packet, dst)
+		return
 	}
 
 	oobPos := cfg.Fragmentation.OOBPosition
@@ -154,13 +173,16 @@ func (w *Worker) sendOOBFragmentsV6(cfg *config.SetConfig, packet []byte, dst ne
 	}
 
 	// Build OOB segment
-	oobSegLen := payloadStart + oobPos + 1
+	oobSegLen := payloadStart + oobPos
 	oobSeg := make([]byte, oobSegLen)
 	copy(oobSeg[:payloadStart], packet[:payloadStart])
-	copy(oobSeg[payloadStart:payloadStart+oobPos], packet[payloadStart:payloadStart+oobPos])
-	oobSeg[payloadStart+oobPos] = oobChar
+	copy(oobSeg[payloadStart:payloadStart+oobPos-1], packet[payloadStart:payloadStart+oobPos-1])
+	oobSeg[payloadStart+oobPos-1] = oobChar
+
+	// Set URG flag
 	oobSeg[ipv6HdrLen+13] |= 0x20
-	binary.BigEndian.PutUint16(oobSeg[ipv6HdrLen+18:ipv6HdrLen+20], uint16(oobPos+1))
+	// Set urgent pointer
+	binary.BigEndian.PutUint16(oobSeg[ipv6HdrLen+18:ipv6HdrLen+20], uint16(oobPos))
 
 	// Build regular segment
 	regularSegLen := payloadStart + (payloadLen - oobPos)
@@ -172,9 +194,14 @@ func (w *Worker) sendOOBFragmentsV6(cfg *config.SetConfig, packet []byte, dst ne
 	seq := binary.BigEndian.Uint32(packet[ipv6HdrLen+4 : ipv6HdrLen+8])
 
 	if cfg.Fragmentation.ReverseOrder {
-		binary.BigEndian.PutUint32(oobSeg[ipv6HdrLen+4:ipv6HdrLen+8], seq)
-		binary.BigEndian.PutUint32(regularSeg[ipv6HdrLen+4:ipv6HdrLen+8], seq+uint32(oobPos))
+		// Regular segment keeps original seq
+		binary.BigEndian.PutUint32(regularSeg[ipv6HdrLen+4:ipv6HdrLen+8], seq)
+		// OOB segment gets adjusted seq
+		binary.BigEndian.PutUint32(oobSeg[ipv6HdrLen+4:ipv6HdrLen+8], seq+uint32(oobPos))
 	} else {
+		// OOB segment keeps original seq
+		binary.BigEndian.PutUint32(oobSeg[ipv6HdrLen+4:ipv6HdrLen+8], seq)
+		// Regular segment gets adjusted seq
 		binary.BigEndian.PutUint32(regularSeg[ipv6HdrLen+4:ipv6HdrLen+8], seq+uint32(oobPos))
 	}
 
@@ -201,6 +228,4 @@ func (w *Worker) sendOOBFragmentsV6(cfg *config.SetConfig, packet []byte, dst ne
 		_ = w.sock.SendIPv6(regularSeg, dst)
 		log.Tracef("OOB v6: Sent %d + %d bytes (normal)", len(oobSeg), len(regularSeg))
 	}
-
-	return true
 }
