@@ -25,30 +25,28 @@ var greaseValues = []uint16{
 }
 
 // TLS Extension types
+// TLS Extension types - only keep the ones we use
 const (
-	extServerName           = 0x0000
-	extMaxFragmentLength    = 0x0001
-	extStatusRequest        = 0x0005
-	extSupportedGroups      = 0x000a
-	extSignatureAlgorithms  = 0x000d
-	extUseSRTP              = 0x000e
-	extHeartbeat            = 0x000f
-	extALPN                 = 0x0010
-	extSCT                  = 0x0012
-	extPadding              = 0x0015
-	extExtendedMasterSecret = 0x0017
-	extSessionTicket        = 0x0023
-	extSupportedVersions    = 0x002b
-	extPSKExchangeModes     = 0x002d
-	extKeyShare             = 0x0033
+	extServerName = 0x0000
+	extALPN       = 0x0010
+	extPadding    = 0x0015
 )
 
-var (
-	randGen   = rand.Reader
-	randMutex sync.Mutex
-)
+// Common TLS extensions for advanced mutation
+var commonExtensions = []uint16{
+	0x0001, // max_fragment_length
+	0x0005, // status_request
+	0x000a, // supported_groups
+	0x000d, // signature_algorithms
+	0x000f, // heartbeat
+	0x0017, // extended_master_secret
+	0x0023, // session_ticket
+	0x002b, // supported_versions
+	0x0033, // key_share
+}
 
-// MutateClientHello applies mutations to TLS ClientHello
+var randMutex sync.Mutex
+
 func (w *Worker) MutateClientHello(cfg *config.SetConfig, packet []byte, dst net.IP) []byte {
 	if cfg == nil || cfg.Faking.SNIMutation.Mode == "off" {
 		return packet
@@ -62,19 +60,15 @@ func (w *Worker) MutateClientHello(cfg *config.SetConfig, packet []byte, dst net
 		return packet
 	}
 
-	// Check if this is TLS ClientHello
 	payload := packet[payloadStart:]
 	if payload[0] != 0x16 || payload[1] != 0x03 {
 		return packet
 	}
 
-	// Parse TLS record
 	recordLen := int(binary.BigEndian.Uint16(payload[3:5]))
 	if len(payload) < 5+recordLen {
 		return packet
 	}
-
-	// Check for ClientHello (type 0x01)
 	if len(payload) < 6 || payload[5] != 0x01 {
 		return packet
 	}
@@ -90,12 +84,13 @@ func (w *Worker) MutateClientHello(cfg *config.SetConfig, packet []byte, dst net
 		return w.reorderExtensions(packet, cfg)
 	case "full":
 		return w.fullMutation(packet, cfg)
+	case "advanced":
+		return w.addAdvancedMutations(packet)
 	default:
 		return packet
 	}
 }
 
-// duplicateSNI adds multiple SNI extensions
 func (w *Worker) duplicateSNI(packet []byte, cfg *config.SetConfig) []byte {
 	if cfg == nil {
 		return packet
@@ -105,13 +100,11 @@ func (w *Worker) duplicateSNI(packet []byte, cfg *config.SetConfig) []byte {
 	tcpHdrLen := int((packet[ipHdrLen+12] >> 4) * 4)
 	payloadStart := ipHdrLen + tcpHdrLen
 
-	// Find extensions offset
 	extOffset := w.findExtensionsOffset(packet[payloadStart:])
 	if extOffset < 0 {
 		return packet
 	}
 
-	// Build fake SNI extensions
 	fakeSNIs := make([]byte, 0, 1024)
 
 	for _, sni := range cfg.Faking.SNIMutation.FakeSNIs {
@@ -119,7 +112,6 @@ func (w *Worker) duplicateSNI(packet []byte, cfg *config.SetConfig) []byte {
 			continue
 		}
 
-		// Validate SNI length
 		if len(sni) > MaxSNILength {
 			log.Tracef("SNI too long, skipping: %d bytes", len(sni))
 			continue
@@ -136,11 +128,9 @@ func (w *Worker) duplicateSNI(packet []byte, cfg *config.SetConfig) []byte {
 		fakeSNIs = append(fakeSNIs, sniExt...)
 	}
 
-	// Insert fake SNIs into packet
 	return w.insertExtensions(packet, fakeSNIs)
 }
 
-// addGREASE adds GREASE extensions
 func (w *Worker) addGREASE(packet []byte, cfg *config.SetConfig) []byte {
 	if cfg == nil {
 		return packet
@@ -252,7 +242,6 @@ func (w *Worker) reorderExtensions(packet []byte, cfg *config.SetConfig) []byte 
 	return w.replaceExtensions(packet, newExts)
 }
 
-// fullMutation applies all mutations with size checks
 func (w *Worker) fullMutation(packet []byte, cfg *config.SetConfig) []byte {
 	if cfg == nil {
 		return packet
@@ -267,31 +256,42 @@ func (w *Worker) fullMutation(packet []byte, cfg *config.SetConfig) []byte {
 		return packet
 	}
 
-	// 2. Add GREASE
-	mutated = w.addGREASE(mutated, cfg)
+	// 2. Add common TLS extensions with fake data
+	mutated = w.addCommonExtensions(mutated)
 	if len(mutated) > MaxTCPPacketSize {
-		log.Tracef("Mutation too large after GREASE, returning previous state")
+		log.Tracef("Mutation too large after common extensions")
 		return w.duplicateSNI(packet, cfg)
 	}
 
-	// 3. Add fake ALPN with many protocols
+	// 3. ADD ADVANCED MUTATIONS (TLS 1.3 features) - THIS WAS MISSING!
+	mutated = w.addAdvancedMutations(mutated)
+	if len(mutated) > MaxTCPPacketSize {
+		log.Tracef("Mutation too large after advanced mutations")
+		// Fall back to simpler mutations
+		mutated = w.addCommonExtensions(w.duplicateSNI(packet, cfg))
+	}
+
+	// 4. Add GREASE
+	mutated = w.addGREASE(mutated, cfg)
+	if len(mutated) > MaxTCPPacketSize {
+		log.Tracef("Mutation too large after GREASE")
+		// Continue with what we have
+	}
+
+	// 5. Add fake ALPN with many protocols
 	mutated = w.addFakeALPN(mutated)
 	if len(mutated) > MaxTCPPacketSize {
-		log.Tracef("Mutation too large after ALPN, returning previous state")
-		return w.addGREASE(w.duplicateSNI(packet, cfg), cfg)
+		log.Tracef("Mutation too large after ALPN")
+		// Continue with what we have
 	}
 
-	// 4. Add unknown extensions
+	// 6. Add unknown extensions
 	mutated = w.addUnknownExtensions(mutated, cfg.Faking.SNIMutation.FakeExtCount)
-	if len(mutated) > MaxTCPPacketSize {
-		log.Tracef("Mutation too large after unknown extensions")
-		// Continue with what we have so far
-	}
 
-	// 5. Reorder extensions
+	// 7. Reorder extensions
 	mutated = w.reorderExtensions(mutated, cfg)
 
-	// 6. Add padding last to fill MTU (will auto-limit)
+	// 8. Add padding last to fill MTU
 	mutated = w.addPadding(mutated, cfg)
 
 	return mutated
@@ -329,12 +329,21 @@ func (w *Worker) addFakeALPN(packet []byte) []byte {
 func (w *Worker) addUnknownExtensions(packet []byte, count int) []byte {
 	unknown := make([]byte, 0, count*8)
 
-	// Use reserved/unassigned extension types
-	extTypes := []uint16{0x00ff, 0x1234, 0x5678, 0x9abc, 0xfe00, 0xffff}
+	// Mix of reserved and common extensions to confuse DPI
+	for i := 0; i < count; i++ {
+		var extType uint16
 
-	for i := 0; i < count && i < len(extTypes); i++ {
+		if i < len(commonExtensions) {
+			// Use real extension types with fake data
+			extType = commonExtensions[i]
+		} else {
+			// Use reserved/unassigned extension types
+			reservedTypes := []uint16{0x00ff, 0x1234, 0x5678, 0x9abc, 0xfe00, 0xffff}
+			extType = reservedTypes[i%len(reservedTypes)]
+		}
+
 		ext := make([]byte, 8)
-		binary.BigEndian.PutUint16(ext[0:2], extTypes[i])
+		binary.BigEndian.PutUint16(ext[0:2], extType)
 		binary.BigEndian.PutUint16(ext[2:4], 4) // Length
 
 		randMutex.Lock()
@@ -345,6 +354,105 @@ func (w *Worker) addUnknownExtensions(packet []byte, count int) []byte {
 	}
 
 	return w.insertExtensions(packet, unknown)
+}
+
+func (w *Worker) addCommonExtensions(packet []byte) []byte {
+	extensions := make([]byte, 0, 256)
+
+	// Add fake supported_groups (elliptic curves)
+	groups := []byte{
+		0x00, 0x0a, // Extension type: supported_groups
+		0x00, 0x08, // Length
+		0x00, 0x06, // Groups length
+		0x00, 0x1d, // x25519
+		0x00, 0x17, // secp256r1
+		0x00, 0x18, // secp384r1
+	}
+	extensions = append(extensions, groups...)
+
+	// Add fake signature_algorithms
+	sigAlgs := []byte{
+		0x00, 0x0d, // Extension type: signature_algorithms
+		0x00, 0x0e, // Length
+		0x00, 0x0c, // Algorithms length
+		0x04, 0x03, // ECDSA-SHA256
+		0x05, 0x03, // ECDSA-SHA384
+		0x06, 0x03, // ECDSA-SHA512
+		0x04, 0x01, // RSA-SHA256
+		0x05, 0x01, // RSA-SHA384
+		0x06, 0x01, // RSA-SHA512
+	}
+	extensions = append(extensions, sigAlgs...)
+
+	// Add fake supported_versions (TLS 1.2, 1.3)
+	versions := []byte{
+		0x00, 0x2b, // Extension type: supported_versions
+		0x00, 0x05, // Length
+		0x04,       // Versions length
+		0x03, 0x04, // TLS 1.3
+		0x03, 0x03, // TLS 1.2
+	}
+	extensions = append(extensions, versions...)
+
+	// Add session ticket
+	ticket := []byte{
+		0x00, 0x23, // Extension type: session_ticket
+		0x00, 0x00, // Length (empty)
+	}
+	extensions = append(extensions, ticket...)
+
+	return w.insertExtensions(packet, extensions)
+}
+
+func (w *Worker) addAdvancedMutations(packet []byte) []byte {
+	mutated := packet
+
+	// Add fake PSK exchange modes (TLS 1.3)
+	pskModes := []byte{
+		0x00, 0x2d, // Extension type: psk_key_exchange_modes
+		0x00, 0x02, // Length
+		0x01, // Modes length
+		0x01, // PSK with (EC)DHE key establishment
+	}
+
+	if len(mutated)+len(pskModes) <= MaxTCPPacketSize {
+		mutated = w.insertExtensions(mutated, pskModes)
+	}
+
+	// Add fake key_share (TLS 1.3)
+	keyShare := make([]byte, 0, 128)
+	keyShare = append(keyShare,
+		0x00, 0x33, // Extension type: key_share
+		0x00, 0x26, // Length
+		0x00, 0x24, // Client shares length
+		0x00, 0x1d, // Group: x25519
+		0x00, 0x20, // Key length: 32 bytes
+	)
+
+	// Add 32 random bytes for the key
+	key := make([]byte, 32)
+	randMutex.Lock()
+	rand.Read(key)
+	randMutex.Unlock()
+	keyShare = append(keyShare, key...)
+
+	if len(mutated)+len(keyShare) <= MaxTCPPacketSize {
+		mutated = w.insertExtensions(mutated, keyShare)
+	}
+	// Add fake status_request (OCSP)
+	statusReq := []byte{
+		0x00, 0x05, // Extension type: status_request
+		0x00, 0x05, // Length
+		0x01,       // Status type: OCSP
+		0x00, 0x00, // Responder ID list length
+		0x00, 0x00, // Request extensions length
+	}
+
+	if len(mutated)+len(statusReq) <= MaxTCPPacketSize {
+		mutated = w.insertExtensions(mutated, statusReq)
+	}
+
+	return mutated
 }
 
 // Helper: Find extensions offset in ClientHello with proper bounds checking

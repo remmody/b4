@@ -4,16 +4,12 @@ import (
 	"encoding/binary"
 	"math/rand"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/sock"
 )
-
-var winRand = rand.New(rand.NewSource(time.Now().UnixNano()))
-var winRandMu sync.Mutex
 
 // WindowManipulator handles TCP window size manipulation
 type WindowManipulator struct {

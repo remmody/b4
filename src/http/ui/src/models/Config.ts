@@ -10,6 +10,23 @@ export enum FakingPayloadType {
   CUSTOM = 1,
   DEFAULT = 2,
 }
+
+export type MutationMode =
+  | "off"
+  | "random"
+  | "grease"
+  | "padding"
+  | "fakeext"
+  | "fakesni"
+  | "advanced";
+export interface SNIMutationConfig {
+  mode: MutationMode;
+  grease_count: number;
+  padding_size: number;
+  fake_ext_count: number;
+  fake_snis: string[];
+}
+
 export interface FakingConfig {
   strategy: FakingStrategy;
   sni: boolean;
@@ -21,7 +38,6 @@ export interface FakingConfig {
 }
 
 export type FragmentationStrategy = "tcp" | "ip" | "tls" | "oob" | "none";
-
 export interface FragmentationConfig {
   strategy: FragmentationStrategy;
   sni_position: number;
@@ -106,12 +122,12 @@ export interface TcpConfig {
   syn_fake_len: number;
   drop_sack: boolean;
 
-  win_mode: "off";
+  win_mode: WindowMode;
   win_size: number[];
 
-  desync_mode: "off";
-  desync_ttl: 3;
-  desync_count: 3;
+  desync_mode: DesyncMode;
+  desync_ttl: number;
+  desync_count: number;
 }
 
 export interface WebServerConfig {

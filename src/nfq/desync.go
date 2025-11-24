@@ -340,7 +340,7 @@ func (w *Worker) ExecuteDesyncIPv6(cfg *config.SetConfig, packet []byte, dst net
 	case "combo":
 		w.sendDesyncCombov6(packet, dst, da)
 	case "full":
-		w.sendDesyncFullv6(packet, dst, da)
+		w.sendDesyncFullv6(packet, dst)
 	default:
 		w.sendDesyncCombov6(packet, dst, da)
 	}
@@ -491,7 +491,7 @@ func (w *Worker) sendDesyncCombov6(packet []byte, dst net.IP, da *DesyncAttacker
 }
 
 // sendDesyncFullv6 for IPv6
-func (w *Worker) sendDesyncFullv6(packet []byte, dst net.IP, da *DesyncAttacker) {
+func (w *Worker) sendDesyncFullv6(packet []byte, dst net.IP) {
 	ipv6HdrLen := 40
 	if len(packet) < ipv6HdrLen+20 {
 		return

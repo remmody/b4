@@ -74,7 +74,7 @@ var DefaultSetConfig = SetConfig{
 		SeqOffset:     10000,
 
 		SNIMutation: SNIMutationConfig{
-			Mode:         "off",
+			Mode:         "off", // "off", "random", "grease", "padding", "fakeext", "fakesni", "advanced"
 			GreaseCount:  3,
 			PaddingSize:  2048,
 			FakeExtCount: 5,
