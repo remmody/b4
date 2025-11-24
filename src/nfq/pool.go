@@ -21,7 +21,6 @@ func NewWorkerWithQueue(cfg *config.Config, qnum uint16) *Worker {
 	}
 
 	w.cfg.Store(cfg)
-	w.rebuildMatcher(cfg)
 
 	return w
 }
@@ -32,9 +31,14 @@ func NewPool(cfg *config.Config) *Pool {
 	if threads < 1 {
 		threads = 1
 	}
+
+	matcher := buildMatcher(cfg)
+
 	ws := make([]*Worker, 0, threads)
 	for i := 0; i < threads; i++ {
-		ws = append(ws, NewWorkerWithQueue(cfg, start+uint16(i)))
+		w := NewWorkerWithQueue(cfg, start+uint16(i))
+		w.matcher.Store(matcher)
+		ws = append(ws, w)
 	}
 	return &Pool{Workers: ws}
 }
@@ -86,37 +90,32 @@ func (w *Worker) getMatcher() *sni.SuffixSet {
 
 func (w *Worker) UpdateConfig(newCfg *config.Config) {
 	w.cfg.Store(newCfg)
-	w.rebuildMatcher(newCfg)
 }
 
-func (w *Worker) rebuildMatcher(cfg *config.Config) {
-	var m *sni.SuffixSet
+func buildMatcher(cfg *config.Config) *sni.SuffixSet {
 	if len(cfg.Sets) > 0 {
-		m = sni.NewSuffixSet(cfg.Sets)
+		m := sni.NewSuffixSet(cfg.Sets)
 		totalDomains := 0
 		totalIPs := 0
 		for _, set := range cfg.Sets {
 			totalDomains += len(set.Targets.DomainsToMatch)
 			totalIPs += len(set.Targets.IpsToMatch)
 		}
-		log.Infof("Rebuilt matcher with %d domains and %d IPs across %d sets (cache cleared, warming up...)",
+		log.Infof("Built matcher with %d domains and %d IPs across %d sets",
 			totalDomains, totalIPs, len(cfg.Sets))
-	} else {
-		m = sni.NewSuffixSet([]*config.SetConfig{})
-		log.Tracef("Built empty matcher")
+		return m
 	}
-	w.matcher.Store(m)
+	log.Tracef("Built empty matcher")
+	return sni.NewSuffixSet([]*config.SetConfig{})
 }
 
 func (p *Pool) UpdateConfig(newCfg *config.Config) error {
+	matcher := buildMatcher(newCfg)
+
 	for _, w := range p.Workers {
-		w.UpdateConfig(newCfg)
+		w.cfg.Store(newCfg)
+		w.matcher.Store(matcher)
 	}
-	totalDomains := 0
-	for _, set := range newCfg.Sets {
-		totalDomains += len(set.Targets.DomainsToMatch)
-	}
-	log.Tracef("Updated all %d workers with %d domains", len(p.Workers), totalDomains)
 	return nil
 }
 
