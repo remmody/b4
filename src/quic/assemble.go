@@ -26,6 +26,7 @@ var (
 	maxEntries   = 10000
 	entryTTL     = 30 * time.Second
 	cleanupTimer *time.Ticker
+	maxBufSize   = 32 * 1024 // 32KB max per connection
 )
 
 func init() {
@@ -123,6 +124,9 @@ func parseCryptoFrames(plain []byte) (out []cryptoFrame) {
 }
 
 func (b *cbuf) ensure(n int) {
+	if n > maxBufSize {
+		return
+	}
 	if n <= len(b.data) {
 		return
 	}
@@ -141,7 +145,13 @@ func (b *cbuf) write(off int, p []byte) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	end := off + len(p)
+	if end > maxBufSize {
+		return
+	}
 	b.ensure(end)
+	if end > len(b.data) {
+		return
+	}
 	copy(b.data[off:end], p)
 	for i := off; i < end; i++ {
 		b.mask[i] = 1

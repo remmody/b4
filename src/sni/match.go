@@ -67,11 +67,11 @@ func NewSuffixSet(sets []*config.SetConfig) *SuffixSet {
 
 		ipCache:      make(map[string]*cacheEntry),
 		ipCacheLRU:   list.New(),
-		ipCacheLimit: 5000,
+		ipCacheLimit: 2000,
 
 		domainCache:      make(map[string]*cacheEntry),
 		domainCacheLRU:   list.New(),
-		domainCacheLimit: 10000,
+		domainCacheLimit: 2000,
 	}
 
 	seenRegexes := make(map[string]bool)
@@ -336,7 +336,7 @@ func (s *SuffixSet) matchRegex(host string) (bool, *config.SetConfig) {
 		}
 	}
 
-	if atomic.LoadInt32(&s.regexCacheSize) < 10000 {
+	if atomic.LoadInt32(&s.regexCacheSize) < 2000 {
 		s.regexCache.Store(host, cacheEntry{matched: matched, set: matchedSet})
 		atomic.AddInt32(&s.regexCacheSize, 1)
 	}
