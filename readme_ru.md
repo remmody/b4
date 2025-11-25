@@ -62,36 +62,17 @@ wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main
 ./b4install.sh --remove
 ```
 
-## Базовое использование
-
-### Запуск B4
-
-```bash
-# Стандартный Linux (systemd)
-sudo systemctl start b4
-sudo systemctl enable b4  # Запуск при загрузке
-
-# OpenWRT
-/etc/init.d/b4 start # restart | stop
-
-# Entware/MerlinWRT
-/opt/etc/init.d/S99b4 start # restart | stop
-```
-
-### Доступ к веб-интерфейсу
-
-Откройте браузер и перейдите по адресу:
-
-```cmd
-http://ip-вашего-устройства:7000
-```
-
 ### Сборка из исходников
 
 ```bash
 # Клонировать репозиторий
 git clone https://github.com/daniellavrushin/b4.git
 cd b4
+
+# Собрать UI
+cd src/http/ui
+pnpm install && pnpm build
+cd ../../..
 
 # Собрать бинарник
 make build
@@ -103,6 +84,30 @@ make build-all
 make linux-amd64
 make linux-arm64
 make linux-armv7
+```
+
+## Базовое использование
+
+### Запуск B4
+
+```bash
+# Стандартный Linux (systemd)
+sudo systemctl start b4
+sudo systemctl enable b4  # Запуск при загрузке
+
+# OpenWRT
+/etc/init.d/b4 restart # start | stop
+
+# Entware/MerlinWRT
+/opt/etc/init.d/S99b4 restart # start | stop
+```
+
+### Доступ к веб-интерфейсу
+
+Откройте браузер и перейдите по адресу:
+
+```cmd
+http://ip-вашего-устройства:7000
 ```
 
 ## Использование из командной строки
@@ -124,7 +129,7 @@ sudo b4 --queue-num 100 --threads 4 --web-port 8080
 
 ### Конфигурационный файл
 
-Создайте `/etc/b4/b4.json`
+При установке автоматически создается по пути `/etc/b4/b4.json`
 (файл можно переопределить, передав аргумент `--config=`):
 
 ```json
@@ -271,11 +276,11 @@ sudo b4 --config /home/username/b4custom.json
 **Возможности:**
 
 - Метрики в реальном времени (соединения, пакеты, пропускная способность)
-- Потоковая передача логов в реальном времени с фильтрацией
-- История соединений с информацией о протоколах и SNI
+- Потоковая передача логов в реальном времени с фильтрацией и горячими клавишами (p - приостановить передачу логов, del - очистить логи)
 - Управление доменами (добавление/удаление доменов на лету)
-- Управление конфигурацией
-- Мониторинг состояния системы
+- Тест доменов и автоподбор стратегий
+- Интеграция api ipinfo.io для сканирования ASN
+- Захват TLS и QUIC Payload
 
 ## Интеграция Geosite
 
@@ -345,9 +350,11 @@ git clone https://github.com/daniellavrushin/b4.git
 cd b4
 
 # Установить зависимости
-cd ui && pnpm install
+cd src/http/ui && pnpm install
 
 # Собрать и запустить
+pnpm build
+cd ../../..
 make build
 sudo ./out/b4 --verbose debug
 ```
