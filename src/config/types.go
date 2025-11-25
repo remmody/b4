@@ -74,7 +74,7 @@ type FakingConfig struct {
 }
 
 type SNIMutationConfig struct {
-	Mode         string   `json:"mutate_mode" bson:"mutate_mode"` // "off", "duplicate", "grease", "padding", "reorder", "full"
+	Mode         string   `json:"mode" bson:"mode"` // "off", "duplicate", "grease", "padding", "reorder", "full"
 	GreaseCount  int      `json:"grease_count" bson:"grease_count"`
 	PaddingSize  int      `json:"padding_size" bson:"padding_size"`
 	FakeExtCount int      `json:"fake_ext_count" bson:"fake_ext_count"`
