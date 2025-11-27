@@ -187,3 +187,33 @@ stop_process() {
         sleep 2
     fi
 }
+
+# Download file from URL
+fetch_file() {
+    url="$1"
+    output="$2"
+
+    if command_exists wget; then
+        wget -q -O "$output" "$url" 2>/dev/null
+        return $?
+    elif command_exists curl; then
+        curl -sfL -o "$output" "$url" 2>/dev/null
+        return $?
+    else
+        print_error "Neither wget nor curl found"
+        return 1
+    fi
+}
+
+# Fetch URL content to stdout
+fetch_stdout() {
+    url="$1"
+
+    if command_exists wget; then
+        wget -qO- "$url" 2>/dev/null
+    elif command_exists curl; then
+        curl -sfL "$url" 2>/dev/null
+    else
+        return 1
+    fi
+}

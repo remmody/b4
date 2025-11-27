@@ -53,25 +53,25 @@ select_geo_source() {
 }
 
 download_geodat() {
-    geosite_url="$1/geosite.dat"
-    geoip_url="$1/geoip.dat"
-
+    base_url="$1"
     save_dir="$2"
 
-    # Verify save_dir is writable, fallback if needed
+    geosite_url="${base_url}/geosite.dat"
+    geoip_url="${base_url}/geoip.dat"
+    geosite_file="${save_dir}/geosite.dat"
+    geoip_file="${save_dir}/geoip.dat"
+
+    # Verify save_dir is writable
     if [ ! -w "$(dirname "$save_dir")" ] && [ ! -d "$save_dir" ]; then
         if [ -d "/opt/etc" ] && [ -w "/opt/etc" ]; then
             save_dir="/opt/etc/b4"
+            geosite_file="${save_dir}/geosite.dat"
+            geoip_file="${save_dir}/geoip.dat"
             print_warning "Original path not writable, using: $save_dir"
         fi
     fi
 
-    geosite_file="${save_dir}/geosite.dat"
-    geoip_file="${save_dir}/geoip.dat"
-
-    print_info "Downloading geosite.dat and geoip.dat from: $geosite_url"
-
-    # Create directory if it doesn't exist
+    # Create directory
     if [ ! -d "$save_dir" ]; then
         mkdir -p "$save_dir" || {
             print_error "Failed to create directory: $save_dir"
@@ -79,56 +79,34 @@ download_geodat() {
         }
     fi
 
-    # Download the file
-    if command_exists wget; then
-        wget_opts="-q"
-        wget $wget_opts -O "$geosite_file" "$geosite_url" || {
-            print_error "Download failed"
-            return 1
-        }
-    elif command_exists curl; then
-        curl -L -# -o "$geosite_file" "$geosite_url" || {
-            print_error "Download failed"
-            return 1
-        }
-    else
-        print_error "Neither wget nor curl found"
+    # Download geosite.dat
+    print_info "Downloading geosite.dat from: $geosite_url"
+    if ! fetch_file "$geosite_url" "$geosite_file"; then
+        print_error "Failed to download geosite.dat"
         return 1
     fi
 
-    # Download the file
-    if command_exists wget; then
-        wget_opts="-q"
-        wget $wget_opts -O "$geoip_file" "$geoip_url" || {
-            print_error "Download failed"
-            return 1
-        }
-    elif command_exists curl; then
-        curl -L -# -o "$geoip_file" "$geoip_url" || {
-            print_error "Download failed"
-            return 1
-        }
-    else
-        print_error "Neither wget nor curl found"
-        return 1
-    fi
-
-    # Verify file was downloaded and is not empty
-    if [ ! -f "$geosite_file" ] || [ ! -s "$geosite_file" ]; then
-        print_error "Downloaded file is empty or missing"
+    if [ ! -s "$geosite_file" ]; then
+        print_error "Downloaded geosite.dat is empty"
         rm -f "$geosite_file"
         return 1
     fi
 
-    # Verify file was downloaded and is not empty
-    if [ ! -f "$geoip_file" ] || [ ! -s "$geoip_file" ]; then
-        print_error "Downloaded file is empty or missing"
+    # Download geoip.dat
+    print_info "Downloading geoip.dat from: $geoip_url"
+    if ! fetch_file "$geoip_url" "$geoip_file"; then
+        print_error "Failed to download geoip.dat"
+        return 1
+    fi
+
+    if [ ! -s "$geoip_file" ]; then
+        print_error "Downloaded geoip.dat is empty"
         rm -f "$geoip_file"
         return 1
     fi
 
-    print_success "Geosite file downloaded to: $geosite_file"
-    print_success "GeoIP file downloaded to: $geoip_file"
+    print_success "Geosite: $geosite_file"
+    print_success "GeoIP: $geoip_file"
     return 0
 }
 
