@@ -233,6 +233,16 @@ setup_geodat() {
             print_info "Using geosite source: $geosite_url"
         fi
 
+        # Set default directory BEFORE using it
+        default_dir="$CONFIG_DIR"
+
+        # Try to get existing path from config
+        existing_dir=$(get_geosite_path_from_config || true)
+        if [ -n "$existing_dir" ]; then
+            default_dir="$existing_dir"
+            print_info "Found existing geosite path in config: $default_dir"
+        fi
+
         if [ -z "$GEOSITE_DST" ]; then
             # Skip in quiet mode - use default
             if [ "$QUIET_MODE" = "1" ]; then

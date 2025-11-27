@@ -3,13 +3,11 @@
 create_systemd_service() {
     # Only create if systemd is actually available and functioning
     if ! [ -d "/etc/systemd/system" ] || ! command_exists systemctl; then
-        print_warning "Systemd not available, skipping service creation"
         return
     fi
 
     # Check if systemd is actually running (not just installed)
     if ! systemctl list-units >/dev/null 2>&1; then
-        print_warning "Systemd not running, skipping service creation"
         return
     fi
 
@@ -194,7 +192,7 @@ EOF
         fi
 
         chmod +x "${INIT_FULL_PATH}"
-        sed "s|PROG_PLACEHOLDER|${INSTALL_DIR}/${BINARY_NAME}|g" "${INIT_FULL_PATH}" >"${INIT_FULL_PATH}.tmp"
+        sed "s|PROG_PLACEHOLDER|${INSTALL_DIR}/${BINARY_NAME}|g; s|CONFIG_PLACEHOLDER|${CONFIG_FILE}|g" "${INIT_FULL_PATH}" >"${INIT_FULL_PATH}.tmp"
         mv "${INIT_FULL_PATH}.tmp" "${INIT_FULL_PATH}"
 
         print_success "Init script created at ${INIT_FULL_PATH}"

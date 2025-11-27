@@ -51,7 +51,6 @@ get_service_status() {
 
 # Get network interfaces info
 get_network_info() {
-    # Get primary IP
     primary_ip=""
     if command_exists ip; then
         primary_ip=$(ip -4 route get 1 2>/dev/null | awk '/src/{print $7}' | head -1 || true)
@@ -64,7 +63,6 @@ get_network_info() {
 
 # Detect firewall backend
 detect_firewall_backend() {
-    # Check if nft exists and has rules
     if which nft >/dev/null 2>&1; then
         out=$(nft list tables 2>/dev/null || true)
         if [ -n "$out" ]; then
@@ -75,7 +73,6 @@ detect_firewall_backend() {
 
     # Check for iptables
     if which iptables >/dev/null 2>&1; then
-        # Check if iptables-legacy or iptables-nft
         out=$(iptables --version 2>/dev/null || true)
         if echo "$out" | grep -q "nf_tables"; then
             echo "iptables-nft"
@@ -99,7 +96,6 @@ show_system_info() {
     echo "       B4 System Information"
     echo "======================================="
 
-    # System Information
     print_header "System Information"
 
     # OS Detection
@@ -146,12 +142,6 @@ show_system_info() {
         mem_free=$(grep '^MemFree:' /proc/meminfo | awk '{printf "%.0f MB", $2/1024}')
         print_detail "Memory" "$mem_total (Free: $mem_free)"
     fi
-
-    # Network Info
-    # primary_ip=$(get_network_info)
-    # if [ -n "$primary_ip" ]; then
-    #     print_detail "Primary IP" "$primary_ip"
-    # fi
 
     # B4 Installation Status
     print_header "B4 Status"
