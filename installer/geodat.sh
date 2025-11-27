@@ -57,17 +57,17 @@ download_geodat() {
     base_url="$1"
     save_dir="$2"
 
-    geosite_url="${base_url}/geosite.dat"
-    geoip_url="${base_url}/geoip.dat"
-    geosite_file="${save_dir}/geosite.dat"
-    geoip_file="${save_dir}/geoip.dat"
+    sitedat_url="${base_url}/geosite.dat"
+    ipdat_url="${base_url}/geoip.dat"
+    sitedat_path="${save_dir}/geosite.dat"
+    ipdat_path="${save_dir}/geoip.dat"
 
     # Verify save_dir is writable
     if [ ! -w "$(dirname "$save_dir")" ] && [ ! -d "$save_dir" ]; then
         if [ -d "/opt/etc" ] && [ -w "/opt/etc" ]; then
             save_dir="/opt/etc/b4"
-            geosite_file="${save_dir}/geosite.dat"
-            geoip_file="${save_dir}/geoip.dat"
+            sitedat_path="${save_dir}/geosite.dat"
+            ipdat_path="${save_dir}/geoip.dat"
             print_warning "Original path not writable, using: $save_dir"
         fi
     fi
@@ -81,33 +81,33 @@ download_geodat() {
     fi
 
     # Download geosite.dat
-    print_info "Downloading geosite.dat from: $geosite_url"
-    if ! fetch_file "$geosite_url" "$geosite_file"; then
+    print_info "Downloading geosite.dat from: $sitedat_url"
+    if ! fetch_file "$sitedat_url" "$sitedat_path"; then
         print_error "Failed to download geosite.dat"
         return 1
     fi
 
-    if [ ! -s "$geosite_file" ]; then
+    if [ ! -s "$sitedat_path" ]; then
         print_error "Downloaded geosite.dat is empty"
-        rm -f "$geosite_file"
+        rm -f "$sitedat_path"
         return 1
     fi
 
     # Download geoip.dat
-    print_info "Downloading geoip.dat from: $geoip_url"
-    if ! fetch_file "$geoip_url" "$geoip_file"; then
+    print_info "Downloading geoip.dat from: $ipdat_url"
+    if ! fetch_file "$ipdat_url" "$ipdat_path"; then
         print_error "Failed to download geoip.dat"
         return 1
     fi
 
-    if [ ! -s "$geoip_file" ]; then
+    if [ ! -s "$ipdat_path" ]; then
         print_error "Downloaded geoip.dat is empty"
-        rm -f "$geoip_file"
+        rm -f "$ipdat_path"
         return 1
     fi
 
-    print_success "Geosite: $geosite_file"
-    print_success "GeoIP: $geoip_file"
+    print_success "Geosite: $sitedat_path"
+    print_success "GeoIP: $ipdat_path"
     return 0
 }
 
@@ -115,8 +115,8 @@ download_geodat() {
 update_config_geodat_path() {
     sitedat_path="$1"
     ipdat_path="$2"
-    local site_url="$3/geosite.dat"
-    local ip_url="$3/geoip.dat"
+    sitedat_url="$3/geosite.dat"
+    ipdat_url="$3/geoip.dat"
 
     # Try to update with jq if available
     if command_exists jq; then
@@ -125,14 +125,14 @@ update_config_geodat_path() {
         if [ ! -f "$CONFIG_FILE" ]; then
             jq -n \
                 --arg sitedat_path "$sitedat_path" \
-                --arg geosite_url "$site_url" \
+                --arg sitedat_url "$sitedat_url" \
                 --arg ipdat_path "$ipdat_path" \
-                --arg geoip_url "$ip_url" \
+                --arg ipdat_url "$ipdat_url" \
                 '{
                     system: {
                         geo: {
                             sitedat_path: $sitedat_path,
-                            sitedat_url: $geosite_url,
+                            sitedat_url: $sitedat_url,
                             ipdat_path: $ipdat_path,
                             ipdat_url: $geoip_url
                         }
@@ -148,14 +148,14 @@ update_config_geodat_path() {
         # Merge into existing geo object instead of replacing
         if jq \
             --arg sitedat_path "$sitedat_path" \
-            --arg geosite_url "$site_url" \
+            --arg sitedat_url "$sitedat_url" \
             --arg ipdat_path "$ipdat_path" \
-            --arg geoip_url "$ip_url" \
+            --arg ipdat_url "$ipdat_url" \
             '.system.geo = (.system.geo // {}) + {
                  sitedat_path: $sitedat_path,
-                 sitedat_url: $geosite_url,
+                 sitedat_url: $sitedat_url,
                  ipdat_path: $ipdat_path,
-                 ipdat_url: $geoip_url
+                 ipdat_url: $ipdat_url
              }' \
             "$CONFIG_FILE" >"$temp_file" 2>/dev/null; then
 
@@ -165,9 +165,9 @@ update_config_geodat_path() {
                 return 1
             }
             print_success "Config updated:"
-            print_success "  Geosite: $geosite_file"
+            print_success "  Geosite: $sitedat_path"
             print_success "  URL: $site_url"
-            print_success "  GeoIP:   $geoip_file"
+            print_success "  GeoIP:   $ipdat_path"
             print_success "  URL: $ip_url"
 
             # Show what was actually written
@@ -186,9 +186,9 @@ update_config_geodat_path() {
         print_info "Please manually add to your config file:"
         print_info '  "system": {'
         print_info '    "geo": {'
-        print_info "      \"sitedat_path\": \"$geosite_file\","
+        print_info "      \"sitedat_path\": \"$sitedat_path\","
         print_info "      \"sitedat_url\": \"$site_url\","
-        print_info "      \"ipdat_path\": \"$geoip_file\","
+        print_info "      \"ipdat_path\": \"$ipdat_path\","
         print_info "      \"ipdat_url\": \"$ip_url\""
         print_info '    }'
         print_info '  }'
@@ -223,14 +223,14 @@ setup_geodat() {
     [yY] | [yY][eE][sS])
         # Select source
         if [ -z "$GEOSITE_SRC" ]; then
-            geosite_url=$(select_geo_source)
-            if [ $? -ne 0 ] || [ -z "$geosite_url" ]; then
+            sitedat_url=$(select_geo_source)
+            if [ $? -ne 0 ] || [ -z "$sitedat_url" ]; then
                 print_info "Geosite setup skipped"
                 return 0
             fi
         else
-            geosite_url="$GEOSITE_SRC"
-            print_info "Using geosite source: $geosite_url"
+            sitedat_url="$GEOSITE_SRC"
+            print_info "Using geosite source: $sitedat_url"
         fi
 
         # Set default directory BEFORE using it
@@ -262,12 +262,12 @@ setup_geodat() {
         fi
 
         # Download geosite file
-        download_geodat "$geosite_url" "$geosite_dst_dir"
-        geosite_file="${geosite_dst_dir}/geosite.dat"
-        geoip_file="${geosite_dst_dir}/geoip.dat"
+        download_geodat "$sitedat_url" "$geosite_dst_dir"
+        sitedat_path="${geosite_dst_dir}/geosite.dat"
+        ipdat_path="${geosite_dst_dir}/geoip.dat"
 
         # Update config
-        update_config_geodat_path "$geosite_file" "$geoip_file" "$geosite_url"
+        update_config_geodat_path "$sitedat_path" "$ipdat_path" "$sitedat_url"
 
         print_success "Geosite setup completed!"
         return 0

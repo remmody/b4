@@ -60,7 +60,7 @@ perform_update() {
     GEOSITE_SRC=""
     GEOSITE_DST=""
     if [ -f "$CONFIG_FILE" ] && command_exists jq; then
-        GEOSITE_SRC=$(jq -r '.system.geo.geosite_url // empty' "$CONFIG_FILE" 2>/dev/null)
+        GEOSITE_SRC=$(jq -r '.system.geo.sitedat_url // empty' "$CONFIG_FILE" 2>/dev/null)
         sitedat_path=$(jq -r '.system.geo.sitedat_path // empty' "$CONFIG_FILE" 2>/dev/null)
         if [ -n "$sitedat_path" ] && [ "$sitedat_path" != "null" ]; then
             GEOSITE_DST=$(dirname "$sitedat_path")
