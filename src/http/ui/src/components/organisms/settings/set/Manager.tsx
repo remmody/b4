@@ -198,7 +198,7 @@ export const SetsManager = ({ config, onChange }: SetsManagerProps) => {
       ];
     } else {
       // Add new
-      updatedSets = [...sets, set];
+      updatedSets = [set, ...sets];
     }
 
     onChange("sets", updatedSets);
