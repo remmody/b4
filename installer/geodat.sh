@@ -134,7 +134,7 @@ update_config_geodat_path() {
                             sitedat_path: $sitedat_path,
                             sitedat_url: $sitedat_url,
                             ipdat_path: $ipdat_path,
-                            ipdat_url: $geoip_url
+                            ipdat_url: $ipdat_url
                         }
                     }
                 }' >"$CONFIG_FILE"
@@ -166,9 +166,9 @@ update_config_geodat_path() {
             }
             print_success "Config updated:"
             print_success "  Geosite: $sitedat_path"
-            print_success "  URL: $site_url"
+            print_success "  URL: $sitedat_url"
             print_success "  GeoIP:   $ipdat_path"
-            print_success "  URL: $ip_url"
+            print_success "  URL: $ipdat_url"
 
             # Show what was actually written
             print_info "Verifying config..."
@@ -187,9 +187,9 @@ update_config_geodat_path() {
         print_info '  "system": {'
         print_info '    "geo": {'
         print_info "      \"sitedat_path\": \"$sitedat_path\","
-        print_info "      \"sitedat_url\": \"$site_url\","
+        print_info "      \"sitedat_url\": \"$sitedat_url\","
         print_info "      \"ipdat_path\": \"$ipdat_path\","
-        print_info "      \"ipdat_url\": \"$ip_url\""
+        print_info "      \"ipdat_url\": \"$ipdat_url\""
         print_info '    }'
         print_info '  }'
         echo ""
