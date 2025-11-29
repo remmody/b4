@@ -1,10 +1,46 @@
 version: "3"
 
 vars:
-  GREETING: Hello, World!
+  VERSION: '{{default "1.0.0" .VERSION}}'
+  VERSION_COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+  VERSION_DATE:
+    sh: date -u +%Y-%m-%dT%H:%M:%SZ
+  BINARY_NAME: b4
+  SRC_DIR: ./src
+  OUT_DIR: ./out
+  UI_DIR: ./src/http/ui
+  DOCS_DIR: ./docs
+  LDFLAGS: -X main.Version={{.VERSION}} -X main.Commit={{.VERSION_COMMIT}} -X main.Date={{.VERSION_DATE}}
+
+includes:
+  be: .tasks/backend.yml
+  ui: .tasks/ui.yml
+  docs: .tasks/docs.yml
+  inst: .tasks/installer.yml
 
 tasks:
   default:
+    desc: Show available tasks
     cmds:
-      - echo "{{.GREETING}}"
-    silent: true
+      - task --list
+
+  clean:
+    desc: Remove all build artifacts
+    cmds:
+      - rm -rf {{.OUT_DIR}}
+      - rm -rf {{.UI_DIR}}/dist
+      - rm -rf {{.DOCS_DIR}}/build
+
+  version:
+    desc: Show version info
+    cmds:
+      - echo "Version{{":"}} {{.VERSION}}"
+      - echo "Commit{{":"}}  {{.VERSION_COMMIT}}"
+      - echo "Date{{":"}}    {{.VERSION_DATE}}"
+
+  dev:
+    desc: Run backend + UI dev server in parallel
+    deps:
+      - be:run
+      - ui:dev

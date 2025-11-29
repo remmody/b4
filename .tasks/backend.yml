@@ -1,0 +1,82 @@
+version: "3"
+
+tasks:
+  build:
+    desc: Build for current platform
+    cmds:
+      - mkdir -p {{.OUT_DIR}}
+      - go -C {{.SRC_DIR}} build -ldflags "{{.LDFLAGS}}" -o ../{{.OUT_DIR}}/{{.BINARY_NAME}}
+
+  amd64:
+    desc: Build for Linux amd64
+    cmds:
+      - task: linux
+        vars: { GOARCH: amd64, TARGET: amd64 }
+
+  arm64:
+    desc: Build for Linux arm64
+    cmds:
+      - task: linux
+        vars: { GOARCH: arm64, TARGET: arm64 }
+
+  arm:
+    desc: Build for Linux armv7
+    cmds:
+      - task: linux
+        vars: { GOARCH: arm, GOARM: "7", TARGET: armv7 }
+
+  linux:
+    internal: true
+    vars:
+      GOOS: linux
+      CGO_ENABLED: "0"
+    cmds:
+      - mkdir -p {{.OUT_DIR}}/{{.GOOS}}-{{.TARGET}} {{.OUT_DIR}}/assets
+      - |
+        GOOS={{.GOOS}} GOARCH={{.GOARCH}} GOARM={{.GOARM}} CGO_ENABLED={{.CGO_ENABLED}} \
+        go -C {{.SRC_DIR}} build -ldflags "{{.LDFLAGS}}" \
+        -o ../{{.OUT_DIR}}/{{.GOOS}}-{{.TARGET}}/{{.BINARY_NAME}}
+      - |
+        tar -czf "{{.OUT_DIR}}/assets/{{.BINARY_NAME}}-{{.GOOS}}-{{.TARGET}}.tar.gz" \
+        -C "{{.OUT_DIR}}/{{.GOOS}}-{{.TARGET}}" "{{.BINARY_NAME}}"
+      - |
+        sha256sum "{{.OUT_DIR}}/assets/{{.BINARY_NAME}}-{{.GOOS}}-{{.TARGET}}.tar.gz" \
+        > "{{.OUT_DIR}}/assets/{{.BINARY_NAME}}-{{.GOOS}}-{{.TARGET}}.tar.gz.sha256"
+
+  all:
+    desc: Build for all Linux architectures
+    cmds:
+      - for:
+          - { GOARCH: "386", TARGET: "386" }
+          - { GOARCH: amd64, TARGET: amd64 }
+          - { GOARCH: arm64, TARGET: arm64 }
+          - { GOARCH: arm, GOARM: "5", TARGET: armv5 }
+          - { GOARCH: arm, GOARM: "6", TARGET: armv6 }
+          - { GOARCH: arm, GOARM: "7", TARGET: armv7 }
+          - { GOARCH: loong64, TARGET: loong64 }
+          - { GOARCH: mips, TARGET: mips }
+          - { GOARCH: mipsle, TARGET: mipsle }
+          - { GOARCH: mips64, TARGET: mips64 }
+          - { GOARCH: mips64le, TARGET: mips64le }
+          - { GOARCH: ppc64, TARGET: ppc64 }
+          - { GOARCH: ppc64le, TARGET: ppc64le }
+          - { GOARCH: riscv64, TARGET: riscv64 }
+          - { GOARCH: s390x, TARGET: s390x }
+        task: linux
+        vars:
+          GOARCH: "{{.ITEM.GOARCH}}"
+          GOARM: "{{.ITEM.GOARM}}"
+          TARGET: "{{.ITEM.TARGET}}"
+
+  run:
+    desc: Build and run with sudo
+    cmds:
+      - task: build
+      - cmd: sudo {{.OUT_DIR}}/{{.BINARY_NAME}}
+        interactive: true
+
+  install:
+    desc: Install to /usr/local/bin
+    deps: [build]
+    cmds:
+      - sudo cp {{.OUT_DIR}}/{{.BINARY_NAME}} /usr/local/bin/

@@ -10,6 +10,7 @@
 
 # Test binary, built with `go test -c`
 *.test
+.task/
 
 # Code coverage profiles and other test artifacts
 *.out
@@ -38,7 +39,6 @@ src/b4
 
 out/
 vendor/
-
 
 #Ignore vscode AI rules
 .github/instructions/codacy.instructions.md

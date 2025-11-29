@@ -1,0 +1,12 @@
+version: "3"
+
+tasks:
+  build:
+    desc: Build installer script
+    cmds:
+      - ./installer/_build.sh
+
+  watch:
+    desc: Watch and rebuild installer on changes
+    cmds:
+      - ./installer/_watch.sh

@@ -1,0 +1,27 @@
+version: "3"
+
+tasks:
+  install:
+    desc: Install docs dependencies
+    dir: "{{.DOCS_DIR}}"
+    cmds:
+      - pnpm install
+    sources:
+      - "{{.DOCS_DIR}}/package.json"
+      - "{{.DOCS_DIR}}/pnpm-lock.yaml"
+    generates:
+      - "{{.DOCS_DIR}}/node_modules/.pnpm/lock.yaml"
+
+  dev:
+    desc: Start docs dev server
+    dir: "{{.DOCS_DIR}}"
+    deps: [install]
+    cmds:
+      - pnpm start
+
+  build:
+    desc: Build docs for production
+    dir: "{{.DOCS_DIR}}"
+    deps: [install]
+    cmds:
+      - pnpm build
