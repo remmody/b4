@@ -8,20 +8,16 @@ import {
   Typography,
   Snackbar,
   Alert,
-  Button,
 } from "@mui/material";
-import { Save as SaveIcon, Refresh as RefreshIcon } from "@mui/icons-material";
 import { SetsManager, SetWithStats } from "@organisms/sets/Manager";
-import { B4Config, B4SetConfig } from "@models/Config";
+import { B4Config } from "@models/Config";
 import { colors } from "@design";
 
 export default function Sets() {
   const [config, setConfig] = useState<
     (B4Config & { sets?: SetWithStats[] }) | null
   >(null);
-  const [originalConfig, setOriginalConfig] = useState<B4Config | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -31,11 +27,6 @@ export default function Sets() {
     message: "",
     severity: "info",
   });
-
-  const hasChanges =
-    config && originalConfig
-      ? JSON.stringify(config.sets) !== JSON.stringify(originalConfig.sets)
-      : false;
 
   useEffect(() => {
     void loadConfig();
@@ -50,7 +41,6 @@ export default function Sets() {
         sets?: SetWithStats[];
       };
       setConfig(data);
-      setOriginalConfig(structuredClone(data));
     } catch {
       setSnackbar({
         open: true,
@@ -59,44 +49,6 @@ export default function Sets() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const saveConfig = async () => {
-    if (!config) return;
-    try {
-      setSaving(true);
-      const response = await fetch("/api/config", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config),
-      });
-      if (!response.ok) throw new Error(await response.text());
-      setOriginalConfig(structuredClone(config));
-      setSnackbar({
-        open: true,
-        message: "Sets saved successfully!",
-        severity: "success",
-      });
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: error instanceof Error ? error.message : "Failed to save",
-        severity: "error",
-      });
-    } finally {
-      setSaving(false);
-      await loadConfig();
-    }
-  };
-
-  const handleChange = (
-    field: string,
-    value: boolean | string | number | B4SetConfig[]
-  ) => {
-    if (!config) return;
-    if (field === "sets") {
-      setConfig({ ...config, sets: value as SetWithStats[] });
     }
   };
 
@@ -124,34 +76,8 @@ export default function Sets() {
         py: 3,
       }}
     >
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2, gap: 1 }}>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<RefreshIcon />}
-          onClick={() => void loadConfig()}
-          disabled={saving}
-        >
-          Reload
-        </Button>
-        <Button
-          size="small"
-          variant="contained"
-          startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
-          onClick={() => void saveConfig()}
-          disabled={!hasChanges || saving}
-          sx={{
-            bgcolor: colors.secondary,
-            "&:hover": { bgcolor: colors.primary },
-            "&:disabled": { bgcolor: colors.accent.secondary },
-          }}
-        >
-          {saving ? "Saving..." : "Save Changes"}
-        </Button>
-      </Box>
-
       <Box sx={{ flex: 1, overflow: "auto" }}>
-        <SetsManager config={config} onChange={handleChange} />
+        <SetsManager config={config} onRefresh={() => void loadConfig()} />
       </Box>
 
       <Snackbar

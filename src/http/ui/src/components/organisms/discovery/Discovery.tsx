@@ -24,11 +24,13 @@ import {
   ExpandMore as ExpandIcon,
   ExpandLess as CollapseIcon,
   TrendingUp as ImprovementIcon,
+  Science as ScienceIcon,
 } from "@mui/icons-material";
 import { colors } from "@design";
 import { B4SetConfig } from "@/models/Config";
 import SettingTextField from "@atoms/common/B4TextField";
 import { DiscoveryAddDialog } from "./AddDialog";
+import { B4Section } from "@molecules/common/B4Section";
 
 // Strategy family types matching backend
 type StrategyFamily =
@@ -350,159 +352,132 @@ export const DiscoveryRunner: React.FC = () => {
   return (
     <Stack spacing={3}>
       {/* Control Panel */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          bgcolor: colors.background.paper,
-          border: `1px solid ${colors.border.default}`,
-          borderRadius: 2,
-        }}
+      <B4Section
+        title="Configuration Discovery"
+        description="Hierarchical testing: Strategy Detection → Optimization → Combination"
+        icon={<ScienceIcon />}
       >
-        <Stack spacing={2}>
-          {/* Header with actions */}
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <Box>
-              <Typography variant="h6" sx={{ color: colors.text.primary }}>
-                Configuration Discovery
-              </Typography>
-              <Typography
-                variant="caption"
-                sx={{ color: colors.text.secondary }}
-              >
-                Hierarchical testing: Strategy Detection → Optimization →
-                Combination
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1}>
-              {!running && !suite && (
-                <Button
-                  variant="contained"
-                  startIcon={<StartIcon />}
-                  onClick={() => {
-                    void startDiscovery();
-                  }}
-                  disabled={!domain.trim()}
-                  sx={{
-                    bgcolor: colors.secondary,
-                    "&:hover": { bgcolor: colors.primary },
-                    "&:disabled": {
-                      bgcolor: colors.accent.secondary,
-                      color: colors.text.secondary,
-                    },
-                  }}
-                >
-                  Start Discovery
-                </Button>
-              )}
-              {(running || isReconnecting) && (
-                <Button
-                  variant="outlined"
-                  startIcon={<StopIcon />}
-                  onClick={() => {
-                    void cancelDiscovery();
-                  }}
-                  sx={{
-                    borderColor: colors.quaternary,
-                    color: colors.quaternary,
-                  }}
-                >
-                  Cancel
-                </Button>
-              )}
-              {suite && !running && (
-                <Button
-                  variant="outlined"
-                  startIcon={<RefreshIcon />}
-                  onClick={resetDiscovery}
-                  sx={{
-                    borderColor: colors.secondary,
-                    color: colors.secondary,
-                  }}
-                >
-                  New Discovery
-                </Button>
-              )}
-            </Stack>
-          </Box>
-
-          {error && <Alert severity="error">{error}</Alert>}
-
-          {/* Domain Management Section */}
-          <Box>
-            <SettingTextField
-              fullWidth
-              label="Domain to test"
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-              placeholder="youtube.com"
-              disabled={running || !!isReconnecting}
-              helperText="Enter a  domain to discover optimal bypass configuration"
-            />
-          </Box>
-
-          {isReconnecting && (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <CircularProgress size={20} sx={{ color: colors.secondary }} />
-              <Typography variant="body2" sx={{ color: colors.text.secondary }}>
-                Reconnecting to running discovery...
-              </Typography>
-            </Box>
+        {/* Header with actions */}
+        <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
+          <SettingTextField
+            label="Domain to test"
+            value={domain}
+            onChange={(e) => setDomain(e.target.value)}
+            placeholder="youtube.com"
+            disabled={running || !!isReconnecting}
+            helperText="Enter a domain to discover optimal bypass configuration"
+          />
+          {!running && !suite && (
+            <Button
+              startIcon={<StartIcon />}
+              onClick={() => {
+                void startDiscovery();
+              }}
+              disabled={!domain.trim()}
+              sx={{
+                minWidth: 200,
+                whiteSpace: "nowrap",
+                bgcolor: colors.secondary,
+                "&:hover": { bgcolor: colors.primary },
+                "&:disabled": {
+                  bgcolor: colors.accent.secondary,
+                  color: colors.text.secondary,
+                },
+              }}
+            >
+              Start Discovery
+            </Button>
           )}
-          {/* Progress indicator */}
-          {running && suite && (
-            <Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  mb: 1,
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {suite.current_phase && (
-                      <Chip
-                        label={phaseNames[suite.current_phase]}
-                        size="small"
-                        sx={{
-                          mr: 1,
-                          bgcolor: colors.accent.secondary,
-                          color: colors.secondary,
-                          fontWeight: 600,
-                        }}
-                      />
-                    )}
-                    {suite.completed_checks} of {suite.total_checks} checks
-                  </Typography>
-                </Box>
+          {(running || isReconnecting) && (
+            <Button
+              variant="outlined"
+              startIcon={<StopIcon />}
+              onClick={() => {
+                void cancelDiscovery();
+              }}
+              sx={{
+                minWidth: 120,
+                whiteSpace: "nowrap",
+                borderColor: colors.quaternary,
+                color: colors.quaternary,
+              }}
+            >
+              Cancel
+            </Button>
+          )}
+          {suite && !running && (
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={resetDiscovery}
+              sx={{
+                minWidth: 150,
+                whiteSpace: "nowrap",
+                borderColor: colors.secondary,
+                color: colors.secondary,
+              }}
+            >
+              New Discovery
+            </Button>
+          )}
+        </Box>
+        {error && <Alert severity="error">{error}</Alert>}
+
+        {isReconnecting && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <CircularProgress size={20} sx={{ color: colors.secondary }} />
+            <Typography variant="body2" sx={{ color: colors.text.secondary }}>
+              Reconnecting to running discovery...
+            </Typography>
+          </Box>
+        )}
+        {/* Progress indicator */}
+        {running && suite && (
+          <Box>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                mb: 1,
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Typography variant="body2" color="text.secondary">
-                  {progress.toFixed(0)}%
+                  {suite.current_phase && (
+                    <Chip
+                      label={phaseNames[suite.current_phase]}
+                      size="small"
+                      sx={{
+                        mr: 1,
+                        bgcolor: colors.accent.secondary,
+                        color: colors.secondary,
+                        fontWeight: 600,
+                      }}
+                    />
+                  )}
+                  {suite.completed_checks} of {suite.total_checks} checks
                 </Typography>
               </Box>
-              <LinearProgress
-                variant="determinate"
-                value={progress}
-                sx={{
-                  height: 8,
-                  borderRadius: 4,
-                  bgcolor: colors.background.dark,
-                  "& .MuiLinearProgress-bar": {
-                    bgcolor: colors.secondary,
-                    borderRadius: 4,
-                  },
-                }}
-              />
+              <Typography variant="body2" color="text.secondary">
+                {progress.toFixed(0)}%
+              </Typography>
             </Box>
-          )}
-        </Stack>
-      </Paper>
+            <LinearProgress
+              variant="determinate"
+              value={progress}
+              sx={{
+                height: 8,
+                borderRadius: 4,
+                bgcolor: colors.background.dark,
+                "& .MuiLinearProgress-bar": {
+                  bgcolor: colors.secondary,
+                  borderRadius: 4,
+                },
+              }}
+            />
+          </Box>
+        )}
+      </B4Section>
 
       {/* Results */}
       {suite?.domain_discovery_results &&

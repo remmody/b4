@@ -7,9 +7,12 @@
 - ADDED: Discovery now names new sets after the preset configuration (e.g., `tcp-frag-rev-fake`) instead of the domain.
 - ADDED: Discovery detects similar existing sets and offers to add the domain to an existing set instead of creating a new one.
 - ADDED: Discovery short-circuits when baseline succeeds - skips optimization phases if no DPI is detected.
+- ADDED: Dedicated Sets API endpoints (`/api/sets`) for CRUD operations - create, update, delete, and reorder sets independently.
 - FIXED: Settings tab navigation losing selected tab on page refresh.
 - CHANGED: New configuration sets are now added to the top of the list instead of the bottom.
 - CHANGED: `Discovery` configuration refactoring component.
+- CHANGED: Configuration Sets promoted from Settings submenu to top-level navigation item.
+- CHANGED: Set operations (create, edit, delete, duplicate, reorder, enable/disable) now save immediately via API instead of requiring manual "Save Changes".
 
 ## [1.18.5] - 2025-11-27
 

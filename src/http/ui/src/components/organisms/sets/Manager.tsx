@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Box,
   Grid,
@@ -17,6 +17,7 @@ import {
   Tooltip,
   Switch,
   TextField,
+  Snackbar,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -47,6 +48,7 @@ import { SetEditor } from "./Editor";
 import { colors, radius, button_secondary } from "@design";
 import { B4Config, B4SetConfig, MAIN_SET_ID } from "@models/Config";
 import { SetCompare } from "./Compare";
+import { useSets } from "@hooks/useSets";
 
 export interface SetStats {
   manual_domains: number;
@@ -62,15 +64,16 @@ export interface SetStats {
 export interface SetWithStats extends B4SetConfig {
   stats: SetStats;
 }
+
 interface SetsManagerProps {
   config: B4Config & { sets?: SetWithStats[] };
-  onChange: (
-    field: string,
-    value: boolean | string | number | B4SetConfig[]
-  ) => void;
+  onRefresh: () => void;
 }
 
-export const SetsManager = ({ config, onChange }: SetsManagerProps) => {
+export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
+  const { createSet, updateSet, deleteSet, duplicateSet, reorderSets } =
+    useSets();
+
   const [filterText, setFilterText] = useState("");
   const [expandedSet, setExpandedSet] = useState<string | null>(null);
   const [editDialog, setEditDialog] = useState<{
@@ -89,6 +92,16 @@ export const SetsManager = ({ config, onChange }: SetsManagerProps) => {
     open: false,
     setId: null,
   });
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error";
+  }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+
   const setsData = config.sets || [];
   const sets = setsData.map((s) => ("set" in s ? s.set : s)) as B4SetConfig[];
   const setsStats = setsData.map((s) =>
@@ -186,61 +199,111 @@ export const SetsManager = ({ config, onChange }: SetsManagerProps) => {
   };
 
   const handleSaveSet = (set: B4SetConfig) => {
-    const existingIndex = sets.findIndex((s) => s.id === set.id);
+    void (async () => {
+      const result = editDialog.isNew
+        ? await createSet(set)
+        : await updateSet(set);
 
-    let updatedSets: B4SetConfig[];
-    if (existingIndex >= 0) {
-      // Update existing
-      updatedSets = [
-        ...sets.slice(0, existingIndex),
-        set,
-        ...sets.slice(existingIndex + 1),
-      ];
-    } else {
-      // Add new
-      updatedSets = [set, ...sets];
-    }
-
-    onChange("sets", updatedSets);
-    setEditDialog({ open: false, set: null, isNew: false });
+      if (result.success) {
+        setSnackbar({
+          open: true,
+          message: editDialog.isNew ? "Set created" : "Set updated",
+          severity: "success",
+        });
+        setEditDialog({ open: false, set: null, isNew: false });
+        onRefresh();
+      } else {
+        setSnackbar({
+          open: true,
+          message: result.error || "Failed",
+          severity: "error",
+        });
+      }
+    })();
   };
 
   const handleDeleteSet = () => {
     if (!deleteDialog.setId) return;
-
-    const filteredSets = sets.filter((s) => s.id !== deleteDialog.setId);
-    onChange("sets", filteredSets);
-
-    setDeleteDialog({ open: false, setId: null });
+    void (async () => {
+      const result = await deleteSet(deleteDialog.setId!);
+      if (result.success) {
+        setSnackbar({
+          open: true,
+          message: "Set deleted",
+          severity: "success",
+        });
+        setDeleteDialog({ open: false, setId: null });
+        onRefresh();
+      } else {
+        setSnackbar({
+          open: true,
+          message: result.error || "Failed to delete",
+          severity: "error",
+        });
+      }
+    })();
   };
 
   const handleDuplicateSet = (set: B4SetConfig) => {
-    const duplicated: B4SetConfig = {
-      ...set,
-      id: uuidv4(),
-      name: `${set.name} (copy)`,
-      targets: { ...set.targets },
-      tcp: { ...set.tcp },
-      udp: { ...set.udp },
-      fragmentation: { ...set.fragmentation },
-      faking: { ...set.faking },
-    };
-
-    onChange("sets", [...sets, duplicated]);
+    void (async () => {
+      const result = await duplicateSet(set);
+      if (result.success) {
+        setSnackbar({
+          open: true,
+          message: "Set duplicated",
+          severity: "success",
+        });
+        onRefresh();
+      } else {
+        setSnackbar({
+          open: true,
+          message: result.error || "Failed",
+          severity: "error",
+        });
+      }
+    })();
   };
 
   const handleMoveSetUp = (index: number) => {
     if (index <= 0) return;
-    const newSets = [...sets];
-    [newSets[index - 1], newSets[index]] = [newSets[index], newSets[index - 1]];
-    onChange("sets", newSets);
+    void (async () => {
+      const newOrder = [...sets];
+      [newOrder[index - 1], newOrder[index]] = [
+        newOrder[index],
+        newOrder[index - 1],
+      ];
+      const result = await reorderSets(newOrder.map((s) => s.id));
+      if (result.success) onRefresh();
+    })();
   };
 
   const handleMoveSetDown = (index: number) => {
     if (index >= sets.length - 1) return;
-    const newSets = [...sets];
-    [newSets[index], newSets[index + 1]] = [newSets[index + 1], newSets[index]];
-    onChange("sets", newSets);
+    void (async () => {
+      const newOrder = [...sets];
+      [newOrder[index], newOrder[index + 1]] = [
+        newOrder[index + 1],
+        newOrder[index],
+      ];
+      const result = await reorderSets(newOrder.map((s) => s.id));
+      if (result.success) onRefresh();
+    })();
+  };
+
+  const handleToggleEnabled = (set: B4SetConfig, enabled: boolean) => {
+    void (async () => {
+      const updatedSet = { ...set, enabled };
+      const result = await updateSet(updatedSet);
+      if (result.success) {
+        onRefresh();
+      } else {
+        setSnackbar({
+          open: true,
+          message: result.error || "Failed to update",
+          severity: "error",
+        });
+      }
+    })();
   };
 
   const filteredSets = useMemo(() => {
@@ -271,7 +334,14 @@ export const SetsManager = ({ config, onChange }: SetsManagerProps) => {
   return (
     <Stack spacing={3}>
       {/* Info Alert */}
-      <Alert severity="info" icon={<LayersIcon />}>
+      <Alert
+        severity="info"
+        sx={{
+          bgcolor: colors.accent.primary,
+          border: `1px solid ${colors.secondary}44`,
+        }}
+        icon={<LayersIcon />}
+      >
         <Typography variant="subtitle2" gutterBottom>
           Configuration Sets allow you to define different bypass strategies for
           different domains or scenarios.
@@ -378,16 +448,9 @@ export const SetsManager = ({ config, onChange }: SetsManagerProps) => {
                         >
                           <Switch
                             checked={set.enabled}
-                            onChange={(e) => {
-                              const updatedSet = {
-                                ...set,
-                                enabled: e.target.checked,
-                              };
-                              const updatedSets = sets.map((s) =>
-                                s.id === set.id ? updatedSet : s
-                              );
-                              onChange("sets", updatedSets);
-                            }}
+                            onChange={(e) =>
+                              handleToggleEnabled(set, e.target.checked)
+                            }
                             size="small"
                             sx={{
                               "& .MuiSwitch-switchBase.Mui-checked": {
@@ -993,6 +1056,22 @@ export const SetsManager = ({ config, onChange }: SetsManagerProps) => {
           setCompareDialog({ open: false, setA: null, setB: null })
         }
       />
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 };

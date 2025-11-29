@@ -1,4 +1,5 @@
 import { Container, Alert, Stack } from "@mui/material";
+import { Science as ScienceIcon } from "@mui/icons-material";
 import { DiscoveryRunner } from "@/components/organisms/discovery/Discovery";
 import { colors } from "@design";
 
@@ -25,6 +26,7 @@ export default function Test() {
             bgcolor: colors.accent.primary,
             border: `1px solid ${colors.secondary}44`,
           }}
+          icon={<ScienceIcon />}
         >
           <strong>Configuration Discovery:</strong> Automatically test multiple
           configuration presets to find the most effective DPI bypass settings
