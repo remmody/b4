@@ -110,7 +110,6 @@ type WebServerConfig struct {
 }
 
 type CheckerConfig struct {
-	Domains []string `yaml:"domains" json:"domains"`
 	// Discovery settings
 	DiscoveryTimeoutSec int `yaml:"discovery_timeout" json:"discovery_timeout"`
 	ConfigPropagateMs   int `yaml:"config_propagate_ms" json:"config_propagate_ms"`

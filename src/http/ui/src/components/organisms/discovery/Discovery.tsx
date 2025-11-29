@@ -28,8 +28,7 @@ import {
 import { colors } from "@design";
 import { B4SetConfig } from "@/models/Config";
 import SettingTextField from "@atoms/common/B4TextField";
-import { AddSniModal } from "@/components/organisms/connections/AddSniModal";
-import { generateDomainVariants } from "@utils";
+import { DiscoveryAddDialog } from "./AddDialog";
 
 // Strategy family types matching backend
 type StrategyFamily =
@@ -114,9 +113,6 @@ export const DiscoveryRunner: React.FC = () => {
   const [suite, setSuite] = useState<DiscoverySuite | null>(null);
 
   const [error, setError] = useState<string | null>(null);
-  const [addingPreset, setAddingPreset] = useState<string | null>(null);
-  const [variants, setVariants] = useState<string[]>([]);
-  const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(
     new Set()
   );
@@ -127,24 +123,27 @@ export const DiscoveryRunner: React.FC = () => {
   }>({ open: false, message: "", severity: "success" });
 
   const [domain, setDomain] = useState("");
-
-  const [variantModal, setVariantModal] = useState<{
+  const [addingPreset, setAddingPreset] = useState(false);
+  const [addDialog, setAddDialog] = useState<{
     open: boolean;
     domain: string;
-    result: DomainPresetResult | null;
-  }>({ open: false, domain: "", result: null });
+    presetName: string;
+    setConfig: B4SetConfig | null;
+  }>({ open: false, domain: "", presetName: "", setConfig: null });
+
   const progress = suite
     ? (suite.completed_checks / suite.total_checks) * 100
     : 0;
   const isReconnecting = suiteId && running && !suite;
 
   const handleAddStrategy = (domain: string, result: DomainPresetResult) => {
-    const domainVariants = generateDomainVariants(domain);
-    setVariants(domainVariants);
-    setSelectedVariant(domainVariants[0]);
-    setVariantModal({ open: true, domain, result });
+    setAddDialog({
+      open: true,
+      domain,
+      presetName: result.preset_name,
+      setConfig: result.set || null,
+    });
   };
-
   const toggleDomainExpand = (domain: string) => {
     setExpandedDomains((prev) => {
       const next = new Set(prev);
@@ -256,20 +255,16 @@ export const DiscoveryRunner: React.FC = () => {
     setExpandedDomains(new Set());
   };
 
-  const confirmAddStrategy = async () => {
-    if (!variantModal.result?.set) return;
+  const handleAddNew = async (name: string, domain: string) => {
+    if (!addDialog.setConfig) return;
+    setAddingPreset(true);
 
     try {
       const configToAdd = {
-        ...variantModal.result.set,
-        targets: {
-          ...variantModal.result.set.targets,
-          sni_domains: [selectedVariant],
-        },
+        ...addDialog.setConfig,
+        name,
+        targets: { ...addDialog.setConfig.targets, sni_domains: [domain] },
       };
-      setAddingPreset(
-        `${variantModal.domain}-${variantModal.result.preset_name}`
-      );
 
       const response = await fetch("/api/discovery/add", {
         method: "POST",
@@ -277,27 +272,61 @@ export const DiscoveryRunner: React.FC = () => {
         body: JSON.stringify(configToAdd),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to add configuration");
-      }
-
-      const data = (await response.json()) as { message: string };
+      if (!response.ok) throw new Error("Failed to add configuration");
 
       setSnackbar({
         open: true,
-        message: `${data.message}`,
+        message: `Created set "${name}"`,
         severity: "success",
       });
-      setVariantModal({ open: false, domain: "", result: null });
-    } catch (err) {
-      console.error("Failed to add strategy:", err);
+      setAddDialog({
+        open: false,
+        domain: "",
+        presetName: "",
+        setConfig: null,
+      });
+    } catch {
       setSnackbar({
         open: true,
         message: "Failed to add configuration",
         severity: "error",
       });
     } finally {
-      setAddingPreset(null);
+      setAddingPreset(false);
+    }
+  };
+
+  const handleAddToExisting = async (setId: string, domain: string) => {
+    setAddingPreset(true);
+
+    try {
+      const response = await fetch(`/api/config/sets/${setId}/domains`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain }),
+      });
+
+      if (!response.ok) throw new Error("Failed to add domain");
+
+      setSnackbar({
+        open: true,
+        message: `Added "${domain}" to existing set`,
+        severity: "success",
+      });
+      setAddDialog({
+        open: false,
+        domain: "",
+        presetName: "",
+        setConfig: null,
+      });
+    } catch {
+      setSnackbar({
+        open: true,
+        message: "Failed to add domain",
+        severity: "error",
+      });
+    } finally {
+      setAddingPreset(false);
     }
   };
 
@@ -628,8 +657,7 @@ export const DiscoveryRunner: React.FC = () => {
                         <Button
                           variant="contained"
                           startIcon={
-                            addingPreset ===
-                            `${domainResult.domain}-${domainResult.best_preset}` ? (
+                            addingPreset ? (
                               <CircularProgress size={18} color="inherit" />
                             ) : (
                               <AddIcon />
@@ -644,10 +672,7 @@ export const DiscoveryRunner: React.FC = () => {
                               bestResult
                             );
                           }}
-                          disabled={
-                            addingPreset ===
-                            `${domainResult.domain}-${domainResult.best_preset}`
-                          }
+                          disabled={addingPreset}
                           sx={{
                             bgcolor: colors.secondary,
                             color: colors.background.default,
@@ -768,10 +793,7 @@ export const DiscoveryRunner: React.FC = () => {
                                                   result
                                                 );
                                               }}
-                                              disabled={
-                                                addingPreset ===
-                                                `${domainResult.domain}-${result.preset_name}`
-                                              }
+                                              disabled={addingPreset}
                                               sx={{
                                                 p: 0.5,
                                                 bgcolor: colors.background.dark,
@@ -811,23 +833,26 @@ export const DiscoveryRunner: React.FC = () => {
           </Stack>
         )}
 
-      <AddSniModal
-        open={variantModal.open}
-        domain={variantModal.domain}
-        variants={variants}
-        selected={selectedVariant || variants[0]}
-        sets={[]}
-        createNewSet={true}
-        onClose={() => {
-          setVariantModal({ open: false, domain: "", result: null });
-          setSelectedVariant(null);
+      <DiscoveryAddDialog
+        open={addDialog.open}
+        domain={addDialog.domain}
+        presetName={addDialog.presetName}
+        setConfig={addDialog.setConfig}
+        onClose={() =>
+          setAddDialog({
+            open: false,
+            domain: "",
+            presetName: "",
+            setConfig: null,
+          })
+        }
+        onAddNew={(name: string, domain: string) => {
+          void handleAddNew(name, domain);
         }}
-        onSelectVariant={(variant) => {
-          setSelectedVariant(variant);
+        onAddToExisting={(setId: string, domain: string) => {
+          void handleAddToExisting(setId, domain);
         }}
-        onAdd={() => {
-          void confirmAddStrategy();
-        }}
+        loading={addingPreset}
       />
 
       <Snackbar

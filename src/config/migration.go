@@ -10,10 +10,16 @@ import (
 
 type MigrationFunc func(*Config) error
 
+var (
+	CurrentConfigVersion = len(migrationRegistry)
+	MinSupportedVersion  = 0
+)
+
 var migrationRegistry = map[int]MigrationFunc{
 	0: migrateV0to1, // Add enabled field to sets
 	1: migrateV1to2,
 	2: migrateV2to3,
+	3: migrateV3to4,
 }
 
 // Migration: v0 -> v1 (add enabled field to sets)
@@ -60,6 +66,15 @@ func migrateV2to3(c *Config) error {
 		// SNI mutation
 		set.Faking.SNIMutation = DefaultSetConfig.Faking.SNIMutation
 	}
+
+	return nil
+}
+
+func migrateV3to4(c *Config) error {
+	log.Tracef("Migration v3->v4: Initializing missing fields with default values")
+
+	c.System.Checker.ConfigPropagateMs = DefaultConfig.System.Checker.ConfigPropagateMs
+	c.System.Checker.DiscoveryTimeoutSec = DefaultConfig.System.Checker.DiscoveryTimeoutSec
 
 	return nil
 }

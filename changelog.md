@@ -4,9 +4,12 @@
 
 - ADDED: Filter for configuration sets - search by `name`, `SNI` domains, `geosite` categories, or `geoip` categories.
 - ADDED: Compare sets feature - side-by-side diff view showing differences between two configuration sets, grouped by section (TCP, UDP, Fragmentation, Faking, Targets).
+- ADDED: Discovery now names new sets after the preset configuration (e.g., `tcp-frag-rev-fake`) instead of the domain.
+- ADDED: Discovery detects similar existing sets and offers to add the domain to an existing set instead of creating a new one.
+- ADDED: Discovery short-circuits when baseline succeeds - skips optimization phases if no DPI is detected.
 - FIXED: Settings tab navigation losing selected tab on page refresh.
 - CHANGED: New configuration sets are now added to the top of the list instead of the bottom.
-- CHANGED: `Discovery` configuration refactoring.
+- CHANGED: `Discovery` configuration refactoring component.
 
 ## [1.18.5] - 2025-11-27
 

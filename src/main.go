@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	cfg             = config.DefaultConfig
+	cfg             = config.NewConfig()
 	verboseFlag     string
 	showVersion     bool
 	clearTables     bool

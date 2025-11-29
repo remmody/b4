@@ -70,7 +70,22 @@ func (ds *DiscoverySuite) RunDiscovery() {
 
 	// Phase 1: Strategy Detection
 	ds.setPhase(PhaseStrategy)
-	workingFamilies, baselineSpeed := ds.runPhase1()
+	workingFamilies, baselineSpeed, baselineWorks := ds.runPhase1()
+
+	if baselineWorks {
+		log.Infof("Baseline succeeded for %s - no DPI bypass needed, skipping optimization", ds.domain)
+
+		// Update total to reflect actual tests run
+		ds.CheckSuite.mu.Lock()
+		ds.TotalChecks = 1
+		ds.CheckSuite.mu.Unlock()
+
+		ds.determineBest(baselineSpeed)
+		ds.restoreConfig()
+		ds.finalize()
+		ds.logDiscoverySummary()
+		return
+	}
 
 	if len(workingFamilies) == 0 {
 		log.Warnf("No working bypass strategies found for %s", ds.domain)
@@ -97,30 +112,31 @@ func (ds *DiscoverySuite) RunDiscovery() {
 	ds.logDiscoverySummary()
 }
 
-func (ds *DiscoverySuite) runPhase1() ([]StrategyFamily, float64) {
+func (ds *DiscoverySuite) runPhase1() ([]StrategyFamily, float64, bool) {
 	presets := GetPhase1Presets()
 	var workingFamilies []StrategyFamily
 	var baselineSpeed float64
 
 	log.Infof("Phase 1: Testing %d strategy families", len(presets))
 
-	// Test baseline first (index 0)
+	// Test baseline first (index 0) - this is "no-bypass" preset
 	baselineResult := ds.testPreset(presets[0])
 	ds.storeResult(presets[0], baselineResult)
 
 	baselineWorks := baselineResult.Status == CheckStatusComplete
 	if baselineWorks {
 		baselineSpeed = baselineResult.Speed
-		log.Infof("  Baseline: SUCCESS (%.2f KB/s) - DPI bypass may not be needed", baselineSpeed/1024)
-	} else {
-		log.Infof("  Baseline: FAILED - DPI bypass needed")
+		log.Infof("  Baseline: SUCCESS (%.2f KB/s) - no DPI detected", baselineSpeed/1024)
+		return workingFamilies, baselineSpeed, true
 	}
+
+	log.Infof("  Baseline: FAILED - DPI bypass needed, testing strategies")
 
 	// Test each strategy family
 	for _, preset := range presets[1:] {
 		select {
 		case <-ds.cancel:
-			return workingFamilies, baselineSpeed
+			return workingFamilies, baselineSpeed, false
 		default:
 		}
 
@@ -140,7 +156,7 @@ func (ds *DiscoverySuite) runPhase1() ([]StrategyFamily, float64) {
 		}
 	}
 
-	return workingFamilies, baselineSpeed
+	return workingFamilies, baselineSpeed, false
 }
 
 func (ds *DiscoverySuite) runPhase2(families []StrategyFamily) map[StrategyFamily]ConfigPreset {

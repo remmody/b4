@@ -7,9 +7,6 @@ import (
 var (
 	MAIN_SET_ID = "11111111-1111-1111-1111-111111111111"
 	NEW_SET_ID  = "00000000-0000-0000-0000-000000000000"
-
-	CurrentConfigVersion = len(migrationRegistry)
-	MinSupportedVersion  = 0
 )
 
 type Config struct {
@@ -104,7 +101,7 @@ var DefaultConfig = Config{
 
 	Sets: []*SetConfig{},
 
-	MainSet: &DefaultSetConfig,
+	MainSet: nil,
 
 	System: SystemConfig{
 		Geo: GeoDatConfig{
@@ -131,7 +128,6 @@ var DefaultConfig = Config{
 		},
 
 		Checker: CheckerConfig{
-			Domains:             []string{},
 			DiscoveryTimeoutSec: 5,
 			ConfigPropagateMs:   1500,
 		},
@@ -145,12 +141,12 @@ func NewSetConfig() SetConfig {
 	cfg := DefaultSetConfig
 
 	// Deep copy only the slices
-	cfg.TCP.WinValues = append([]int(nil), DefaultSetConfig.TCP.WinValues...)
-	cfg.Faking.SNIMutation.FakeSNIs = append([]string(nil), DefaultSetConfig.Faking.SNIMutation.FakeSNIs...)
-	cfg.Targets.SNIDomains = append([]string(nil), DefaultSetConfig.Targets.SNIDomains...)
-	cfg.Targets.IPs = append([]string(nil), DefaultSetConfig.Targets.IPs...)
-	cfg.Targets.GeoSiteCategories = append([]string(nil), DefaultSetConfig.Targets.GeoSiteCategories...)
-	cfg.Targets.GeoIpCategories = append([]string(nil), DefaultSetConfig.Targets.GeoIpCategories...)
+	cfg.TCP.WinValues = append(make([]int, 0), DefaultSetConfig.TCP.WinValues...)
+	cfg.Faking.SNIMutation.FakeSNIs = append(make([]string, 0), DefaultSetConfig.Faking.SNIMutation.FakeSNIs...)
+	cfg.Targets.SNIDomains = append(make([]string, 0), DefaultSetConfig.Targets.SNIDomains...)
+	cfg.Targets.IPs = append(make([]string, 0), DefaultSetConfig.Targets.IPs...)
+	cfg.Targets.GeoSiteCategories = append(make([]string, 0), DefaultSetConfig.Targets.GeoSiteCategories...)
+	cfg.Targets.GeoIpCategories = append(make([]string, 0), DefaultSetConfig.Targets.GeoIpCategories...)
 
 	return cfg
 }
@@ -164,7 +160,6 @@ func NewConfig() Config {
 
 	// Deep copy slices
 	cfg.Sets = []*SetConfig{}
-	cfg.System.Checker.Domains = append([]string(nil), DefaultConfig.System.Checker.Domains...)
 
 	return cfg
 }

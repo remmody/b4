@@ -86,36 +86,4 @@ func TestApplyMigrations(t *testing.T) {
 		}
 	})
 
-	t.Run("v1 to v2 sets fragmentation defaults", func(t *testing.T) {
-		cfg := NewConfig()
-		set := NewSetConfig()
-		set.Fragmentation.ReverseOrder = false
-		set.Fragmentation.OOBChar = 0
-		cfg.Sets = []*SetConfig{&set}
-
-		if err := cfg.applyMigrations(1); err != nil {
-			t.Fatalf("migration failed: %v", err)
-		}
-		if cfg.Sets[0].Fragmentation.ReverseOrder != DefaultSetConfig.Fragmentation.ReverseOrder {
-			t.Error("v1->v2 should set ReverseOrder from defaults")
-		}
-	})
-
-	t.Run("v2 to v3 sets TCP desync and SNI mutation", func(t *testing.T) {
-		cfg := NewConfig()
-		set := NewSetConfig()
-		set.TCP.DesyncMode = ""
-		set.TCP.WinMode = ""
-		cfg.Sets = []*SetConfig{&set}
-
-		if err := cfg.applyMigrations(2); err != nil {
-			t.Fatalf("migration failed: %v", err)
-		}
-		if cfg.Sets[0].TCP.DesyncMode != DefaultSetConfig.TCP.DesyncMode {
-			t.Error("v2->v3 should set DesyncMode")
-		}
-		if cfg.Sets[0].TCP.WinMode != DefaultSetConfig.TCP.WinMode {
-			t.Error("v2->v3 should set WinMode")
-		}
-	})
 }

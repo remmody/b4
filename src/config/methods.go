@@ -50,6 +50,7 @@ func (c *Config) LoadFromFile(path string) error {
 	if err != nil {
 		return log.Errorf("failed to stat config file: %v", err)
 	}
+
 	if info.IsDir() {
 		return log.Errorf("config path is a directory, not a file: %s", path)
 	}
@@ -59,11 +60,14 @@ func (c *Config) LoadFromFile(path string) error {
 		return log.Errorf("failed to read config file: %v", err)
 	}
 	err = json.Unmarshal(data, c)
+
 	if err != nil {
 		return log.Errorf("failed to parse config file: %v", err)
 	}
+
 	if len(c.Sets) == 0 {
-		c.Sets = []*SetConfig{&DefaultSetConfig}
+		defaultCopy := NewSetConfig()
+		c.Sets = []*SetConfig{&defaultCopy}
 	}
 	return nil
 }

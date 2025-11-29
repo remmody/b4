@@ -11,7 +11,18 @@ import (
 // IMPORTANT: Most DPI requires COMBINATIONS of techniques, not single techniques
 func GetPhase1Presets() []ConfigPreset {
 	return []ConfigPreset{
-		// 0. Proven working config - this is the baseline that works for most Russian DPI
+
+		// 0. Raw baseline - no bypass at all (to detect if DPI even blocks)
+		{
+			Name:        "no-bypass",
+			Description: "No bypass techniques - test raw connectivity",
+			Family:      FamilyNone,
+			Phase:       PhaseBaseline,
+			Priority:    1,
+			Config:      baselineConfig(),
+		},
+
+		// 1. Proven working config - this is the baseline that works for most Russian DPI
 		{
 			Name:        "proven-combo",
 			Description: "Proven combination: TCP frag + reverse + middle SNI + fake pastseq",
@@ -46,16 +57,6 @@ func GetPhase1Presets() []ConfigPreset {
 					SNIType:      config.FakePayloadDefault,
 				},
 			},
-		},
-
-		// 1. Raw baseline - no bypass at all (to detect if DPI even blocks)
-		{
-			Name:        "no-bypass",
-			Description: "No bypass techniques - test raw connectivity",
-			Family:      FamilyNone,
-			Phase:       PhaseBaseline,
-			Priority:    1,
-			Config:      baselineConfig(),
 		},
 
 		// 2. TCP Frag + Fake (common combo)

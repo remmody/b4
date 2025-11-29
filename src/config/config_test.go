@@ -20,18 +20,3 @@ func TestNewSetConfig_DeepCopy(t *testing.T) {
 		t.Error("FakeSNIs leaked between instances")
 	}
 }
-
-func TestNewConfig_DeepCopy(t *testing.T) {
-	cfg1 := NewConfig()
-	cfg2 := NewConfig()
-
-	cfg1.MainSet.TCP.ConnBytesLimit = 999
-	cfg1.System.Checker.Domains = append(cfg1.System.Checker.Domains, "test.com")
-
-	if cfg2.MainSet.TCP.ConnBytesLimit == 999 {
-		t.Error("MainSet leaked between instances")
-	}
-	if len(cfg2.System.Checker.Domains) != 0 {
-		t.Error("Checker.Domains leaked between instances")
-	}
-}

@@ -215,7 +215,7 @@ func (a *API) resetConfig(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Config reset requested")
 
-	defaultCfg := config.DefaultConfig
+	defaultCfg := config.NewConfig()
 	defaultCfg.System.Checker = a.cfg.System.Checker
 	defaultCfg.ConfigPath = a.cfg.ConfigPath
 	defaultCfg.System.WebServer.IsEnabled = a.cfg.System.WebServer.IsEnabled

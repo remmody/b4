@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/daniellavrushin/b4/config"
@@ -17,6 +18,8 @@ func (api *API) RegisterDiscoveryApi() {
 	api.mux.HandleFunc("/api/discovery/status", api.handleCheckStatus)
 	api.mux.HandleFunc("/api/discovery/cancel", api.handleCancelCheck)
 	api.mux.HandleFunc("/api/discovery/add", api.handleAddPresetAsSet)
+	api.mux.HandleFunc("/api/discovery/similar", api.handleFindSimilarSets)
+	api.mux.HandleFunc("/api/config/sets/", api.handleSetDomains)
 }
 
 func (api *API) handleCheckStatus(w http.ResponseWriter, r *http.Request) {
@@ -191,4 +194,94 @@ func (api *API) handleAddPresetAsSet(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"message": fmt.Sprintf("Added '%s' configuration", set.Name),
 	})
+}
+
+func (api *API) handleFindSimilarSets(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var incoming config.SetConfig
+	if err := json.NewDecoder(r.Body).Decode(&incoming); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	type SimilarSet struct {
+		Id      string   `json:"id"`
+		Name    string   `json:"name"`
+		Domains []string `json:"domains"`
+	}
+
+	var similar []SimilarSet
+
+	for _, set := range api.cfg.Sets {
+		if !set.Enabled {
+			continue
+		}
+		if setsHaveSimilarConfig(set, &incoming) {
+			similar = append(similar, SimilarSet{
+				Id:      set.Id,
+				Name:    set.Name,
+				Domains: set.Targets.SNIDomains,
+			})
+		}
+	}
+
+	setJsonHeader(w)
+	json.NewEncoder(w).Encode(similar)
+}
+
+func (api *API) handleSetDomains(w http.ResponseWriter, r *http.Request) {
+
+	path := r.URL.Path
+	parts := strings.Split(strings.TrimPrefix(path, "/api/config/sets/"), "/")
+	if len(parts) < 2 || parts[1] != "domains" {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
+	setId := parts[0]
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Domain string `json:"domain"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Find set and add domain
+	for _, set := range api.cfg.Sets {
+		if set.Id == setId {
+			set.Targets.SNIDomains = append(set.Targets.SNIDomains, req.Domain)
+			set.Targets.DomainsToMatch = append(set.Targets.DomainsToMatch, req.Domain)
+
+			if err := api.saveAndPushConfig(api.cfg); err != nil {
+				http.Error(w, "Failed to save", http.StatusInternalServerError)
+				return
+			}
+
+			setJsonHeader(w)
+			json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
+			return
+		}
+	}
+
+	http.Error(w, "Set not found", http.StatusNotFound)
+}
+
+func setsHaveSimilarConfig(a, b *config.SetConfig) bool {
+	return a.Fragmentation.Strategy == b.Fragmentation.Strategy &&
+		a.Fragmentation.ReverseOrder == b.Fragmentation.ReverseOrder &&
+		a.Fragmentation.MiddleSNI == b.Fragmentation.MiddleSNI &&
+		a.Faking.Strategy == b.Faking.Strategy &&
+		a.Faking.TTL == b.Faking.TTL &&
+		a.Faking.SNI == b.Faking.SNI &&
+		a.TCP.DropSACK == b.TCP.DropSACK
 }
