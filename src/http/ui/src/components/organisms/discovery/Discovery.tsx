@@ -61,13 +61,12 @@ interface DomainPresetResult {
   set?: B4SetConfig;
 }
 
-interface DomainDiscoveryResult {
+interface DiscoveryResult {
   domain: string;
   best_preset: string;
   best_speed: number;
   best_success: boolean;
   results: Record<string, DomainPresetResult>;
-  working_families?: StrategyFamily[];
   baseline_speed?: number;
   improvement?: number;
 }
@@ -80,14 +79,11 @@ interface DiscoverySuite {
   total_checks: number;
   completed_checks: number;
   current_phase?: DiscoveryPhase;
-  working_families?: string[];
-  domain_discovery_results?: Record<string, DomainDiscoveryResult>;
+  domain_discovery_results?: Record<string, DiscoveryResult>;
 }
 
-interface DiscoveryStartResponse {
+interface DiscoveryResponse {
   id: string;
-  total_domains: number;
-  total_clusters: number;
   estimated_tests: number;
   message: string;
 }
@@ -210,7 +206,7 @@ export const DiscoveryRunner: React.FC = () => {
         throw new Error(text || "Failed to start discovery");
       }
 
-      const data = (await response.json()) as DiscoveryStartResponse;
+      const data = (await response.json()) as DiscoveryResponse;
       setSuiteId(data.id);
     } catch (err) {
       console.error("Failed to start discovery:", err);
@@ -642,41 +638,6 @@ export const DiscoveryRunner: React.FC = () => {
                     {/* Expanded Details */}
                     <Collapse in={isExpanded}>
                       <Box sx={{ p: 3 }}>
-                        {/* Working Families */}
-                        {domainResult.working_families &&
-                          domainResult.working_families.length > 0 && (
-                            <Box sx={{ mb: 3 }}>
-                              <Typography
-                                variant="subtitle2"
-                                sx={{
-                                  color: colors.text.secondary,
-                                  mb: 1,
-                                  textTransform: "uppercase",
-                                  fontSize: "0.7rem",
-                                }}
-                              >
-                                Working Strategy Families
-                              </Typography>
-                              <Stack
-                                direction="row"
-                                spacing={1}
-                                flexWrap="wrap"
-                                gap={1}
-                              >
-                                {domainResult.working_families.map((family) => (
-                                  <Chip
-                                    key={family}
-                                    label={familyNames[family]}
-                                    sx={{
-                                      bgcolor: colors.accent.secondary,
-                                      color: colors.secondary,
-                                    }}
-                                  />
-                                ))}
-                              </Stack>
-                            </Box>
-                          )}
-
                         <Divider
                           sx={{ my: 2, borderColor: colors.border.default }}
                         />

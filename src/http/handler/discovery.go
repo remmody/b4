@@ -9,67 +9,14 @@ import (
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/discovery"
 	"github.com/daniellavrushin/b4/log"
-	"github.com/daniellavrushin/b4/utils"
 	"github.com/google/uuid"
 )
 
 func (api *API) RegisterDiscoveryApi() {
 	api.mux.HandleFunc("/api/discovery", api.handleStartDiscovery)
-	api.mux.HandleFunc("/api/discovery/start", api.handleStartCheck)
 	api.mux.HandleFunc("/api/discovery/status", api.handleCheckStatus)
 	api.mux.HandleFunc("/api/discovery/cancel", api.handleCancelCheck)
 	api.mux.HandleFunc("/api/discovery/add", api.handleAddPresetAsSet)
-}
-
-func (api *API) handleStartCheck(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	chckCfg := &api.cfg.System.Checker
-
-	var req DiscoveryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Errorf("Failed to decode check request: %v", err)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	domains := []string{req.Domain}
-	if len(domains) == 0 {
-		if len(api.cfg.Sets) > 0 {
-			for _, set := range api.cfg.Sets {
-				if len(set.Targets.SNIDomains) > 0 {
-					domains = append(domains, set.Targets.SNIDomains...)
-				}
-			}
-		}
-		domains = append(domains, chckCfg.Domains...)
-		domains = utils.FilterUniqueStrings(domains)
-	}
-
-	if len(domains) == 0 {
-		http.Error(w, "No domains provided. Please specify domains to test.", http.StatusBadRequest)
-		return
-	}
-	config := discovery.CheckConfig{
-		CheckURL:               req.CheckURL,
-		Timeout:                time.Duration(api.cfg.System.Checker.DiscoveryTimeoutSec) * time.Second,
-		ConfigPropagateTimeout: time.Duration(api.cfg.System.Checker.ConfigPropagateMs),
-	}
-
-	suite := discovery.NewCheckSuite(config)
-
-	go suite.Run(domains)
-
-	response := DiscoveryResponse{
-		Id:      suite.Id,
-		Message: "Check suite started",
-	}
-
-	setJsonHeader(w)
-	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(response)
 }
 
 func (api *API) handleCheckStatus(w http.ResponseWriter, r *http.Request) {

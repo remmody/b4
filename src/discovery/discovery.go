@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/daniellavrushin/b4/config"
@@ -16,36 +15,22 @@ import (
 )
 
 const (
-	// Timeouts
-	QUICK_FAIL_TIMEOUT     = 1500 * time.Millisecond // Fast fail for non-responsive
-	MAX_PRESETS_PER_DOMAIN = 3                       // Stop after N successful configs
-
-	// Parallelism
-	DEFAULT_PARALLEL_TESTS = 3
+	QUICK_FAIL_TIMEOUT = 1500 * time.Millisecond
 )
 
 type DiscoverySuite struct {
 	*CheckSuite
 	pool           *nfq.Pool
 	originalConfig *config.Config
-
-	domain          string
-	workingFamilies []StrategyFamily
-	bestParams      map[StrategyFamily]ConfigPreset
-	domainResult    *DomainDiscoveryResult
-
-	mu sync.RWMutex
+	domain         string
+	domainResult   *DomainDiscoveryResult
 }
 
 func NewDiscoverySuite(checkConfig CheckConfig, pool *nfq.Pool, domain string) *DiscoverySuite {
-	suite := NewCheckSuite(checkConfig)
-
 	return &DiscoverySuite{
-		CheckSuite:      suite,
-		pool:            pool,
-		domain:          domain,
-		workingFamilies: []StrategyFamily{},
-		bestParams:      make(map[StrategyFamily]ConfigPreset),
+		CheckSuite: NewCheckSuite(checkConfig),
+		pool:       pool,
+		domain:     domain,
 		domainResult: &DomainDiscoveryResult{
 			Domain:  domain,
 			Results: make(map[string]*DomainPresetResult),
@@ -67,9 +52,7 @@ func (ds *DiscoverySuite) RunDiscovery() {
 		})
 	}()
 
-	ds.CheckSuite.mu.Lock()
-	ds.Status = CheckStatusRunning
-	ds.CheckSuite.mu.Unlock()
+	ds.setStatus(CheckStatusRunning)
 
 	ds.originalConfig = ds.pool.GetFirstWorkerConfig()
 	if ds.originalConfig == nil {
@@ -87,106 +70,82 @@ func (ds *DiscoverySuite) RunDiscovery() {
 
 	// Phase 1: Strategy Detection
 	ds.setPhase(PhaseStrategy)
-	ds.workingFamilies = ds.runPhase1(ds.domain)
+	workingFamilies, baselineSpeed := ds.runPhase1()
 
-	if len(ds.workingFamilies) == 0 {
+	if len(workingFamilies) == 0 {
 		log.Warnf("No working bypass strategies found for %s", ds.domain)
 		ds.restoreConfig()
-		ds.CheckSuite.mu.Lock()
-		ds.CheckSuite.DomainDiscoveryResults = map[string]*DomainDiscoveryResult{ds.domain: ds.domainResult}
-		ds.Status = CheckStatusComplete
-		ds.CheckSuite.mu.Unlock()
+		ds.finalize()
 		return
 	}
 
-	log.Infof("Phase 1 complete: %d working families: %v", len(ds.workingFamilies), ds.workingFamilies)
+	log.Infof("Phase 1 complete: %d working families: %v", len(workingFamilies), workingFamilies)
 
 	// Phase 2: Optimization
 	ds.setPhase(PhaseOptimize)
-	ds.runPhase2(ds.domain, ds.workingFamilies)
+	bestParams := ds.runPhase2(workingFamilies)
 
 	// Phase 3: Combinations
-	if len(ds.workingFamilies) >= 2 {
+	if len(workingFamilies) >= 2 {
 		ds.setPhase(PhaseCombination)
-		ds.runPhase3(ds.domain)
+		ds.runPhase3(workingFamilies, bestParams)
 	}
 
-	ds.determineBest()
+	ds.determineBest(baselineSpeed)
 	ds.restoreConfig()
-
-	ds.CheckSuite.mu.Lock()
-	ds.CheckSuite.DomainDiscoveryResults = map[string]*DomainDiscoveryResult{ds.domain: ds.domainResult}
-	ds.Status = CheckStatusComplete
-	ds.CheckSuite.mu.Unlock()
-
+	ds.finalize()
 	ds.logDiscoverySummary()
 }
 
-func (ds *DiscoverySuite) runPhase1(domain string) []StrategyFamily {
+func (ds *DiscoverySuite) runPhase1() ([]StrategyFamily, float64) {
 	presets := GetPhase1Presets()
-	workingFamilies := []StrategyFamily{}
-	familyResults := make(map[StrategyFamily]*StrategyResult)
+	var workingFamilies []StrategyFamily
+	var baselineSpeed float64
 
 	log.Infof("Phase 1: Testing %d strategy families", len(presets))
 
-	// Test baseline first (without any bypass)
-	baselinePreset := presets[0]
-	baselineResult := ds.testPreset(domain, baselinePreset)
-	ds.storeResult(domain, baselinePreset, baselineResult)
+	// Test baseline first (index 0)
+	baselineResult := ds.testPreset(presets[0])
+	ds.storeResult(presets[0], baselineResult)
 
 	baselineWorks := baselineResult.Status == CheckStatusComplete
-	var baselineSpeed float64
 	if baselineWorks {
 		baselineSpeed = baselineResult.Speed
 		log.Infof("  Baseline: SUCCESS (%.2f KB/s) - DPI bypass may not be needed", baselineSpeed/1024)
-
-		// Store baseline speed for improvement calculation
-		ds.mu.Lock()
-		ds.domainResult.BaselineSpeed = baselineSpeed
-		ds.mu.Unlock()
 	} else {
 		log.Infof("  Baseline: FAILED - DPI bypass needed")
 	}
 
 	// Test each strategy family
-	for _, preset := range presets[1:] { // Skip baseline
+	for _, preset := range presets[1:] {
 		select {
 		case <-ds.cancel:
-			return workingFamilies
+			return workingFamilies, baselineSpeed
 		default:
 		}
 
-		result := ds.testPreset(domain, preset)
-		ds.storeResult(domain, preset, result)
+		result := ds.testPreset(preset)
+		ds.storeResult(preset, result)
 
-		sr := &StrategyResult{
-			Family:  preset.Family,
-			Works:   result.Status == CheckStatusComplete,
-			Speed:   result.Speed,
-			Preset:  preset.Name,
-			Latency: result.Duration,
-		}
-		familyResults[preset.Family] = sr
-
-		if sr.Works {
-			// Only count as "working" if it's better than baseline or baseline failed
-			if !baselineWorks || sr.Speed > baselineSpeed*0.8 {
+		if result.Status == CheckStatusComplete {
+			if !baselineWorks || result.Speed > baselineSpeed*0.8 {
 				workingFamilies = append(workingFamilies, preset.Family)
-				log.Infof("  %s: SUCCESS (%.2f KB/s)", preset.Name, sr.Speed/1024)
+				log.Infof("  %s: SUCCESS (%.2f KB/s)", preset.Name, result.Speed/1024)
 			} else {
 				log.Infof("  %s: SUCCESS but slower than baseline (%.2f vs %.2f KB/s)",
-					preset.Name, sr.Speed/1024, baselineSpeed/1024)
+					preset.Name, result.Speed/1024, baselineSpeed/1024)
 			}
 		} else {
 			log.Tracef("  %s: FAILED (%s)", preset.Name, result.Error)
 		}
 	}
 
-	return workingFamilies
+	return workingFamilies, baselineSpeed
 }
 
-func (ds *DiscoverySuite) runPhase2(domain string, families []StrategyFamily) {
-	// Calculate actual phase 2 preset count and update total
+func (ds *DiscoverySuite) runPhase2(families []StrategyFamily) map[StrategyFamily]ConfigPreset {
+	bestParams := make(map[StrategyFamily]ConfigPreset)
+
 	totalPhase2Presets := 0
 	for _, family := range families {
 		totalPhase2Presets += len(GetPhase2Presets(family))
@@ -201,7 +160,7 @@ func (ds *DiscoverySuite) runPhase2(domain string, families []StrategyFamily) {
 	for _, family := range families {
 		select {
 		case <-ds.cancel:
-			return
+			return bestParams
 		default:
 		}
 
@@ -219,18 +178,17 @@ func (ds *DiscoverySuite) runPhase2(domain string, families []StrategyFamily) {
 		for _, preset := range presets {
 			select {
 			case <-ds.cancel:
-				return
+				return bestParams
 			default:
 			}
 
-			// Stop early if we found enough good configs
 			if successCount >= 3 {
 				log.Tracef("    Found %d good configs for %s, skipping rest", successCount, family)
 				break
 			}
 
-			result := ds.testPreset(domain, preset)
-			ds.storeResult(domain, preset, result)
+			result := ds.testPreset(preset)
+			ds.storeResult(preset, result)
 
 			if result.Status == CheckStatusComplete {
 				successCount++
@@ -243,26 +201,20 @@ func (ds *DiscoverySuite) runPhase2(domain string, families []StrategyFamily) {
 		}
 
 		if bestSpeed > 0 {
-			ds.mu.Lock()
-			ds.bestParams[family] = bestPreset
-			ds.mu.Unlock()
+			bestParams[family] = bestPreset
 			log.Infof("  Best %s config: %s (%.2f KB/s)", family, bestPreset.Name, bestSpeed/1024)
 		}
 	}
+
+	return bestParams
 }
 
-func (ds *DiscoverySuite) runPhase3(domain string) {
-	ds.mu.RLock()
-	workingFamilies := ds.workingFamilies
-	bestParams := ds.bestParams
-	ds.mu.RUnlock()
-
+func (ds *DiscoverySuite) runPhase3(workingFamilies []StrategyFamily, bestParams map[StrategyFamily]ConfigPreset) {
 	presets := GetCombinationPresets(workingFamilies, bestParams)
 	if len(presets) == 0 {
 		return
 	}
 
-	// Update total count
 	ds.CheckSuite.mu.Lock()
 	ds.TotalChecks += len(presets)
 	ds.CheckSuite.mu.Unlock()
@@ -276,8 +228,8 @@ func (ds *DiscoverySuite) runPhase3(domain string) {
 		default:
 		}
 
-		result := ds.testPreset(domain, preset)
-		ds.storeResult(domain, preset, result)
+		result := ds.testPreset(preset)
+		ds.storeResult(preset, result)
 
 		if result.Status == CheckStatusComplete {
 			log.Infof("  %s: SUCCESS (%.2f KB/s)", preset.Name, result.Speed/1024)
@@ -287,35 +239,27 @@ func (ds *DiscoverySuite) runPhase3(domain string) {
 	}
 }
 
-func (ds *DiscoverySuite) testPreset(domain string, preset ConfigPreset) CheckResult {
-	// Build test config
-	testConfig := ds.buildTestConfig(preset, domain)
+func (ds *DiscoverySuite) testPreset(preset ConfigPreset) CheckResult {
+	testConfig := ds.buildTestConfig(preset)
 
-	// Apply config to pool
 	if err := ds.pool.UpdateConfig(testConfig); err != nil {
 		log.Errorf("Failed to apply preset %s: %v", preset.Name, err)
 		return CheckResult{
-			Domain: domain,
+			Domain: ds.domain,
 			Status: CheckStatusFailed,
 			Error:  err.Error(),
 		}
 	}
 
-	// Brief delay for config propagation
 	time.Sleep(time.Duration(ds.Config.ConfigPropagateTimeout) * time.Millisecond)
 
-	// Test with quick fail first
-	result := ds.quickTest(domain)
-
-	// If quick test failed but not timeout, try full test
+	result := ds.fetchWithTimeout(QUICK_FAIL_TIMEOUT)
 	if result.Status == CheckStatusFailed && result.BytesRead == 0 {
-		// Give it another shot with full timeout
-		result = ds.fullTest(domain)
+		result = ds.fetchWithTimeout(ds.Config.Timeout)
 	}
 
 	result.Set = testConfig.MainSet
 
-	// Update progress
 	ds.CheckSuite.mu.Lock()
 	ds.CompletedChecks++
 	ds.CheckSuite.mu.Unlock()
@@ -323,31 +267,21 @@ func (ds *DiscoverySuite) testPreset(domain string, preset ConfigPreset) CheckRe
 	return result
 }
 
-func (ds *DiscoverySuite) quickTest(domain string) CheckResult {
-	return ds.fetchWithTimeout(domain, QUICK_FAIL_TIMEOUT)
-}
-
-func (ds *DiscoverySuite) fullTest(domain string) CheckResult {
-	return ds.fetchWithTimeout(domain, ds.Config.Timeout)
-}
-
-func (ds *DiscoverySuite) fetchWithTimeout(domain string, timeout time.Duration) CheckResult {
+func (ds *DiscoverySuite) fetchWithTimeout(timeout time.Duration) CheckResult {
 	result := CheckResult{
-		Domain:    domain,
+		Domain:    ds.domain,
 		Status:    CheckStatusRunning,
 		Timestamp: time.Now(),
 	}
 
-	testURL := fmt.Sprintf("https://%s/", domain)
+	testURL := fmt.Sprintf("https://%s/", ds.domain)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	client := &http.Client{
 		Timeout: timeout,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
+			TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 			ResponseHeaderTimeout: timeout,
 			IdleConnTimeout:       timeout,
 			DialContext: (&net.Dialer{
@@ -377,8 +311,6 @@ func (ds *DiscoverySuite) fetchWithTimeout(domain string, timeout time.Duration)
 	defer resp.Body.Close()
 
 	result.StatusCode = resp.StatusCode
-
-	// Read up to 100KB
 	bytesRead, _ := io.CopyN(io.Discard, resp.Body, 100*1024)
 	duration := time.Since(start)
 
@@ -398,9 +330,9 @@ func (ds *DiscoverySuite) fetchWithTimeout(domain string, timeout time.Duration)
 	return result
 }
 
-func (ds *DiscoverySuite) storeResult(domain string, preset ConfigPreset, result CheckResult) {
-	ds.mu.Lock()
-	defer ds.mu.Unlock()
+func (ds *DiscoverySuite) storeResult(preset ConfigPreset, result CheckResult) {
+	ds.CheckSuite.mu.Lock()
+	defer ds.CheckSuite.mu.Unlock()
 
 	ds.domainResult.Results[preset.Name] = &DomainPresetResult{
 		PresetName: preset.Name,
@@ -416,44 +348,40 @@ func (ds *DiscoverySuite) storeResult(domain string, preset ConfigPreset, result
 	}
 }
 
-func (ds *DiscoverySuite) determineBest() {
-	ds.mu.Lock()
-	defer ds.mu.Unlock()
+func (ds *DiscoverySuite) determineBest(baselineSpeed float64) {
+	ds.CheckSuite.mu.Lock()
+	defer ds.CheckSuite.mu.Unlock()
 
 	var bestPreset string
 	var bestSpeed float64
-	var bestSuccess bool
 
 	for presetName, result := range ds.domainResult.Results {
-		if result.Status == CheckStatusComplete {
-			if !bestSuccess || result.Speed > bestSpeed {
-				bestSuccess = true
-				bestPreset = presetName
-				bestSpeed = result.Speed
-			}
+		if result.Status == CheckStatusComplete && result.Speed > bestSpeed {
+			bestPreset = presetName
+			bestSpeed = result.Speed
 		}
 	}
 
 	ds.domainResult.BestPreset = bestPreset
 	ds.domainResult.BestSpeed = bestSpeed
-	ds.domainResult.BestSuccess = bestSuccess
+	ds.domainResult.BestSuccess = bestSpeed > 0
+	ds.domainResult.BaselineSpeed = baselineSpeed
 
-	if ds.domainResult.BaselineSpeed > 0 && bestSpeed > 0 {
-		ds.domainResult.Improvement = ((bestSpeed - ds.domainResult.BaselineSpeed) / ds.domainResult.BaselineSpeed) * 100
+	if baselineSpeed > 0 && bestSpeed > 0 {
+		ds.domainResult.Improvement = ((bestSpeed - baselineSpeed) / baselineSpeed) * 100
 	}
 }
 
-func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset, testDomain string) *config.Config {
+func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset) *config.Config {
 	mainSet := config.NewSetConfig()
-
 	mainSet.Id = ds.originalConfig.MainSet.Id
 	mainSet.Name = preset.Name
 	mainSet.TCP = preset.Config.TCP
 	mainSet.UDP = preset.Config.UDP
 	mainSet.Fragmentation = preset.Config.Fragmentation
 	mainSet.Faking = preset.Config.Faking
-	mainSet.Targets.SNIDomains = []string{testDomain}
-	mainSet.Targets.DomainsToMatch = []string{testDomain}
+	mainSet.Targets.SNIDomains = []string{ds.domain}
+	mainSet.Targets.DomainsToMatch = []string{ds.domain}
 
 	return &config.Config{
 		ConfigPath: ds.originalConfig.ConfigPath,
@@ -476,6 +404,13 @@ func (ds *DiscoverySuite) setPhase(phase DiscoveryPhase) {
 	ds.CheckSuite.mu.Unlock()
 }
 
+func (ds *DiscoverySuite) finalize() {
+	ds.CheckSuite.mu.Lock()
+	ds.DomainDiscoveryResults = map[string]*DomainDiscoveryResult{ds.domain: ds.domainResult}
+	ds.Status = CheckStatusComplete
+	ds.CheckSuite.mu.Unlock()
+}
+
 func (ds *DiscoverySuite) restoreConfig() {
 	log.Infof("Restoring original configuration")
 	if err := ds.pool.UpdateConfig(ds.originalConfig); err != nil {
@@ -484,8 +419,8 @@ func (ds *DiscoverySuite) restoreConfig() {
 }
 
 func (ds *DiscoverySuite) logDiscoverySummary() {
-	ds.mu.RLock()
-	defer ds.mu.RUnlock()
+	ds.CheckSuite.mu.RLock()
+	defer ds.CheckSuite.mu.RUnlock()
 
 	log.Infof("\n=== Discovery Results for %s ===", ds.domain)
 
@@ -499,24 +434,4 @@ func (ds *DiscoverySuite) logDiscoverySummary() {
 	} else {
 		log.Warnf("✗ No successful configuration found")
 	}
-}
-
-func (ds *DiscoverySuite) GetDiscoveryReport() string {
-	ds.mu.RLock()
-	defer ds.mu.RUnlock()
-
-	report := fmt.Sprintf("Discovery Results for %s:\n", ds.domain)
-	report += "=========================================\n\n"
-
-	if ds.domainResult.BestSuccess {
-		report += fmt.Sprintf("  Best Config: %s\n", ds.domainResult.BestPreset)
-		report += fmt.Sprintf("  Speed: %.2f KB/s\n", ds.domainResult.BestSpeed/1024)
-		if ds.domainResult.Improvement > 0 {
-			report += fmt.Sprintf("  Improvement: +%.0f%%\n", ds.domainResult.Improvement)
-		}
-	} else {
-		report += "  Status: No successful configuration\n"
-	}
-
-	return report
 }
