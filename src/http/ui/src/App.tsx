@@ -23,21 +23,24 @@ import {
   Divider,
   Badge,
 } from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
-import SettingsIcon from "@mui/icons-material/Settings";
-import LanguageIcon from "@mui/icons-material/Language";
-import SpeedIcon from "@mui/icons-material/Speed";
-import AssessmentIcon from "@mui/icons-material/Assessment";
-import ScienceIcon from "@mui/icons-material/Science";
+
+import {
+  Menu as MenuIcon,
+  Settings as SettingsIcon,
+  Sensors as ConnectionIcon,
+  Speed as SpeedIcon,
+  Assessment as AssessmentIcon,
+  Science as ScienceIcon,
+} from "@mui/icons-material";
 import Dashboard from "@pages/Dashboard";
 import Logs from "@pages/Logs";
-import Domains from "@pages/Domains";
+import Connections from "@pages/Connections";
 import Settings from "@pages/Settings";
-import Test from "@pages/Checker";
 import { theme, colors } from "@design";
 import Logo from "@molecules/Logo";
 import Version from "@organisms/version/Version";
 import { useWebSocket } from "@ctx/B4WsProvider";
+import Discovery from "@pages/Discovery";
 
 const DRAWER_WIDTH = 240;
 
@@ -49,8 +52,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: "/dashboard", label: "Dashboard", icon: <SpeedIcon /> },
-  { path: "/domains", label: "Domains", icon: <LanguageIcon /> },
-  { path: "/test", label: "Test", icon: <ScienceIcon /> },
+  { path: "/connections", label: "Connections", icon: <ConnectionIcon /> },
+  { path: "/discovery", label: "Discovery", icon: <ScienceIcon /> },
   { path: "/logs", label: "Logs", icon: <AssessmentIcon /> },
   { path: "/settings", label: "Settings", icon: <SettingsIcon /> },
 ];
@@ -64,7 +67,7 @@ export default function App() {
   const getPageTitle = () => {
     const path = location.pathname;
     if (path.startsWith("/dashboard")) return "System Dashboard";
-    if (path.startsWith("/domains")) return "Domain Connections";
+    if (path.startsWith("/connections")) return "Connections";
     if (path.startsWith("/test")) return "DPI Bypass Test";
     if (path.startsWith("/logs")) return "Log Viewer";
     if (path.startsWith("/settings")) return "Settings";
@@ -180,8 +183,8 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/domains" element={<Domains />} />
-            <Route path="/test" element={<Test />} />
+            <Route path="/connections" element={<Connections />} />
+            <Route path="/discovery" element={<Discovery />} />
             <Route path="/logs" element={<Logs />} />
             <Route path="/settings/*" element={<Settings />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
