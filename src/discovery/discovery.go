@@ -75,12 +75,15 @@ func (ds *DiscoverySuite) RunDiscovery() {
 	if baselineWorks {
 		log.Infof("Baseline succeeded for %s - no DPI bypass needed, skipping optimization", ds.domain)
 
-		// Update total to reflect actual tests run
 		ds.CheckSuite.mu.Lock()
 		ds.TotalChecks = 1
+		ds.domainResult.BestPreset = "no-bypass"
+		ds.domainResult.BestSpeed = baselineSpeed
+		ds.domainResult.BestSuccess = true
+		ds.domainResult.BaselineSpeed = baselineSpeed
+		ds.domainResult.Improvement = 0
 		ds.CheckSuite.mu.Unlock()
 
-		ds.determineBest(baselineSpeed)
 		ds.restoreConfig()
 		ds.finalize()
 		ds.logDiscoverySummary()
@@ -373,6 +376,9 @@ func (ds *DiscoverySuite) determineBest(baselineSpeed float64) {
 
 	for presetName, result := range ds.domainResult.Results {
 		if result.Status == CheckStatusComplete && result.Speed > bestSpeed {
+			if presetName == "no-bypass" {
+				continue
+			}
 			bestPreset = presetName
 			bestSpeed = result.Speed
 		}
