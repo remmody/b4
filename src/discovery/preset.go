@@ -18,7 +18,7 @@ func GetPhase1Presets() []ConfigPreset {
 			Description: "No bypass techniques - test raw connectivity",
 			Family:      FamilyNone,
 			Phase:       PhaseBaseline,
-			Priority:    1,
+			Priority:    0,
 			Config:      baselineConfig(),
 		},
 
@@ -28,7 +28,7 @@ func GetPhase1Presets() []ConfigPreset {
 			Description: "Proven combination: TCP frag + reverse + middle SNI + fake pastseq",
 			Family:      FamilyNone,
 			Phase:       PhaseBaseline,
-			Priority:    0,
+			Priority:    1,
 			Config: config.SetConfig{
 				TCP: config.TCPConfig{
 					ConnBytesLimit: 19,
@@ -548,6 +548,7 @@ func baseConfig() config.SetConfig {
 
 func baselineConfig() config.SetConfig {
 	return config.SetConfig{
+		Enabled: false,
 		TCP: config.TCPConfig{
 			ConnBytesLimit: 19,
 		},

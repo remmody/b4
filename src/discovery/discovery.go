@@ -91,10 +91,19 @@ func (ds *DiscoverySuite) RunDiscovery() {
 	}
 
 	if len(workingFamilies) == 0 {
-		log.Warnf("No working bypass strategies found for %s", ds.domain)
-		ds.restoreConfig()
-		ds.finalize()
-		return
+		log.Warnf("Phase 1 found no working families, trying extended search")
+
+		// Try all Phase 2 presets for each family anyway
+		ds.setPhase(PhaseOptimize)
+		workingFamilies = ds.runExtendedSearch()
+
+		if len(workingFamilies) == 0 {
+			log.Warnf("No working bypass strategies found for %s", ds.domain)
+			ds.restoreConfig()
+			ds.finalize()
+			ds.logDiscoverySummary()
+			return
+		}
 	}
 
 	log.Infof("Phase 1 complete: %d working families: %v", len(workingFamilies), workingFamilies)
@@ -402,8 +411,12 @@ func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset) *config.Config {
 	mainSet.UDP = preset.Config.UDP
 	mainSet.Fragmentation = preset.Config.Fragmentation
 	mainSet.Faking = preset.Config.Faking
-	mainSet.Targets.SNIDomains = []string{ds.domain}
-	mainSet.Targets.DomainsToMatch = []string{ds.domain}
+	mainSet.Enabled = preset.Config.Enabled
+
+	if preset.Config.Enabled {
+		mainSet.Targets.SNIDomains = []string{ds.domain}
+		mainSet.Targets.DomainsToMatch = []string{ds.domain}
+	}
 
 	return &config.Config{
 		ConfigPath: ds.originalConfig.ConfigPath,
@@ -456,4 +469,53 @@ func (ds *DiscoverySuite) logDiscoverySummary() {
 	} else {
 		log.Warnf("✗ No successful configuration found")
 	}
+}
+
+func (ds *DiscoverySuite) runExtendedSearch() []StrategyFamily {
+	families := []StrategyFamily{
+		FamilyTCPFrag,
+		FamilyTLSRec,
+		FamilyOOB,
+		FamilyFakeSNI,
+		FamilyIPFrag,
+		FamilySACK,
+	}
+
+	var workingFamilies []StrategyFamily
+
+	for _, family := range families {
+		select {
+		case <-ds.cancel:
+			return workingFamilies
+		default:
+		}
+
+		presets := GetPhase2Presets(family)
+
+		ds.CheckSuite.mu.Lock()
+		ds.TotalChecks += len(presets)
+		ds.CheckSuite.mu.Unlock()
+
+		log.Infof("  Extended search: %s (%d variants)", family, len(presets))
+
+		for _, preset := range presets {
+			select {
+			case <-ds.cancel:
+				return workingFamilies
+			default:
+			}
+
+			result := ds.testPreset(preset)
+			ds.storeResult(preset, result)
+
+			if result.Status == CheckStatusComplete {
+				log.Infof("    %s: SUCCESS (%.2f KB/s)", preset.Name, result.Speed/1024)
+				if !containsFamily(workingFamilies, family) {
+					workingFamilies = append(workingFamilies, family)
+				}
+			}
+		}
+	}
+
+	return workingFamilies
 }
