@@ -7,7 +7,8 @@
 
 Network packet processor that bypasses Deep Packet Inspection (DPI) using netfilter queue manipulation.
 
-![alt text](image.png)
+<img width="1187" height="787" alt="image" src="https://github.com/user-attachments/assets/3e4c105d-5b28-4e93-ab54-6d92338b1293" />
+
 
 ## Requirements
 
