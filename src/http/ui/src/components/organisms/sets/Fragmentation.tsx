@@ -1,12 +1,25 @@
-import React from "react";
-import { Grid, Alert, Divider, Chip, Typography } from "@mui/material";
-import { CallSplit as CallSplitIcon } from "@mui/icons-material";
+import React, { useState } from "react";
+import {
+  Grid,
+  Alert,
+  Divider,
+  Chip,
+  Typography,
+  Box,
+  Collapse,
+  Button,
+} from "@mui/material";
+import {
+  CallSplit as CallSplitIcon,
+  ExpandMore as ExpandIcon,
+  ExpandLess as CollapseIcon,
+} from "@mui/icons-material";
 import SettingSection from "@molecules/common/B4Section";
 import SettingSelect from "@atoms/common/B4Select";
 import SettingSwitch from "@atoms/common/B4Switch";
-import B4TextField from "@atoms/common/B4TextField";
 import B4Slider from "@atoms/common/B4Slider";
 import { B4SetConfig, FragmentationStrategy } from "@models/Config";
+import { colors } from "@design";
 
 interface FragmentationSettingsProps {
   config: B4SetConfig;
@@ -19,46 +32,51 @@ const fragmentationOptions: { label: string; value: FragmentationStrategy }[] =
     { label: "IP Fragmentation", value: "ip" },
     { label: "TLS Record Splitting", value: "tls" },
     { label: "OOB (Out-of-Band)", value: "oob" },
-    { label: "No Fragmentation", value: "none" },
+    { label: "Disabled", value: "none" },
   ];
-
-const strategyDescriptions = {
-  tcp: "Splits packets at TCP layer - works with most servers, no MTU issues",
-  ip: "Fragments at IP layer - bypasses some TCP-aware DPI but may cause MTU problems",
-  tls: "Splits TLS ClientHello into multiple TLS records - bypasses DPI expecting single-record handshakes",
-  oob: "Sends data with URG flag (Out-of-Band) - confuses stateful DPI inspection",
-  none: "No fragmentation applied - packets sent as-is",
-};
 
 export const FragmentationSettings = ({
   config,
   onChange,
 }: FragmentationSettingsProps) => {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
   const strategy = config.fragmentation.strategy;
   const isTcpOrIp = strategy === "tcp" || strategy === "ip";
   const isOob = strategy === "oob";
   const isTls = strategy === "tls";
   const isActive = strategy !== "none";
 
+  // Determine effective split mode for display
+  const getSplitModeDescription = () => {
+    if (config.fragmentation.middle_sni) {
+      if (config.fragmentation.sni_position > 0) {
+        return "3 segments: split at fixed position AND middle of SNI";
+      }
+      return "2 segments: split at middle of SNI hostname";
+    }
+    return `2 segments: split at byte ${config.fragmentation.sni_position} of TLS payload`;
+  };
+
   return (
     <SettingSection
       title="Fragmentation Strategy"
-      description="Configure how packets are split to evade DPI detection"
+      description="Split packets to evade DPI pattern matching"
       icon={<CallSplitIcon />}
     >
       <Grid container spacing={3}>
         {/* Strategy Selection */}
         <Grid size={{ xs: 12, md: 6 }}>
           <SettingSelect
-            label="Fragmentation Method"
+            label="Method"
             value={strategy}
             options={fragmentationOptions}
             onChange={(e) =>
               onChange("fragmentation.strategy", e.target.value as string)
             }
-            helperText={strategyDescriptions[strategy]}
           />
         </Grid>
+
         <Grid size={{ xs: 12, md: 6 }}>
           <SettingSwitch
             label="Reverse Fragment Order"
@@ -66,77 +84,192 @@ export const FragmentationSettings = ({
             onChange={(checked: boolean) =>
               onChange("fragmentation.reverse_order", checked)
             }
-            description="Send fragments in reverse order (applies to TCP/IP/TLS strategies)"
+            description="Send second fragment first"
           />
         </Grid>
-        {isActive && (
-          <>
-            <Grid size={{ xs: 12 }}>
-              <Alert severity="info">
-                <Typography variant="body2">
-                  {strategy === "tcp" && (
-                    <>
-                      <strong>TCP Segmentation:</strong> Splits packets at TCP
-                      layer. Most compatible, works with firewalls and NAT.
-                    </>
-                  )}
-                  {strategy === "ip" && (
-                    <>
-                      <strong>IP Fragmentation:</strong> Splits at IP layer.
-                      Bypasses TCP-aware DPI but may fail with strict MTU
-                      limits.
-                    </>
-                  )}
-                  {strategy === "tls" && (
-                    <>
-                      <strong>TLS Record Splitting:</strong> Splits ClientHello
-                      into multiple TLS records. Highly effective against DPI
-                      expecting single-record handshakes.
-                    </>
-                  )}
-                  {strategy === "oob" && (
-                    <>
-                      <strong>OOB (Out-of-Band):</strong> Sends extra byte with
-                      URG flag. Highly effective against stateful DPI, may
-                      confuse older middleboxes.
-                    </>
-                  )}
-                </Typography>
-              </Alert>
-            </Grid>
-          </>
-        )}
 
-        {/* TCP/IP Fragmentation Settings */}
+        {/* TCP/IP: Simplified SNI Split */}
         {isTcpOrIp && (
           <>
             <Grid size={{ xs: 12 }}>
-              <Divider sx={{ my: 2 }}>
-                <Chip label="Split Configuration" size="small" />
+              <Divider sx={{ my: 1 }}>
+                <Chip label="Where to Split" size="small" />
               </Divider>
             </Grid>
 
-            <Grid size={{ xs: 12, md: 6 }}>
-              <B4TextField
-                label="SNI Split Position"
-                type="number"
-                value={config.fragmentation.sni_position || 1}
-                onChange={(e) =>
-                  onChange("fragmentation.sni_position", Number(e.target.value))
-                }
-                helperText="Where to split SNI field (0=first byte)"
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12 }}>
               <SettingSwitch
-                label="Split in Middle of SNI"
+                label="Smart SNI Split"
                 checked={config.fragmentation.middle_sni}
                 onChange={(checked: boolean) =>
                   onChange("fragmentation.middle_sni", checked)
                 }
-                description="Split at SNI midpoint instead of start"
+                description="Automatically split in the middle of the SNI hostname (recommended)"
               />
+            </Grid>
+
+            {/* Visual explanation */}
+            <Grid size={{ xs: 12 }}>
+              <Box
+                sx={{
+                  p: 2,
+                  bgcolor: colors.background.paper,
+                  borderRadius: 1,
+                  border: `1px solid ${colors.border.default}`,
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  component="div"
+                  sx={{ mb: 1 }}
+                >
+                  TCP PACKET STRUCTURE EXAMPLE
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    gap: 0.5,
+                    fontFamily: "monospace",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      p: 1,
+                      bgcolor: colors.accent.primary,
+                      borderRadius: 0.5,
+                      textAlign: "center",
+                      minWidth: 60,
+                    }}
+                  >
+                    TLS Header
+                  </Box>
+                  <Box
+                    sx={{
+                      p: 1,
+                      bgcolor: colors.accent.secondary,
+                      borderRadius: 0.5,
+                      textAlign: "center",
+                      flex: 1,
+                      position: "relative",
+                    }}
+                  >
+                    {/* Fixed position split line */}
+                    {config.fragmentation.sni_position > 0 && (
+                      <Box
+                        component="span"
+                        sx={{
+                          position: "absolute",
+                          left: "20%",
+                          top: 0,
+                          bottom: 0,
+                          width: 2,
+                          bgcolor: colors.tertiary,
+                          transform: "translateX(-50%)",
+                        }}
+                      />
+                    )}
+                    {/* Middle SNI split line */}
+                    {config.fragmentation.middle_sni && (
+                      <Box
+                        component="span"
+                        sx={{
+                          position: "absolute",
+                          left: "50%",
+                          top: 0,
+                          bottom: 0,
+                          width: 2,
+                          bgcolor: colors.quaternary,
+                          transform: "translateX(-50%)",
+                        }}
+                      />
+                    )}
+                    SNI: youtube.com
+                  </Box>
+                  <Box
+                    sx={{
+                      p: 1,
+                      bgcolor: colors.accent.primary,
+                      borderRadius: 0.5,
+                      textAlign: "center",
+                      minWidth: 80,
+                    }}
+                  >
+                    Extensions...
+                  </Box>
+                </Box>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ mt: 1, display: "block" }}
+                >
+                  {getSplitModeDescription()}
+                </Typography>
+              </Box>
+            </Grid>
+
+            {/* Advanced toggle */}
+            <Grid size={{ xs: 12 }}>
+              <Button
+                size="small"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                endIcon={showAdvanced ? <CollapseIcon /> : <ExpandIcon />}
+                sx={{ color: colors.text.secondary, textTransform: "none" }}
+              >
+                {showAdvanced ? "Hide" : "Show"} manual position control
+              </Button>
+            </Grid>
+
+            <Grid size={{ xs: 12 }}>
+              <Collapse in={showAdvanced}>
+                <Box
+                  sx={{
+                    p: 2,
+                    bgcolor: colors.background.dark,
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    color="warning.main"
+                    gutterBottom
+                    component="div"
+                  >
+                    Manual override — use if Smart SNI Split doesn't work for
+                    your ISP
+                  </Typography>
+                  <Grid container spacing={2} sx={{ mt: 1 }}>
+                    <Grid size={{ xs: 12, md: 12 }}>
+                      <B4Slider
+                        label="Fixed Split Position"
+                        value={config.fragmentation.sni_position}
+                        onChange={(value: number) =>
+                          onChange("fragmentation.sni_position", value)
+                        }
+                        min={0}
+                        max={10}
+                        step={1}
+                        helperText="Bytes from TLS payload start (0 = disabled)"
+                      />
+                    </Grid>
+                  </Grid>
+                  {config.fragmentation.sni_position > 0 &&
+                    config.fragmentation.middle_sni && (
+                      <Alert severity="info" sx={{ mt: 2 }}>
+                        Both enabled → packet splits into 3 segments
+                      </Alert>
+                    )}
+                </Box>
+              </Collapse>
+            </Grid>
+
+            {/* QUIC note */}
+            <Grid size={{ xs: 12 }}>
+              <Alert severity="success" icon={<CallSplitIcon />}>
+                <strong>QUIC:</strong> Automatically detects and splits at SNI
+                inside encrypted packets. No configuration needed.
+              </Alert>
             </Grid>
           </>
         )}
@@ -145,56 +278,69 @@ export const FragmentationSettings = ({
         {isOob && (
           <>
             <Grid size={{ xs: 12 }}>
-              <Divider sx={{ my: 2 }}>
+              <Divider sx={{ my: 1 }}>
                 <Chip label="OOB Configuration" size="small" />
               </Divider>
             </Grid>
 
-            <Grid size={{ xs: 12, md: 4 }}>
-              <B4TextField
-                label="OOB Split Position"
-                type="number"
-                value={config.fragmentation.oob_position || 1}
-                onChange={(e) =>
-                  onChange("fragmentation.oob_position", Number(e.target.value))
-                }
-                helperText="Bytes before OOB insertion"
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 4 }}>
-              <B4TextField
-                label="OOB Character"
-                value={String.fromCharCode(
-                  config.fragmentation.oob_char || 120
-                )}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  const char = e.target.value.slice(0, 1);
-                  onChange(
-                    "fragmentation.oob_char",
-                    char ? char.charCodeAt(0) : 120
-                  );
-                }}
-                placeholder="x"
-                helperText="Byte sent with URG flag"
-                inputProps={{ maxLength: 1 }}
-              />
-            </Grid>
-          </>
-        )}
-
-        {/* TLS Record Splitting Settings */}
-        {isTls && (
-          <>
             <Grid size={{ xs: 12 }}>
-              <Divider sx={{ my: 2 }}>
-                <Chip label="TLS Record Configuration" size="small" />
-              </Divider>
+              <Alert severity="info">
+                Inserts a byte with TCP URG flag. Server ignores it, but
+                stateful DPI gets confused.
+              </Alert>
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
               <B4Slider
-                label="TLS Record Split Position"
+                label="Insert Position"
+                value={config.fragmentation.oob_position || 1}
+                onChange={(value: number) =>
+                  onChange("fragmentation.oob_position", value)
+                }
+                min={1}
+                max={50}
+                step={1}
+                helperText="Bytes before OOB insertion"
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Box>
+                <Typography variant="body2" gutterBottom>
+                  OOB Byte:{" "}
+                  <code>
+                    {String.fromCharCode(config.fragmentation.oob_char || 120)}
+                  </code>{" "}
+                  (0x
+                  {(config.fragmentation.oob_char || 120)
+                    .toString(16)
+                    .padStart(2, "0")}
+                  )
+                </Typography>
+              </Box>
+            </Grid>
+          </>
+        )}
+
+        {/* TLS Record Settings */}
+        {isTls && (
+          <>
+            <Grid size={{ xs: 12 }}>
+              <Divider sx={{ my: 1 }}>
+                <Chip label="TLS Record Configuration" size="small" />
+              </Divider>
+            </Grid>
+
+            <Grid size={{ xs: 12 }}>
+              <Alert severity="info">
+                Splits ClientHello into multiple TLS records. DPI expecting
+                single-record handshake fails to match.
+              </Alert>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <B4Slider
+                label="Record Split Position"
                 value={config.fragmentation.tlsrec_pos || 1}
                 onChange={(value: number) =>
                   onChange("fragmentation.tlsrec_pos", value)
@@ -202,21 +348,18 @@ export const FragmentationSettings = ({
                 min={1}
                 max={100}
                 step={1}
-                helperText="Where to split TLS ClientHello record (bytes into handshake data)"
+                helperText="First TLS record size in bytes"
               />
             </Grid>
           </>
         )}
 
-        {/* None Strategy Info */}
-        {strategy === "none" && (
+        {/* Disabled state */}
+        {!isActive && (
           <Grid size={{ xs: 12 }}>
             <Alert severity="warning">
-              <Typography variant="body2">
-                <strong>No Fragmentation:</strong> Packets sent unmodified. Only
-                fake packets (if enabled in Faking tab) will be used for DPI
-                bypass.
-              </Typography>
+              Fragmentation disabled. Only fake packets (if enabled) will be
+              used for bypass.
             </Alert>
           </Grid>
         )}

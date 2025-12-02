@@ -102,8 +102,8 @@ func IPv4FragmentUDP(orig []byte, split int) ([][]byte, bool) {
 	ip2 := make([]byte, 20+len(ip2Data))
 	copy(ip2, orig[:20])
 	binary.BigEndian.PutUint16(ip2[4:6], id)
-	ip2[6] = byte(offsetUnits >> 5)
-	ip2[7] = byte((offsetUnits << 3) & 0xf8)
+	ip2[6] = byte(offsetUnits>>8) & 0x1F
+	ip2[7] = byte(offsetUnits)
 	binary.BigEndian.PutUint16(ip2[2:4], uint16(20+len(ip2Data)))
 	copy(ip2[20:], ip2Data)
 	FixIPv4Checksum(ip2[:20])

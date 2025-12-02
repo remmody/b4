@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/daniellavrushin/b4/config"
+	"github.com/daniellavrushin/b4/quic"
 	"github.com/daniellavrushin/b4/sock"
 )
 
@@ -16,13 +17,11 @@ func (w *Worker) dropAndInjectQUICV6(cfg *config.SetConfig, raw []byte, dst net.
 		return
 	}
 
-	// Send fake UDP packets
 	if cfg.UDP.FakeSeqLength > 0 {
 		for i := 0; i < cfg.UDP.FakeSeqLength; i++ {
 			fake, ok := sock.BuildFakeUDPFromOriginalV6(raw, cfg.UDP.FakeLen, cfg.Faking.TTL)
 			if ok {
 				if cfg.UDP.FakingStrategy == "checksum" {
-					// Corrupt the UDP checksum
 					ipv6HdrLen := 40
 					if len(fake) >= ipv6HdrLen+8 {
 						fake[ipv6HdrLen+6] ^= 0xFF
@@ -37,8 +36,17 @@ func (w *Worker) dropAndInjectQUICV6(cfg *config.SetConfig, raw []byte, dst net.
 		}
 	}
 
-	// Fragment and send real packet
-	splitPos := 24
+	// Try to locate SNI within encrypted QUIC payload
+	splitPos := 24 // fallback
+	ipv6HdrLen := 40
+	if len(raw) >= ipv6HdrLen+8 {
+		quicPayload := raw[ipv6HdrLen+8:] // skip IPv6 + UDP headers
+		sniOff, sniLen := quic.LocateSNIOffset(quicPayload)
+		if sniOff > 0 && sniLen > 0 {
+			splitPos = sniOff + sniLen/2
+		}
+	}
+
 	frags, ok := sock.IPv6FragmentUDP(raw, splitPos)
 	if !ok {
 		_ = w.sock.SendIPv6(raw, dst)
@@ -46,17 +54,17 @@ func (w *Worker) dropAndInjectQUICV6(cfg *config.SetConfig, raw []byte, dst net.
 	}
 
 	if cfg.Fragmentation.ReverseOrder {
-		_ = w.sock.SendIPv6(frags[0], dst)
+		_ = w.sock.SendIPv6(frags[1], dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
 		}
-		_ = w.sock.SendIPv6(frags[1], dst)
+		_ = w.sock.SendIPv6(frags[0], dst)
 	} else {
-		_ = w.sock.SendIPv6(frags[1], dst)
+		_ = w.sock.SendIPv6(frags[0], dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
 		}
-		_ = w.sock.SendIPv6(frags[0], dst)
+		_ = w.sock.SendIPv6(frags[1], dst)
 	}
 }
 
@@ -140,6 +148,11 @@ func (w *Worker) sendTCPSegmentsv6(cfg *config.SetConfig, packet []byte, dst net
 				p2 = s + sniLen/2
 			}
 		}
+	}
+
+	// Ensure p2 is within bounds
+	if p2 >= payloadLen {
+		p2 = payloadLen - 1
 	}
 
 	validP2 := p2 > 0 && p2 < payloadLen && (!validP1 || p2 != p1)
@@ -249,16 +262,65 @@ func (w *Worker) sendTCPSegmentsv6(cfg *config.SetConfig, packet []byte, dst net
 	}
 }
 
-// sendIPFragmentsv6 sends packet as IPv6 fragments (IP-level fragmentation)
 func (w *Worker) sendIPFragmentsv6(cfg *config.SetConfig, packet []byte, dst net.IP) {
-	splitPos := cfg.Fragmentation.SNIPosition
 	seg2d := cfg.TCP.Seg2Delay
-	if splitPos <= 0 || splitPos >= len(packet) {
+	ipv6HdrLen := 40
+
+	if len(packet) < ipv6HdrLen+20 {
 		_ = w.sock.SendIPv6(packet, dst)
 		return
 	}
 
-	fragments, ok := sock.IPv6FragmentPacket(packet, splitPos)
+	tcpHdrLen := int((packet[ipv6HdrLen+12] >> 4) * 4)
+	payloadStart := ipv6HdrLen + tcpHdrLen
+	payloadLen := len(packet) - payloadStart
+
+	if payloadLen <= 0 {
+		_ = w.sock.SendIPv6(packet, dst)
+		return
+	}
+
+	payload := packet[payloadStart:]
+
+	// Determine split position (relative to TCP payload)
+	splitPos := cfg.Fragmentation.SNIPosition
+
+	// Override with middle_sni if enabled and SNI found
+	if cfg.Fragmentation.MiddleSNI {
+		if s, e, ok := locateSNI(payload); ok && e-s >= 4 {
+			sniLen := e - s
+			if sniLen > 30 {
+				splitPos = e - 12
+			} else {
+				splitPos = s + sniLen/2
+			}
+		}
+	}
+
+	if splitPos <= 0 || splitPos >= payloadLen {
+		_ = w.sock.SendIPv6(packet, dst)
+		return
+	}
+
+	// Adjust splitPos to be relative to IP payload (not TCP payload)
+	adjustedSplit := tcpHdrLen + splitPos
+
+	// Align to 8 bytes (IPv6 fragmentation requirement)
+	adjustedSplit = (adjustedSplit + 7) &^ 7
+	if adjustedSplit < 8 {
+		adjustedSplit = 8
+	}
+
+	ipPayloadLen := len(packet) - ipv6HdrLen
+	if adjustedSplit >= ipPayloadLen {
+		adjustedSplit = ipPayloadLen - 8
+		if adjustedSplit < 8 {
+			_ = w.sock.SendIPv6(packet, dst)
+			return
+		}
+	}
+
+	fragments, ok := sock.IPv6FragmentPacket(packet, adjustedSplit)
 	if !ok {
 		_ = w.sock.SendIPv6(packet, dst)
 		return

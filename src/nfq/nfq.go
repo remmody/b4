@@ -425,7 +425,18 @@ func (w *Worker) dropAndInjectQUIC(cfg *config.SetConfig, raw []byte, dst net.IP
 		}
 	}
 
-	splitPos := 24
+	// Try to locate SNI within encrypted QUIC payload
+	splitPos := 24 // fallback
+	ipHdrLen := int((raw[0] & 0x0F) * 4)
+	if len(raw) >= ipHdrLen+8 {
+		quicPayload := raw[ipHdrLen+8:] // skip IP + UDP headers
+		sniOff, sniLen := quic.LocateSNIOffset(quicPayload)
+		if sniOff > 0 && sniLen > 0 {
+			// Split in middle of SNI
+			splitPos = sniOff + sniLen/2
+		}
+	}
+
 	frags, ok := sock.IPv4FragmentUDP(raw, splitPos)
 	if !ok {
 		_ = w.sock.SendIPv4(raw, dst)
@@ -433,17 +444,17 @@ func (w *Worker) dropAndInjectQUIC(cfg *config.SetConfig, raw []byte, dst net.IP
 	}
 
 	if cfg.Fragmentation.ReverseOrder {
-		_ = w.sock.SendIPv4(frags[0], dst)
+		_ = w.sock.SendIPv4(frags[1], dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
 		}
-		_ = w.sock.SendIPv4(frags[1], dst)
+		_ = w.sock.SendIPv4(frags[0], dst)
 	} else {
-		_ = w.sock.SendIPv4(frags[1], dst)
+		_ = w.sock.SendIPv4(frags[0], dst)
 		if seg2d > 0 {
 			time.Sleep(time.Duration(seg2d) * time.Millisecond)
 		}
-		_ = w.sock.SendIPv4(frags[0], dst)
+		_ = w.sock.SendIPv4(frags[1], dst)
 	}
 }
 
@@ -524,6 +535,11 @@ func (w *Worker) sendTCPFragments(cfg *config.SetConfig, packet []byte, dst net.
 				p2 = s + sniLen/2
 			}
 		}
+	}
+
+	// Ensure p2 is within bounds
+	if p2 >= payloadLen {
+		p2 = payloadLen - 1
 	}
 
 	validP2 := p2 > 0 && p2 < payloadLen && (!validP1 || p2 != p1)
@@ -637,21 +653,43 @@ func (w *Worker) sendTCPFragments(cfg *config.SetConfig, packet []byte, dst net.
 }
 
 func (w *Worker) sendIPFragments(cfg *config.SetConfig, packet []byte, dst net.IP) {
-
-	splitPos := cfg.Fragmentation.SNIPosition
 	seg2d := cfg.TCP.Seg2Delay
-	if splitPos <= 0 || splitPos >= len(packet) {
+	ipHdrLen := int((packet[0] & 0x0F) * 4)
+	tcpHdrLen := int((packet[ipHdrLen+12] >> 4) * 4)
+	payloadStart := ipHdrLen + tcpHdrLen
+	payloadLen := len(packet) - payloadStart
+
+	if payloadLen <= 0 {
 		_ = w.sock.SendIPv4(packet, dst)
 		return
 	}
 
-	ipHdrLen := int((packet[0] & 0x0F) * 4)
+	payload := packet[payloadStart:]
 
-	tcpHdrLen := int((packet[ipHdrLen+12] >> 4) * 4)
-	payloadStart := ipHdrLen + tcpHdrLen
+	// Determine split position (relative to payload start)
+	splitPos := cfg.Fragmentation.SNIPosition
 
+	// Override with middle_sni if enabled and SNI found
+	if cfg.Fragmentation.MiddleSNI {
+		if s, e, ok := locateSNI(payload); ok && e-s >= 4 {
+			sniLen := e - s
+			if sniLen > 30 {
+				splitPos = e - 12
+			} else {
+				splitPos = s + sniLen/2
+			}
+		}
+	}
+
+	if splitPos <= 0 || splitPos >= payloadLen {
+		_ = w.sock.SendIPv4(packet, dst)
+		return
+	}
+
+	// Convert to absolute position
 	splitPos = payloadStart + splitPos
 
+	// Align to 8-byte boundary (IP fragmentation requirement)
 	splitPos = (splitPos + 7) &^ 7
 
 	minSplitPos := ipHdrLen + 8
