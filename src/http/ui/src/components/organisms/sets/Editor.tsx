@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { Box, Stack, Button, Tabs, Tab, Paper } from "@mui/material";
+import {
+  Box,
+  Stack,
+  Button,
+  Tabs,
+  Tab,
+  Paper,
+  CircularProgress,
+} from "@mui/material";
 import {
   AirlineStops as TcpIcon,
   Deblur as FakingIcon,
@@ -29,6 +37,7 @@ export interface SetEditorProps {
   set: B4SetConfig;
   stats?: SetStats;
   isNew: boolean;
+  saving: boolean;
   onClose: () => void;
   onSave: (set: B4SetConfig) => void;
 }
@@ -39,6 +48,7 @@ export const SetEditor: React.FC<SetEditorProps> = ({
   isNew,
   settings,
   stats,
+  saving,
   onClose,
   onSave,
 }) => {
@@ -209,17 +219,30 @@ export const SetEditor: React.FC<SetEditorProps> = ({
       maxWidth="lg"
       actions={
         <>
-          <Button onClick={onClose} sx={{ ...button_secondary }}>
+          <Button
+            onClick={onClose}
+            disabled={saving}
+            sx={{ ...button_secondary }}
+          >
             Cancel
           </Button>
           <Box sx={{ flex: 1 }} />
           <Button
             variant="contained"
             onClick={handleSave}
-            disabled={!editedSet.name.trim()}
-            sx={{ ...button_primary }}
+            disabled={!editedSet.name.trim() || saving}
+            sx={{ ...button_primary, minWidth: 140 }}
           >
-            {isNew ? "Create Set" : "Save Changes"}
+            {saving ? (
+              <>
+                <CircularProgress size={16} sx={{ mr: 1, color: "inherit" }} />
+                Saving...
+              </>
+            ) : isNew ? (
+              "Create Set"
+            ) : (
+              "Save Changes"
+            )}
           </Button>
         </>
       }
