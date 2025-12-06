@@ -27,15 +27,12 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 	seq0 := binary.BigEndian.Uint32(packet[ipHdrLen+4 : ipHdrLen+8])
 	id0 := binary.BigEndian.Uint16(packet[4:6])
 
-	// Find split points
-	splits := []int{1} // Always split after first byte (firstbyte desync)
+	splits := []int{1}
 
-	// Add pre-SNI extension split if found
 	if extSplit := findPreSNIExtensionPoint(payload); extSplit > 1 && extSplit < payloadLen-5 {
 		splits = append(splits, extSplit)
 	}
 
-	// Add mid-SNI split if found
 	if sniStart, sniEnd, ok := locateSNI(payload); ok && sniEnd > sniStart {
 		midSNI := sniStart + (sniEnd-sniStart)/2
 		if midSNI > splits[len(splits)-1]+2 {
@@ -43,14 +40,12 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 		}
 	}
 
-	// Ensure splits are sorted and unique
 	splits = uniqueSorted(splits, payloadLen)
 
 	if len(splits) < 2 {
 		splits = []int{1, payloadLen / 2}
 	}
 
-	// Build segments
 	type segment struct {
 		data []byte
 		seq  uint32
@@ -59,31 +54,30 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 	segments := make([]segment, 0, len(splits)+1)
 	prevEnd := 0
 
-	for i := range segments {
-		seg := segments[i]
-
-		if i == len(segments)-1 {
-			segIpHdrLen := int((seg.data[0] & 0x0F) * 4)
-			seg.data[segIpHdrLen+13] |= 0x08
-			sock.FixTCPChecksum(seg.data)
+	for i, splitPos := range splits {
+		if splitPos <= prevEnd {
+			continue
 		}
 
-		_ = w.sock.SendIPv4(seg.data, dst)
+		segDataLen := splitPos - prevEnd
+		segLen := payloadStart + segDataLen
+		seg := make([]byte, segLen)
+		copy(seg[:payloadStart], packet[:payloadStart])
+		copy(seg[payloadStart:], payload[prevEnd:splitPos])
 
-		if i < len(segments)-1 {
-			if i == 0 {
-				delay := cfg.TCP.Seg2Delay
-				if delay < 50 {
-					delay = 100
-				}
-				time.Sleep(time.Duration(delay) * time.Millisecond)
-			} else {
-				time.Sleep(time.Duration(rand.Intn(2000)) * time.Microsecond)
-			}
-		}
+		binary.BigEndian.PutUint32(seg[ipHdrLen+4:ipHdrLen+8], seq0+uint32(prevEnd))
+		binary.BigEndian.PutUint16(seg[4:6], id0+uint16(i))
+		binary.BigEndian.PutUint16(seg[2:4], uint16(segLen))
+
+		seg[ipHdrLen+13] &^= 0x08
+
+		sock.FixIPv4Checksum(seg[:ipHdrLen])
+		sock.FixTCPChecksum(seg)
+
+		segments = append(segments, segment{data: seg, seq: seq0 + uint32(prevEnd)})
+		prevEnd = splitPos
 	}
 
-	// Final segment
 	if prevEnd < payloadLen {
 		segLen := payloadStart + (payloadLen - prevEnd)
 		seg := make([]byte, segLen)
@@ -114,6 +108,18 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 		for i, j := 0, len(segments)-1; i < j; i, j = i+1, j-1 {
 			segments[i], segments[j] = segments[j], segments[i]
 		}
+	}
+
+	for i := range segments {
+		segIpHdrLen := int((segments[i].data[0] & 0x0F) * 4)
+		segments[i].data[segIpHdrLen+13] &^= 0x08
+		sock.FixTCPChecksum(segments[i].data)
+	}
+	if len(segments) > 0 {
+		lastIdx := len(segments) - 1
+		segIpHdrLen := int((segments[lastIdx].data[0] & 0x0F) * 4)
+		segments[lastIdx].data[segIpHdrLen+13] |= 0x08
+		sock.FixTCPChecksum(segments[lastIdx].data)
 	}
 
 	for i, seg := range segments {

@@ -50,8 +50,11 @@ func (w *Worker) sendFirstByteDesync(cfg *config.SetConfig, packet []byte, dst n
 
 	_ = w.sock.SendIPv4(seg1, dst)
 
-	// Long delay - DPI may timeout waiting for rest of TLS record header
-	time.Sleep(100 * time.Millisecond) // Tune this: 50-200ms
+	delay := cfg.TCP.Seg2Delay
+	if delay < 50 {
+		delay = 100
+	}
+	time.Sleep(time.Duration(delay) * time.Millisecond)
 
 	_ = w.sock.SendIPv4(seg2, dst)
 }
