@@ -47,6 +47,7 @@ const (
 	FamilyExtSplit  StrategyFamily = "extsplit"
 	FamilyFirstByte StrategyFamily = "firstbyte"
 	FamilyCombo     StrategyFamily = "combo"
+	FamilyHybrid    StrategyFamily = "hybrid"
 )
 
 type CheckResult struct {

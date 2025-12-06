@@ -1056,6 +1056,7 @@ func (ds *DiscoverySuite) runExtendedSearch() []StrategyFamily {
 		FamilyDesync,
 		FamilySynFake,
 		FamilyDelay,
+		FamilyHybrid,
 	}
 
 	var workingFamilies []StrategyFamily

@@ -576,6 +576,33 @@ func GetPhase1Presets() []ConfigPreset {
 				},
 			},
 		},
+		{
+			Name:        "hybrid-adaptive",
+			Description: "Adaptive evasion: auto-selects combo/disorder/extsplit/firstbyte",
+			Family:      FamilyHybrid,
+			Phase:       PhaseStrategy,
+			Priority:    19,
+			Config: config.SetConfig{
+				TCP: config.TCPConfig{
+					ConnBytesLimit: 19,
+					Seg2Delay:      50,
+				},
+				UDP: defaultUDP(),
+				Fragmentation: config.FragmentationConfig{
+					Strategy:     "hybrid",
+					MiddleSNI:    true,
+					ReverseOrder: true,
+				},
+				Faking: config.FakingConfig{
+					SNI:          true,
+					TTL:          8,
+					Strategy:     "pastseq",
+					SeqOffset:    10000,
+					SNISeqLength: 1,
+					SNIType:      config.FakePayloadDefault1,
+				},
+			},
+		},
 	}
 }
 
@@ -964,6 +991,25 @@ func GetPhase2Presets(family StrategyFamily) []ConfigPreset {
 					SNIPosition:  1,
 					ReverseOrder: true,
 					MiddleSNI:    true,
+				}), config.TCPConfig{
+					ConnBytesLimit: 19,
+					Seg2Delay:      d,
+				}),
+			})
+		}
+
+	case FamilyHybrid:
+		delays := []int{30, 50, 100, 150}
+		for _, d := range delays {
+			presets = append(presets, ConfigPreset{
+				Name:     formatName("hybrid-delay%d", d),
+				Family:   FamilyHybrid,
+				Phase:    PhaseOptimize,
+				Priority: d,
+				Config: withTCP(withFragmentation(base, config.FragmentationConfig{
+					Strategy:     "hybrid",
+					MiddleSNI:    true,
+					ReverseOrder: true,
 				}), config.TCPConfig{
 					ConnBytesLimit: 19,
 					Seg2Delay:      d,
