@@ -9,6 +9,7 @@
   - `Overlap` - overlapping TCP segments where second overwrites first (RFC 793 behavior)
   - `Extension Split` - splits TLS ClientHello within extensions array before SNI
   - `First-Byte Desync` - sends 1 byte, delays, sends rest (exploits DPI timeouts)
+  - `Hybrid` - evasion strategy combining desync, fake SNI, and disorder techniques
 
 - IMPROVED: Skip private destination IP packets processing.
 

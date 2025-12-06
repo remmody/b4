@@ -80,17 +80,11 @@ func (w *Worker) sendDisorderFragments(cfg *config.SetConfig, packet []byte, dst
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	if len(segments) > 2 {
-		for i := len(segments) - 1; i > 1; i-- {
-			j := 1 + r.Intn(i)
+	if len(segments) > 1 {
+		for i := len(segments) - 1; i > 0; i-- {
+			j := r.Intn(i + 1)
 			segments[i], segments[j] = segments[j], segments[i]
 		}
-		if r.Intn(2) == 0 {
-			j := r.Intn(len(segments))
-			segments[0], segments[j] = segments[j], segments[0]
-		}
-	} else if len(segments) == 2 {
-		segments[0], segments[1] = segments[1], segments[0]
 	}
 
 	seg2d := cfg.TCP.Seg2Delay

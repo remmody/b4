@@ -1,7 +1,7 @@
 package nfq
 
 import (
-	"crypto/rand"
+	"bytes"
 	"encoding/binary"
 	"net"
 	"time"
@@ -30,6 +30,7 @@ func (w *Worker) sendOverlapFragmentsV6(cfg *config.SetConfig, packet []byte, ds
 
 	payload := packet[payloadStart:]
 	seq0 := binary.BigEndian.Uint32(packet[ipv6HdrLen+4 : ipv6HdrLen+8])
+	id0 := binary.BigEndian.Uint16(packet[4:6])
 
 	sniStart, sniEnd, ok := locateSNI(payload)
 	if !ok || sniEnd <= sniStart {
@@ -37,40 +38,43 @@ func (w *Worker) sendOverlapFragmentsV6(cfg *config.SetConfig, packet []byte, ds
 		return
 	}
 
-	// Segment 1: From start to beyond SNI, with FAKE SNI in overlap region
-	seg1End := sniEnd + 2
-	if seg1End > payloadLen {
-		seg1End = payloadLen
-	}
-
-	seg1Len := payloadStart + seg1End
-	seg1 := make([]byte, seg1Len)
-	copy(seg1[:payloadStart], packet[:payloadStart])
-	copy(seg1[payloadStart:], payload[:seg1End])
-
-	// Random garbage instead of predictable pattern
-	sniLen := sniEnd - sniStart
-	garbageSNI := make([]byte, sniLen)
-	rand.Read(garbageSNI)
-
-	copy(seg1[payloadStart+sniStart:payloadStart+sniEnd], garbageSNI)
-	binary.BigEndian.PutUint16(seg1[4:6], uint16(seg1Len-ipv6HdrLen))
-	seg1[ipv6HdrLen+13] &^= 0x08 // Clear PSH
-	sock.FixTCPChecksumV6(seg1)
-
-	// Segment 2: Starts BEFORE seg1 ends (overlap), contains real SNI
-	overlapStart := sniStart - 8
+	// Segment 1: Contains REAL SNI (sent FIRST - server keeps)
+	overlapStart := sniStart - 4
 	if overlapStart < 0 {
 		overlapStart = 0
 	}
 
-	seg2Len := payloadStart + (payloadLen - overlapStart)
+	seg1Len := payloadStart + (payloadLen - overlapStart)
+	seg1 := make([]byte, seg1Len)
+	copy(seg1[:payloadStart], packet[:payloadStart])
+	copy(seg1[payloadStart:], payload[overlapStart:])
+
+	binary.BigEndian.PutUint32(seg1[ipv6HdrLen+4:ipv6HdrLen+8], seq0+uint32(overlapStart))
+	binary.BigEndian.PutUint16(seg1[4:6], uint16(seg1Len-ipv6HdrLen))
+	sock.FixTCPChecksumV6(seg1)
+
+	// Segment 2: With FAKE SNI (sent SECOND - DPI sees, server discards overlap)
+	seg2End := sniEnd + 4
+	if seg2End > payloadLen {
+		seg2End = payloadLen
+	}
+
+	seg2Len := payloadStart + seg2End
 	seg2 := make([]byte, seg2Len)
 	copy(seg2[:payloadStart], packet[:payloadStart])
-	copy(seg2[payloadStart:], payload[overlapStart:])
+	copy(seg2[payloadStart:], payload[:seg2End])
 
-	binary.BigEndian.PutUint32(seg2[ipv6HdrLen+4:ipv6HdrLen+8], seq0+uint32(overlapStart))
+	sniLen := sniEnd - sniStart
+	fakeDomains := []string{"ya.ru", "yandex.ru", "vk.com", "max.ru", "dzen.ru"}
+	fakeSNI := []byte(fakeDomains[int(seq0)%len(fakeDomains)])
+	if len(fakeSNI) < sniLen {
+		fakeSNI = append(fakeSNI, bytes.Repeat([]byte{'.'}, sniLen-len(fakeSNI))...)
+	}
+	copy(seg2[payloadStart+sniStart:payloadStart+sniEnd], fakeSNI[:sniLen])
+
+	binary.BigEndian.PutUint16(seg2[4:6], id0+1)
 	binary.BigEndian.PutUint16(seg2[4:6], uint16(seg2Len-ipv6HdrLen))
+	seg2[ipv6HdrLen+13] &^= 0x08
 	sock.FixTCPChecksumV6(seg2)
 
 	delay := cfg.TCP.Seg2Delay

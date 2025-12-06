@@ -123,6 +123,8 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.SetConfig, raw []byte, dst net.I
 		w.sendFirstByteDesyncV6(cfg, raw, dst)
 	case "combo":
 		w.sendComboFragmentsV6(cfg, raw, dst)
+	case "hybrid":
+		w.sendHybridFragmentsV6(cfg, raw, dst)
 	case "none":
 		_ = w.sock.SendIPv6(raw, dst)
 	default:

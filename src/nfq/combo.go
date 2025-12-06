@@ -100,9 +100,11 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 		return
 	}
 
+	// Thread-safe shuffle
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
 	if len(segments) > 3 {
 		middle := segments[1 : len(segments)-1]
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		for i := len(middle) - 1; i > 0; i-- {
 			j := r.Intn(i + 1)
 			middle[i], middle[j] = middle[j], middle[i]
@@ -128,16 +130,15 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 	for i, seg := range segments {
 		_ = w.sock.SendIPv4(seg.data, dst)
 
-		if i < len(segments)-1 {
-			if i == 0 {
-				delay := cfg.TCP.Seg2Delay
-				if delay < 50 {
-					delay = 100
-				}
-				time.Sleep(time.Duration(delay) * time.Millisecond)
-			} else {
-				time.Sleep(time.Duration(rand.Intn(2000)) * time.Microsecond)
+		if i == 0 {
+			delay := cfg.TCP.Seg2Delay
+			if delay < 50 {
+				delay = 100
 			}
+			jitter := r.Intn(delay/3 + 1)
+			time.Sleep(time.Duration(delay+jitter) * time.Millisecond)
+		} else {
+			time.Sleep(time.Duration(r.Intn(2000)) * time.Microsecond)
 		}
 	}
 }

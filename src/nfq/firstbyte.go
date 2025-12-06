@@ -54,7 +54,8 @@ func (w *Worker) sendFirstByteDesync(cfg *config.SetConfig, packet []byte, dst n
 	if delay < 50 {
 		delay = 100
 	}
-	time.Sleep(time.Duration(delay) * time.Millisecond)
+	jitter := int(id0) % (delay/3 + 1)
+	time.Sleep(time.Duration(delay+jitter) * time.Millisecond)
 
 	_ = w.sock.SendIPv4(seg2, dst)
 }

@@ -47,6 +47,7 @@ export type FragmentationStrategy =
   | "extsplit"
   | "firstbyte"
   | "combo"
+  | "hybrid"
   | "none";
 export interface FragmentationConfig {
   strategy: FragmentationStrategy;

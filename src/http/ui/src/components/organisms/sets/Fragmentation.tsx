@@ -28,13 +28,14 @@ interface FragmentationSettingsProps {
 
 const fragmentationOptions: { label: string; value: FragmentationStrategy }[] =
   [
-    { label: "Combo (Recommended)", value: "combo" },
+    { label: "Combo", value: "combo" },
+    { label: "Hybrid", value: "hybrid" },
     { label: "Disorder", value: "disorder" },
     { label: "Overlap", value: "overlap" },
     { label: "Extension Split", value: "extsplit" },
     { label: "First-Byte Desync", value: "firstbyte" },
-    { label: "TCP Segmentation (Legacy)", value: "tcp" },
-    { label: "IP Fragmentation (Legacy)", value: "ip" },
+    { label: "TCP Segmentation", value: "tcp" },
+    { label: "IP Fragmentation", value: "ip" },
     { label: "TLS Record Splitting", value: "tls" },
     { label: "OOB (Out-of-Band)", value: "oob" },
     { label: "Disabled", value: "none" },

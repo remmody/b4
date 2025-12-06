@@ -518,6 +518,8 @@ func (w *Worker) dropAndInjectTCP(cfg *config.SetConfig, raw []byte, dst net.IP)
 		w.sendFirstByteDesync(cfg, raw, dst)
 	case "combo":
 		w.sendComboFragments(cfg, raw, dst)
+	case "hybrid":
+		w.sendHybridFragments(cfg, raw, dst)
 	case "none":
 		_ = w.sock.SendIPv4(raw, dst)
 	default:

@@ -1,7 +1,7 @@
 package nfq
 
 import (
-	"crypto/rand"
+	"bytes"
 	"encoding/binary"
 	"net"
 	"time"
@@ -26,55 +26,57 @@ func (w *Worker) sendOverlapFragments(cfg *config.SetConfig, packet []byte, dst 
 	seq0 := binary.BigEndian.Uint32(packet[ipHdrLen+4 : ipHdrLen+8])
 	id0 := binary.BigEndian.Uint16(packet[4:6])
 
-	// Find SNI position
 	sniStart, sniEnd, ok := locateSNI(payload)
 	if !ok || sniEnd <= sniStart {
-		// Fallback to regular fragmentation
 		w.sendTCPFragments(cfg, packet, dst)
 		return
 	}
 
-	// Segment 1: From start to beyond SNI, but with FAKE SNI in the overlap region
-	seg1End := sniEnd + 2
-	if seg1End > payloadLen {
-		seg1End = payloadLen
-	}
-
-	seg1Len := payloadStart + seg1End
-	seg1 := make([]byte, seg1Len)
-	copy(seg1[:payloadStart], packet[:payloadStart])
-	copy(seg1[payloadStart:], payload[:seg1End])
-
-	sniLen := sniEnd - sniStart
-	garbageSNI := make([]byte, sniLen)
-	rand.Read(garbageSNI)
-
-	copy(seg1[payloadStart+sniStart:payloadStart+sniEnd], garbageSNI)
-	binary.BigEndian.PutUint16(seg1[2:4], uint16(seg1Len))
-	seg1[ipHdrLen+13] &^= 0x08 // Clear PSH
-	sock.FixIPv4Checksum(seg1[:ipHdrLen])
-	sock.FixTCPChecksum(seg1)
-
-	// Segment 2: Starts BEFORE seg1 ends (overlap), contains real SNI, goes to end
-	overlapStart := sniStart - 8
+	// Segment 1: From before SNI to end, contains REAL SNI (sent FIRST - server keeps this)
+	overlapStart := sniStart - 4
 	if overlapStart < 0 {
 		overlapStart = 0
 	}
 
-	seg2Len := payloadStart + (payloadLen - overlapStart)
+	seg1Len := payloadStart + (payloadLen - overlapStart)
+	seg1 := make([]byte, seg1Len)
+	copy(seg1[:payloadStart], packet[:payloadStart])
+	copy(seg1[payloadStart:], payload[overlapStart:]) // REAL SNI
+
+	binary.BigEndian.PutUint32(seg1[ipHdrLen+4:ipHdrLen+8], seq0+uint32(overlapStart))
+	binary.BigEndian.PutUint16(seg1[2:4], uint16(seg1Len))
+	sock.FixIPv4Checksum(seg1[:ipHdrLen])
+	sock.FixTCPChecksum(seg1)
+
+	// Segment 2: From start through SNI, with FAKE SNI (sent SECOND - DPI sees, server discards overlap)
+	seg2End := sniEnd + 4
+	if seg2End > payloadLen {
+		seg2End = payloadLen
+	}
+
+	seg2Len := payloadStart + seg2End
 	seg2 := make([]byte, seg2Len)
 	copy(seg2[:payloadStart], packet[:payloadStart])
-	copy(seg2[payloadStart:], payload[overlapStart:]) // Contains REAL SNI
+	copy(seg2[payloadStart:], payload[:seg2End])
 
-	binary.BigEndian.PutUint32(seg2[ipHdrLen+4:ipHdrLen+8], seq0+uint32(overlapStart))
+	// Inject fake SNI
+	sniLen := sniEnd - sniStart
+	fakeDomains := []string{"ya.ru", "yandex.ru", "vk.com", "max.ru", "dzen.ru"}
+	fakeSNI := []byte(fakeDomains[int(seq0)%len(fakeDomains)])
+	if len(fakeSNI) < sniLen {
+		fakeSNI = append(fakeSNI, bytes.Repeat([]byte{'.'}, sniLen-len(fakeSNI))...)
+	}
+	copy(seg2[payloadStart+sniStart:payloadStart+sniEnd], fakeSNI[:sniLen])
+
 	binary.BigEndian.PutUint16(seg2[4:6], id0+1)
 	binary.BigEndian.PutUint16(seg2[2:4], uint16(seg2Len))
+	seg2[ipHdrLen+13] &^= 0x08
 	sock.FixIPv4Checksum(seg2[:ipHdrLen])
 	sock.FixTCPChecksum(seg2)
 
 	delay := cfg.TCP.Seg2Delay
 
-	// Send seg1 first (with fake SNI), then seg2 (with real SNI that overlaps)
+	// REAL first (server keeps), then FAKE (DPI sees but server discards)
 	_ = w.sock.SendIPv4(seg1, dst)
 	if delay > 0 {
 		time.Sleep(time.Duration(delay) * time.Millisecond)
