@@ -6,6 +6,7 @@
 - ADDED: DNS discovery and configuration management with support for custom DNS servers.
 - ADDED: `Enter` hotkey to start discovery.
 - IMPROVED: enhanc `Discovery` fragmentation configurations and add new presets for combo and disorder strategies.
+- IMPROVED: backup handling for existing binaries during B4 installation (`installer.sh`).
 
 ## [1.21.1] - 2025-12-07
 

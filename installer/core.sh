@@ -39,11 +39,12 @@ install_b4() {
 
     # Create timestamp in POSIX way
     timestamp=$(date '+%Y%m%d_%H%M%S')
+    BACKUP_FILE="${INSTALL_DIR}/${BINARY_NAME}.backup.${timestamp}"
 
     # Backup existing binary if it exists
     if [ -f "${INSTALL_DIR}/${BINARY_NAME}" ]; then
         print_info "Backing up existing binary..."
-        mv "${INSTALL_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}.backup.${timestamp}"
+        mv "${INSTALL_DIR}/${BINARY_NAME}" "$BACKUP_FILE"
     fi
 
     # Install the new binary
@@ -61,7 +62,9 @@ install_b4() {
 
     # Verify installation
     if "${INSTALL_DIR}/${BINARY_NAME}" --version >/dev/null 2>&1; then
-        rm -f "${INSTALL_DIR}/${BINARY_NAME}.backup.*" 2>/dev/null || true
+        [ -n "$BACKUP_FILE" ] && rm -f "$BACKUP_FILE" 2>/dev/null || true
+        # Clean old backups
+        rm -f "${INSTALL_DIR}/${BINARY_NAME}".backup.* 2>/dev/null || true
         print_success "b4 installed successfully!"
     else
         print_warning "Binary installed but version check failed"
