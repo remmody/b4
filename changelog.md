@@ -4,7 +4,7 @@
 
 - ADDED: `DNS Redirect` - bypass ISP DNS poisoning by transparently rewriting queries to clean resolvers. Available at set level, allowing per-domain DNS redirect control.
 - ADDED: DNS discovery and configuration management with support for custom DNS servers.
-- ADDED: `Enter` hotkey to start discovery. ([#5](https://github.com/DanielLavrushin/b4/pull/5))
+- ADDED: `Enter` hotkey to start discovery. ([#5](https://github.com/DanielLavrushin/b4/pull/5)).
 - IMPROVED: enhance `Discovery` fragmentation configurations and add new presets for combo and disorder strategies.
 - IMPROVED: backup handling for existing binaries during B4 installation (`installer.sh`).
 
