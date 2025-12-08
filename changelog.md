@@ -1,5 +1,9 @@
 # B4 - Bye Bye Big Bro
 
+## [1.22.0] - 2025-12-xx
+
+- ADDED: `DNS Redirect` - bypass ISP DNS poisoning by transparently rewriting queries to clean resolvers. Available at set level, allowing per-domain DNS redirect control.
+
 ## [1.21.1] - 2025-12-07
 
 - ADDED: TCP `SYN Fake TTL` slider option.

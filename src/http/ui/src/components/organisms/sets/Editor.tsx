@@ -15,19 +15,21 @@ import {
   CallSplit as FragIcon,
   Language as DomainIcon,
   Layers as LayersIcon,
+  Dns as DnsIcon,
 } from "@mui/icons-material";
 
 import { B4Dialog } from "@molecules/common/B4Dialog";
 import B4TextField from "@atoms/common/B4TextField";
 
 import { colors, button_primary, button_secondary } from "@design";
-import { B4SetConfig, SystemConfig } from "@models/Config";
+import { B4Config, B4SetConfig, SystemConfig } from "@models/Config";
 
 import { TargetSettings } from "./Target";
 import { TcpSettings } from "./Tcp";
 import { UdpSettings } from "./Udp";
 import { FragmentationSettings } from "./Fragmentation";
 import { ImportExportSettings } from "./ImportExport";
+import { DnsSettings } from "./Dns";
 import { FakingSettings } from "./Faking";
 import { SetStats } from "./Manager";
 
@@ -35,6 +37,7 @@ export interface SetEditorProps {
   open: boolean;
   settings: SystemConfig;
   set: B4SetConfig;
+  config: B4Config;
   stats?: SetStats;
   isNew: boolean;
   saving: boolean;
@@ -45,6 +48,7 @@ export interface SetEditorProps {
 export const SetEditor: React.FC<SetEditorProps> = ({
   open,
   set: initialSet,
+  config,
   isNew,
   settings,
   stats,
@@ -56,6 +60,7 @@ export const SetEditor: React.FC<SetEditorProps> = ({
     TARGETS = 0,
     TCP,
     UDP,
+    DNS,
     FRAGMENTATION,
     FAKING,
     IMPORT_EXPORT,
@@ -150,6 +155,7 @@ export const SetEditor: React.FC<SetEditorProps> = ({
           <Tab label="Targets" icon={<DomainIcon />} />
           <Tab label="TCP" icon={<TcpIcon />} />
           <Tab label="UDP" icon={<UdpIcon />} />
+          <Tab label="DNS" icon={<DnsIcon />} />
           <Tab label="Fragmentation" icon={<FragIcon />} />
           <Tab label="Faking" icon={<FakingIcon />} />
           <Tab label="Import/Export" icon={<LayersIcon />} />
@@ -167,6 +173,17 @@ export const SetEditor: React.FC<SetEditorProps> = ({
         <Box hidden={activeTab !== TABS.UDP}>
           <Stack spacing={2}>
             <UdpSettings config={editedSet} onChange={handleChange} />
+          </Stack>
+        </Box>
+
+        {/* DNS Settings */}
+        <Box hidden={activeTab !== TABS.DNS}>
+          <Stack spacing={2}>
+            <DnsSettings
+              config={editedSet}
+              onChange={handleChange}
+              ipv6={config.queue.ipv6}
+            />
           </Stack>
         </Box>
 

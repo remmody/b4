@@ -120,6 +120,10 @@ func (n *NFTablesManager) Apply() error {
 		return err
 	}
 
+	if err := n.createChain("prerouting", "prerouting", -150, "accept"); err != nil {
+		return err
+	}
+
 	if err := n.createChain(nftChainName, "", 0, ""); err != nil {
 		return err
 	}
@@ -145,6 +149,18 @@ func (n *NFTablesManager) Apply() error {
 	tcpRuleArgs := []string{"tcp", "dport", "443", "ct", "original", "packets", "<", tcpLimit, "counter"}
 	tcpRuleArgs = append(tcpRuleArgs, strings.Fields(n.buildNFQueueAction())...)
 	if err := n.addRuleArgs(nftChainName, tcpRuleArgs...); err != nil {
+		return err
+	}
+
+	dnsRuleArgs := []string{"udp", "dport", "53", "counter"}
+	dnsRuleArgs = append(dnsRuleArgs, strings.Fields(n.buildNFQueueAction())...)
+	if err := n.addRuleArgs(nftChainName, dnsRuleArgs...); err != nil {
+		return err
+	}
+
+	dnsResponseArgs := []string{"udp", "sport", "53", "counter"}
+	dnsResponseArgs = append(dnsResponseArgs, strings.Fields(n.buildNFQueueAction())...)
+	if err := n.addRuleArgs("prerouting", dnsResponseArgs...); err != nil {
 		return err
 	}
 

@@ -125,3 +125,48 @@ func FixTCPChecksum(packet []byte) {
 	checksum := ^uint16(sum)
 	binary.BigEndian.PutUint16(packet[tcpOffset+16:tcpOffset+18], checksum)
 }
+
+func FixUDPChecksum(packet []byte, ihl int) {
+	if len(packet) < ihl+8 {
+		return
+	}
+
+	udp := packet[ihl:]
+	udpLen := len(udp)
+
+	// Zero checksum field first
+	udp[6] = 0
+	udp[7] = 0
+
+	// Build pseudo-header and calculate checksum
+	var sum uint32
+
+	// Pseudo-header: src IP, dst IP, zero, protocol, UDP length
+	sum += uint32(packet[12])<<8 + uint32(packet[13])
+	sum += uint32(packet[14])<<8 + uint32(packet[15])
+	sum += uint32(packet[16])<<8 + uint32(packet[17])
+	sum += uint32(packet[18])<<8 + uint32(packet[19])
+	sum += 17 // UDP protocol
+	sum += uint32(udpLen)
+
+	// UDP header + data
+	for i := 0; i+1 < udpLen; i += 2 {
+		sum += uint32(udp[i])<<8 + uint32(udp[i+1])
+	}
+	if udpLen%2 == 1 {
+		sum += uint32(udp[udpLen-1]) << 8
+	}
+
+	// Fold 32-bit sum to 16 bits
+	for sum > 0xffff {
+		sum = (sum >> 16) + (sum & 0xffff)
+	}
+
+	checksum := ^uint16(sum)
+	if checksum == 0 {
+		checksum = 0xffff
+	}
+
+	udp[6] = byte(checksum >> 8)
+	udp[7] = byte(checksum)
+}

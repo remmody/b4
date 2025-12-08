@@ -190,6 +190,7 @@ export interface B4SetConfig {
   fragmentation: FragmentationConfig;
   faking: FakingConfig;
   targets: TargetsConfig;
+  dns: DNSConfig;
 }
 
 export type ComboShuffleMode = "middle" | "full" | "reverse";
@@ -210,6 +211,11 @@ export interface DisorderFragConfig {
 
 export interface OverlapFragConfig {
   fake_snis: string[];
+}
+
+export interface DNSConfig {
+  enabled: boolean;
+  target_dns: string;
 }
 
 export const MAIN_SET_ID = "11111111-1111-1111-1111-111111111111";

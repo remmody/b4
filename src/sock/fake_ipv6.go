@@ -130,3 +130,51 @@ func FixTCPChecksumV6(packet []byte) {
 	checksum := ^uint16(sum)
 	binary.BigEndian.PutUint16(packet[tcpOffset+16:tcpOffset+18], checksum)
 }
+
+func FixUDPChecksumV6(packet []byte) {
+	if len(packet) < 48 { // 40 (IPv6) + 8 (UDP min)
+		return
+	}
+
+	ipv6HdrLen := 40
+	udpOffset := ipv6HdrLen
+
+	// Clear existing checksum
+	packet[udpOffset+6] = 0
+	packet[udpOffset+7] = 0
+
+	// Get payload length from IPv6 header
+	payloadLen := int(binary.BigEndian.Uint16(packet[4:6]))
+
+	pseudo := make([]byte, 40)
+	copy(pseudo[0:16], packet[8:24])   // Source address
+	copy(pseudo[16:32], packet[24:40]) // Destination address
+	binary.BigEndian.PutUint32(pseudo[32:36], uint32(payloadLen))
+	pseudo[39] = 17 // Next header = UDP
+
+	var sum uint32
+
+	for i := 0; i < len(pseudo); i += 2 {
+		sum += uint32(binary.BigEndian.Uint16(pseudo[i : i+2]))
+	}
+
+	udp := packet[udpOffset : udpOffset+payloadLen]
+	for i := 0; i+1 < len(udp); i += 2 {
+		sum += uint32(binary.BigEndian.Uint16(udp[i : i+2]))
+	}
+	if len(udp)%2 == 1 {
+		sum += uint32(udp[len(udp)-1]) << 8
+	}
+
+	for sum > 0xffff {
+		sum = (sum >> 16) + (sum & 0xffff)
+	}
+
+	checksum := ^uint16(sum)
+
+	if checksum == 0 {
+		checksum = 0xffff
+	}
+
+	binary.BigEndian.PutUint16(packet[udpOffset+6:udpOffset+8], checksum)
+}

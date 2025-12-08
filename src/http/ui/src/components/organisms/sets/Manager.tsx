@@ -200,6 +200,10 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
         conn_bytes_limit: 8,
         seg2delay: 0,
       } as B4SetConfig["udp"],
+      dns: {
+        enabled: false,
+        target_dns: "",
+      } as B4SetConfig["dns"],
       fragmentation: {
         strategy: "tcp",
         reverse_order: true,
@@ -1099,6 +1103,7 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
         open={editDialog.open}
         settings={config.system}
         set={editDialog.set!}
+        config={config}
         isNew={editDialog.isNew}
         saving={saving}
         stats={

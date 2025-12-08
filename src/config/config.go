@@ -53,6 +53,11 @@ var DefaultSetConfig = SetConfig{
 		DesyncCount: 3,
 	},
 
+	DNS: DNSConfig{
+		Enabled:   false,
+		TargetDNS: "",
+	},
+
 	Fragmentation: FragmentationConfig{
 		Strategy:          "tcp", // "tcp", "ip", "tls", "oob", "none", "combo", "hybrid", "disorder", "overlap", "extsplit", "firstbyte"
 		ReverseOrder:      true,

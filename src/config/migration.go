@@ -23,6 +23,17 @@ var migrationRegistry = map[int]MigrationFunc{
 	4: migrateV4to5,
 	5: migrateV5to6,
 	6: migrateV6to7,
+	7: migrateV7to8,
+}
+
+// Migration: v7 -> v8 (add DNS redirect settings)
+func migrateV7to8(c *Config) error {
+	log.Tracef("Migration v7->v8: Adding DNS redirect settings")
+
+	for _, set := range c.Sets {
+		set.DNS = DefaultSetConfig.DNS
+	}
+	return nil
 }
 
 // Migration: v6 -> v7 (add TCP syn TTL and drop SACK settings)

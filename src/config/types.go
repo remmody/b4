@@ -137,6 +137,7 @@ type SetConfig struct {
 	Faking        FakingConfig        `json:"faking" bson:"faking"`
 	Targets       TargetsConfig       `json:"targets" bson:"targets"`
 	Enabled       bool                `json:"enabled" bson:"enabled"`
+	DNS           DNSConfig           `json:"dns" bson:"dns"`
 }
 
 type GeoDatConfig struct {
@@ -158,6 +159,11 @@ type DisorderFragConfig struct {
 	ShuffleMode string `json:"shuffle_mode" bson:"shuffle_mode"` // "full", "reverse"
 	MinJitterUs int    `json:"min_jitter_us" bson:"min_jitter_us"`
 	MaxJitterUs int    `json:"max_jitter_us" bson:"max_jitter_us"`
+}
+
+type DNSConfig struct {
+	Enabled   bool   `json:"enabled" bson:"enabled"`
+	TargetDNS string `json:"target_dns" bson:"target_dns"`
 }
 
 type OverlapFragConfig struct {

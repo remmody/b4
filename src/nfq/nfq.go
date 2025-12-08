@@ -100,11 +100,6 @@ func (w *Worker) Start() error {
 				src = net.IP(raw[12:16])
 				dst = net.IP(raw[16:20])
 
-				if utils.IsPrivateIP(dst) {
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
-					return 0
-				}
-
 			} else {
 				if len(raw) < IPv6HeaderLen {
 					_ = q.SetVerdict(id, nfqueue.NfAccept)
@@ -283,8 +278,12 @@ func (w *Worker) Start() error {
 				dport := binary.BigEndian.Uint16(udp[2:4])
 				connKey := fmt.Sprintf("%s:%d->%s:%d", srcStr, sport, dstStr, dport)
 
-				// Early exit for DNS
-				if dport == 53 || sport == 53 {
+				// Handle DNS packets
+				if sport == 53 || dport == 53 {
+					return w.processDnsPacket(sport, dport, payload, raw, ihl, id)
+				}
+
+				if utils.IsPrivateIP(dst) {
 					_ = q.SetVerdict(id, nfqueue.NfAccept)
 					return 0
 				}

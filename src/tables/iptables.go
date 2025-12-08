@@ -226,10 +226,22 @@ func (manager *IPTablesManager) buildManifest() (Manifest, error) {
 			manager.buildNFQSpec(queueNum, threads)...,
 		)
 
+		dnsSpec := append(
+			[]string{"-p", "udp", "--dport", "53"},
+			manager.buildNFQSpec(queueNum, threads)...,
+		)
+		dnsResponseSpec := append(
+			[]string{"-p", "udp", "--sport", "53"},
+			manager.buildNFQSpec(queueNum, threads)...,
+		)
+
 		rules = append(rules,
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: tcpSpec},
+			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: dnsSpec},
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: udpSpec},
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "POSTROUTING", Action: "I", Spec: []string{"-j", chainName}},
+			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "PREROUTING", Action: "I", Spec: dnsResponseSpec},
+
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "OUTPUT", Action: "I", Spec: []string{"-m", "mark", "--mark", markAccept, "-j", "ACCEPT"}},
 		)
 
@@ -262,16 +274,6 @@ func (ipt *IPTablesManager) Apply() error {
 
 func (ipt *IPTablesManager) Clear() error {
 
-	ipts := []string{}
-	if hasBinary("iptables") {
-		ipts = append(ipts, "iptables")
-	}
-	if hasBinary("ip6tables") {
-		ipts = append(ipts, "ip6tables")
-	}
-	if len(ipts) == 0 {
-		ipts = []string{"iptables"}
-	}
 	m, err := ipt.buildManifest()
 	if err != nil {
 		return err
