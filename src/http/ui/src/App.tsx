@@ -33,16 +33,19 @@ import {
   Science as ScienceIcon,
   Layers as SetsIcon,
 } from "@mui/icons-material";
-import Dashboard from "@pages/Dashboard";
-import Logs from "@pages/Logs";
-import Connections from "@pages/Connections";
-import Settings from "@pages/Settings";
 import { theme, colors } from "@design";
-import Logo from "@molecules/Logo";
-import Version from "@organisms/version/Version";
+
+import {Logo} from "@common/Logo"
+import Version from "@components/version/Version"
+
 import { useWebSocket } from "@ctx/B4WsProvider";
-import Discovery from "@pages/Discovery";
-import Sets from "./components/pages/Sets";
+
+import {SetsPage} from "@b4.sets"
+import {DiscoveryPage} from "@b4.discovery"
+import {ConnectionsPage} from "@b4.connections"
+import {SettingsPage} from "@b4.settings"
+import {LogsPage} from "@b4.logs"
+import {DashboardPage} from "@b4.dashboard"
 
 const DRAWER_WIDTH = 240;
 
@@ -186,12 +189,12 @@ export default function App() {
 
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/sets" element={<Sets />} />
-            <Route path="/connections" element={<Connections />} />
-            <Route path="/discovery" element={<Discovery />} />
-            <Route path="/logs" element={<Logs />} />
-            <Route path="/settings/*" element={<Settings />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/sets" element={<SetsPage />} />
+            <Route path="/connections" element={<ConnectionsPage />} />
+            <Route path="/discovery" element={<DiscoveryPage />} />
+            <Route path="/logs" element={<LogsPage />} />
+            <Route path="/settings/*" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Box>

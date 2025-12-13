@@ -1,5 +1,7 @@
 import { useState, useCallback } from "react";
 import { B4SetConfig } from "@models/Config";
+import { ApiError } from "@api/apiClient";
+import { setsApi } from "@b4.sets";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -10,21 +12,18 @@ interface ApiResponse<T> {
 export function useSets() {
   const [loading, setLoading] = useState(false);
 
+
   const createSet = useCallback(
     async (set: Omit<B4SetConfig, "id">): Promise<ApiResponse<B4SetConfig>> => {
       setLoading(true);
       try {
-        const response = await fetch("/api/sets", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(set),
-        });
-        if (!response.ok) {
-          return { success: false, error: await response.text() };
-        }
-        const data = (await response.json()) as B4SetConfig;
+        const data = await setsApi.createSet(set);
         return { success: true, data };
       } catch (e) {
+        if (e instanceof ApiError) {
+          const msg = JSON.stringify(e.body ?? e.message);
+          return { success: false, error: msg };
+        }
         return { success: false, error: String(e) };
       } finally {
         setLoading(false);
@@ -37,17 +36,13 @@ export function useSets() {
     async (set: B4SetConfig): Promise<ApiResponse<B4SetConfig>> => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/sets/${set.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(set),
-        });
-        if (!response.ok) {
-          return { success: false, error: await response.text() };
-        }
-        const data = (await response.json()) as B4SetConfig;
+        const data = await setsApi.updateSet(set.id, set);
         return { success: true, data };
       } catch (e) {
+        if (e instanceof ApiError) {
+          const msg = JSON.stringify(e.body ?? e.message);
+          return { success: false, error: msg };
+        }
         return { success: false, error: String(e) };
       } finally {
         setLoading(false);
@@ -60,12 +55,13 @@ export function useSets() {
     async (id: string): Promise<ApiResponse<void>> => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/sets/${id}`, { method: "DELETE" });
-        if (!response.ok) {
-          return { success: false, error: await response.text() };
-        }
+        await setsApi.deleteSet(id);
         return { success: true };
       } catch (e) {
+        if (e instanceof ApiError) {
+          const msg = JSON.stringify(e.body ?? e.message);
+          return { success: false, error: msg };
+        }
         return { success: false, error: String(e) };
       } finally {
         setLoading(false);
@@ -74,38 +70,25 @@ export function useSets() {
     []
   );
 
-  const duplicateSet = useCallback(
-    async (set: B4SetConfig): Promise<ApiResponse<B4SetConfig>> => {
-      const cloned: Omit<B4SetConfig, "id"> = {
-        ...set,
-        name: `${set.name} (copy)`,
-        targets: { ...set.targets },
-        tcp: { ...set.tcp },
-        udp: { ...set.udp },
-        fragmentation: { ...set.fragmentation },
-        faking: { ...set.faking },
-      };
-      // @ts-expect-error - removing id for creation
-      delete cloned.id;
-      return createSet(cloned);
-    },
-    [createSet]
-  );
+const duplicateSet = useCallback(
+  async (set: B4SetConfig): Promise<ApiResponse<B4SetConfig>> => {
+    const { id: _, ...rest } = structuredClone(set);
+    return createSet({ ...rest, name: `${set.name} (copy)` });
+  },
+  [createSet]
+);
 
   const reorderSets = useCallback(
     async (setIds: string[]): Promise<ApiResponse<void>> => {
       setLoading(true);
       try {
-        const response = await fetch("/api/sets/reorder", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ set_ids: setIds }),
-        });
-        if (!response.ok) {
-          return { success: false, error: await response.text() };
-        }
+        await setsApi.reorderSets(setIds);
         return { success: true };
       } catch (e) {
+        if (e instanceof ApiError) {
+          const msg = JSON.stringify(e.body ?? e.message);
+          return { success: false, error: msg };
+        }
         return { success: false, error: String(e) };
       } finally {
         setLoading(false);

@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "ES2023",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -12,16 +12,25 @@
     "skipLibCheck": true,
     "noImplicitAny": true,
     "paths": {
-      "@/*": ["./src/*"],
       "@design": ["./src/design/index.ts"],
-      "@atoms/*": ["./src/components/atoms/*"],
-      "@molecules/*": ["./src/components/molecules/*"],
-      "@organisms/*": ["./src/components/organisms/*"],
-      "@pages/*": ["./src/components/pages/*"],
       "@hooks/*": ["./src/hooks/*"],
       "@utils": ["./src/utils/index.ts"],
       "@models/*": ["./src/models/*"],
-      "@ctx/*": ["./src/ctx/*"]
+      "@ctx/*": ["./src/ctx/*"],
+      "@api/*": ["./src/api/*"],
+      "@components/*": ["./src/components/*"],
+      "@common/*": ["./src/components/common/*"],
+      "@assets/*": ["./src/assets/*"],
+
+      "@b4.sets": ["./src/barrels/sets.ts"],
+      "@b4.discovery": ["./src/barrels/discovery.ts"],
+      "@b4.logs": ["./src/barrels/logs.ts"],
+      "@b4.metrics": ["./src/barrels/metrics.ts"],
+      "@b4.connections": ["./src/barrels/connections.ts"],
+      "@b4.settings": ["./src/barrels/settings.ts"],
+      "@b4.dashboard": ["./src/barrels/dashboard.ts"],
+      "@b4.fields": ["./src/barrels/fields.ts"],
+      "@b4.elements": ["./src/barrels/elements.ts"]
     }
   },
   "include": ["src"]

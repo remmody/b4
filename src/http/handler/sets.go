@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/log"
@@ -12,7 +11,7 @@ import (
 
 func (api *API) RegisterSetsApi() {
 	api.mux.HandleFunc("/api/sets", api.handleSets)
-	api.mux.HandleFunc("/api/sets/", api.handleSetById)
+	api.mux.HandleFunc("/api/sets/{id}", api.handleSetById)
 	api.mux.HandleFunc("/api/sets/reorder", api.handleReorderSets)
 }
 
@@ -30,7 +29,7 @@ func (api *API) handleSets(w http.ResponseWriter, r *http.Request) {
 
 // GET/PUT/DELETE /api/sets/{id}
 func (api *API) handleSetById(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/api/sets/")
+	id := r.PathValue("id")
 	if id == "" {
 		http.Error(w, "Set ID required", http.StatusBadRequest)
 		return

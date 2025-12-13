@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef } from "react";
-import { SortDirection } from "@atoms/common/SortableTableCell";
+import { SortDirection } from "@common/SortableTableCell";
 import { asnStorage } from "@utils";
 
 // Types

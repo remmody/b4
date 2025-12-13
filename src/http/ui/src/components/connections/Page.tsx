@@ -1,0 +1,289 @@
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Container, Paper, Snackbar, Alert } from "@mui/material";
+import { DomainsControlBar } from "./ControlBar";
+import { AddSniModal } from "./AddSniModal";
+import {
+  DomainsTable,
+  SortColumn,
+} from "./Table";
+import { SortDirection } from "@common/SortableTableCell";
+import {
+  useDomainActions,
+  useParsedLogs,
+  useFilteredLogs,
+  useSortedLogs,
+} from "@hooks/useDomainActions";
+import { useIpActions } from "@hooks/useIpActions";
+import {
+  generateDomainVariants,
+  loadSortState,
+  saveSortState,
+  generateIpVariants,
+} from "@utils";
+import { colors } from "@design";
+import { useWebSocket } from "@ctx/B4WsProvider";
+import { AddIpModal } from "./AddIpModal";
+import { B4Config, B4SetConfig } from "@models/Config";
+
+const MAX_DISPLAY_ROWS = 1000;
+
+export  function ConnectionsPage() {
+  const {
+    domains,
+    pauseDomains,
+    showAll,
+    setShowAll,
+    setPauseDomains,
+    clearDomains,
+    resetDomainsBadge,
+  } = useWebSocket();
+
+  const [filter, setFilter] = useState("");
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(() => {
+    const saved = loadSortState();
+    return saved.column as SortColumn | null;
+  });
+  const [sortDirection, setSortDirection] = useState<SortDirection>(() => {
+    const saved = loadSortState();
+    return saved.direction;
+  });
+
+  const {
+    modalState,
+    snackbar,
+    openModal,
+    closeModal,
+    selectVariant,
+    addDomain,
+    closeSnackbar,
+  } = useDomainActions();
+
+  const {
+    modalState: modalIpState,
+    openModal: openIpModal,
+    closeModal: closeIpModal,
+    selectVariant: selectIpVariant,
+    addIp,
+  } = useIpActions();
+
+  useEffect(() => {
+    saveSortState(sortColumn, sortDirection);
+  }, [sortColumn, sortDirection]);
+
+  // Limit displayed rows for performance
+  const recentDomains = useMemo(
+    () => domains.slice(-MAX_DISPLAY_ROWS),
+    [domains]
+  );
+
+  const parsedLogs = useParsedLogs(recentDomains, showAll);
+  const filteredLogs = useFilteredLogs(parsedLogs, filter);
+  const sortedData = useSortedLogs(filteredLogs, sortColumn, sortDirection);
+
+  const [availableSets, setAvailableSets] = useState<B4SetConfig[]>([]);
+  const [ipInfoToken, setIpInfoToken] = useState<string>("");
+
+  const fetchSets = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const response = await fetch("/api/config", { signal });
+      if (response.ok) {
+        const data = (await response.json()) as B4Config;
+        if (data.sets && Array.isArray(data.sets)) {
+          setAvailableSets(data.sets);
+        }
+        if (data.system?.api?.ipinfo_token) {
+          setIpInfoToken(data.system.api.ipinfo_token);
+        }
+      }
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        console.error("Failed to fetch sets:", error);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetchSets(controller.signal);
+    return () => {
+      controller.abort();
+    };
+  }, [fetchSets]);
+
+  const handleScrollStateChange = useCallback(() => {}, []);
+
+  const handleSort = useCallback((column: SortColumn) => {
+    setSortColumn((prevColumn) => {
+      if (prevColumn === column) {
+        setSortDirection((prevDir) => {
+          if (prevDir === "asc") return "desc";
+          if (prevDir === "desc") {
+            setSortColumn(null);
+            return null;
+          }
+          return "asc";
+        });
+        return prevColumn;
+      }
+      setSortDirection("asc");
+      return column;
+    });
+  }, []);
+
+  const handleClearSort = useCallback(() => {
+    setSortColumn(null);
+    setSortDirection(null);
+  }, []);
+
+  const handleIpClick = useCallback(
+    (ip: string) => {
+      const variants = generateIpVariants(ip);
+      openIpModal(ip, variants);
+    },
+    [openIpModal]
+  );
+
+  const handleDomainClick = useCallback(
+    (domain: string) => {
+      const variants = generateDomainVariants(domain);
+      openModal(domain, variants);
+    },
+    [openModal]
+  );
+
+  const handleHotkeysDown = useCallback(
+    (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      if ((e.ctrlKey && e.key === "x") || e.key === "Delete") {
+        e.preventDefault();
+        clearDomains();
+        resetDomainsBadge();
+      } else if (e.key === "p" || e.key === "Pause") {
+        e.preventDefault();
+        setPauseDomains(!pauseDomains);
+      }
+    },
+    [clearDomains, pauseDomains, setPauseDomains, resetDomainsBadge]
+  );
+
+  useEffect(() => {
+    globalThis.window.addEventListener("keydown", handleHotkeysDown);
+    return () => {
+      globalThis.window.removeEventListener("keydown", handleHotkeysDown);
+    };
+  }, [handleHotkeysDown]);
+
+  return (
+    <Container
+      maxWidth={false}
+      sx={{
+        flex: 1,
+        py: 3,
+        px: 3,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
+      <Paper
+        elevation={0}
+        variant="outlined"
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          border: "1px solid",
+          borderColor: pauseDomains
+            ? colors.border.strong
+            : colors.border.default,
+          transition: "border-color 0.3s",
+        }}
+      >
+        <DomainsControlBar
+          filter={filter}
+          onFilterChange={setFilter}
+          totalCount={parsedLogs.length}
+          filteredCount={filteredLogs.length}
+          sortColumn={sortColumn}
+          paused={pauseDomains}
+          showAll={showAll}
+          onShowAllChange={setShowAll}
+          onPauseChange={setPauseDomains}
+          onClearSort={handleClearSort}
+          onReset={clearDomains}
+        />
+
+        <DomainsTable
+          data={sortedData}
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+          onDomainClick={handleDomainClick}
+          onIpClick={handleIpClick}
+          onScrollStateChange={handleScrollStateChange}
+        />
+      </Paper>
+
+      <AddSniModal
+        open={modalState.open}
+        domain={modalState.domain}
+        variants={modalState.variants}
+        selected={modalState.selected}
+        onClose={closeModal}
+        onSelectVariant={selectVariant}
+        sets={availableSets}
+        onAdd={(...args) => {
+          void (async () => {
+            await addDomain(...args);
+            await fetchSets();
+          })();
+        }}
+      />
+
+      <AddIpModal
+        open={modalIpState.open}
+        ip={modalIpState.ip}
+        variants={modalIpState.variants}
+        selected={modalIpState.selected as string}
+        sets={availableSets}
+        ipInfoToken={ipInfoToken}
+        onClose={closeIpModal}
+        onSelectVariant={selectIpVariant}
+        onAdd={(...args) => {
+          void (async () => {
+            await addIp(...args);
+            await fetchSets();
+          })();
+        }}
+        onAddHostname={(hostname) => {
+          const variants = generateDomainVariants(hostname);
+          openModal(hostname, variants);
+        }}
+      />
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={closeSnackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={closeSnackbar}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Container>
+  );
+}
