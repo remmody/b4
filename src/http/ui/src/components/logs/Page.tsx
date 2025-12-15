@@ -6,12 +6,9 @@ import {
   Paper,
   Stack,
   Typography,
-  Switch,
-  FormControlLabel,
-  TextField,
-  Chip,
 } from "@mui/material";
 import { ClearIcon } from "@b4.icons";
+import { B4Badge, B4TextField, B4Switch, B4TooltipButton } from "@b4.elements";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { useWebSocket } from "@ctx/B4WsProvider";
 
@@ -118,85 +115,28 @@ export function LogsPage() {
           }}
         >
           <Stack direction="row" spacing={2} alignItems="center">
-            <TextField
+            <B4TextField
               size="small"
               placeholder="Filter logs..."
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              sx={{ flex: 1 }}
-              slotProps={{
-                input: {
-                  sx: {
-                    bgcolor: "rgba(15, 10, 14, 0.5)",
-                    "& fieldset": {
-                      borderColor: "rgba(245, 173, 24, 0.24) !important",
-                    },
-                  },
-                },
-              }}
             />
             <Stack direction="row" spacing={1} alignItems="center">
-              <Chip
-                label={`${logs.length} lines`}
-                size="small"
-                sx={{
-                  bgcolor: "rgba(245, 173, 24, 0.2)",
-                  color: "#F5AD18",
-                  fontWeight: 600,
-                }}
-              />
+              <B4Badge label={`${logs.length} lines`} size="small" />
               {filter && (
-                <Chip
-                  label={`${filtered.length} filtered`}
-                  size="small"
-                  sx={{
-                    bgcolor: "rgba(158, 28, 96, 0.3)",
-                    color: "#9E1C60",
-                    borderColor: "#9E1C60",
-                  }}
-                  variant="outlined"
-                />
+                <B4Badge label={`${filtered.length} filtered`} size="small" />
               )}
             </Stack>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={pauseLogs}
-                  onChange={(e) => setPauseLogs(e.target.checked)}
-                  sx={{
-                    "& .MuiSwitch-switchBase.Mui-checked": {
-                      color: "#F5AD18",
-                    },
-                    "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                      backgroundColor: "#F5AD18",
-                    },
-                  }}
-                />
-              }
-              label={
-                <Typography
-                  sx={{
-                    color: pauseLogs ? "#F5AD18" : "text.secondary",
-                    fontWeight: pauseLogs ? 600 : 400,
-                  }}
-                >
-                  {pauseLogs ? "Paused" : "Streaming"}
-                </Typography>
-              }
+            <B4Switch
+              label={pauseLogs ? "Paused" : "Streaming"}
+              checked={pauseLogs}
+              onChange={(checked: boolean) => setPauseLogs(checked)}
             />
-            <IconButton
-              color="inherit"
+            <B4TooltipButton
+              title={"Clear Logs"}
               onClick={clearLogs}
-              sx={{
-                color: "text.secondary",
-                "&:hover": {
-                  color: "#F5AD18",
-                  bgcolor: "rgba(245, 173, 24, 0.1)",
-                },
-              }}
-            >
-              <ClearIcon />
-            </IconButton>
+              icon={<ClearIcon />}
+            />
           </Stack>
         </Box>
 

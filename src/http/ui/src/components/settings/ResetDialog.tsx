@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   Button,
-  Alert,
   Stack,
   Typography,
   Box,
@@ -12,13 +11,8 @@ import {
   CircularProgress,
 } from "@mui/material";
 
-import {
-  SecurityIcon,
-  WarningIcon,
-  ErrorIcon,
-  CheckIcon,
-  RestoreIcon,
-} from "@b4.icons";
+import { SecurityIcon, ErrorIcon, CheckIcon, RestoreIcon } from "@b4.icons";
+import { B4Alert } from "@b4.elements";
 import { useConfigReset } from "@hooks/useConfig";
 import { colors } from "@design";
 import { B4Dialog } from "@common/B4Dialog";
@@ -141,20 +135,14 @@ export const ResetDialog = ({ open, onClose, onSuccess }: ResetDialogProps) => {
       case "confirm":
         return (
           <>
-            <Alert
-              severity="warning"
-              icon={<WarningIcon />}
-              sx={{
-                bgcolor: colors.background.default,
-                border: `1px solid ${colors.quaternary}44`,
-                mb: 3,
-              }}
-            >
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                This will reset all configuration to default values except:
-              </Typography>
-            </Alert>
-
+            <B4Alert>
+              Network, DPI bypass, protocol, and logging settings will be reset
+              to defaults. You may need to restart B4 for some changes to take
+              effect.
+            </B4Alert>
+            <B4Alert severity="warning">
+              This will reset all configuration to default values except:
+            </B4Alert>
             <List dense>
               <ListItem>
                 <ListItemIcon>
@@ -175,21 +163,6 @@ export const ResetDialog = ({ open, onClose, onSuccess }: ResetDialogProps) => {
                 />
               </ListItem>
             </List>
-
-            <Alert
-              severity="info"
-              sx={{
-                mt: 2,
-                bgcolor: colors.background.default,
-                border: `1px solid ${colors.border.default}`,
-              }}
-            >
-              <Typography variant="caption">
-                Network, DPI bypass, protocol, and logging settings will be
-                reset to defaults. You may need to restart B4 for some changes
-                to take effect.
-              </Typography>
-            </Alert>
           </>
         );
 
@@ -222,9 +195,7 @@ export const ResetDialog = ({ open, onClose, onSuccess }: ResetDialogProps) => {
         return (
           <Stack spacing={3} alignItems="center" sx={{ py: 4 }}>
             <ErrorIcon sx={{ fontSize: 64, color: colors.quaternary }} />
-            <Alert severity="error" sx={{ width: "100%" }}>
-              {message}
-            </Alert>
+            <B4Alert severity="error">{message}</B4Alert>
           </Stack>
         );
     }

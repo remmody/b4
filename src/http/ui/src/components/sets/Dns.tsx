@@ -1,9 +1,7 @@
 import {
   Grid,
-  Alert,
   Box,
   Typography,
-  Chip,
   Stack,
   List,
   ListItemButton,
@@ -17,7 +15,13 @@ import {
   BlockIcon,
   SpeedIcon,
 } from "@b4.icons";
-import { B4Section, B4Switch, B4TextField } from "@b4.elements";
+import {
+  B4Alert,
+  B4Badge,
+  B4Section,
+  B4Switch,
+  B4TextField,
+} from "@b4.elements";
 import { B4SetConfig } from "@models/Config";
 import { colors } from "@design";
 import dns from "@assets/dns.json";
@@ -57,13 +61,11 @@ export function DnsSettings({ config, onChange, ipv6 }: DnsSettingsProps) {
       icon={<DnsIcon />}
     >
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12 }}>
-          <Alert severity="info">
-            Some ISPs intercept DNS queries (especially to 8.8.8.8) and return
-            fake IPs for blocked domains. DNS redirect transparently rewrites
-            your DNS queries to use an unpoisoned resolver.
-          </Alert>
-        </Grid>
+        <B4Alert severity="info" sx={{ m: 0 }}>
+          Some ISPs intercept DNS queries (especially to 8.8.8.8) and return
+          fake IPs for blocked domains. DNS redirect transparently rewrites your
+          DNS queries to use an unpoisoned resolver.
+        </B4Alert>
 
         <Grid size={{ xs: 12, md: 6 }}>
           <B4Switch
@@ -114,20 +116,11 @@ export function DnsSettings({ config, onChange, ipv6 }: DnsSettingsProps) {
                       {selectedServer.name}
                     </Typography>
                     {selectedServer.dnssec && (
-                      <Chip
+                      <B4Badge
                         icon={<SecurityIcon />}
                         label="DNSSEC"
-                        size="small"
-                        sx={{
-                          height: 20,
-                          fontSize: "0.65rem",
-                          bgcolor: `${colors.tertiary}22`,
-                          color: colors.tertiary,
-                          "& .MuiChip-icon": {
-                            fontSize: 12,
-                            color: colors.tertiary,
-                          },
-                        }}
+                        variant="outlined"
+                        color="secondary"
                       />
                     )}
                   </Stack>
@@ -258,13 +251,12 @@ export function DnsSettings({ config, onChange, ipv6 }: DnsSettingsProps) {
                   flexWrap="wrap"
                   useFlexGap
                 >
-                  <Chip
+                  <B4Badge
                     label="App"
-                    size="small"
                     sx={{ bgcolor: colors.accent.primary }}
                   />
                   <Typography variant="caption">→ DNS query for</Typography>
-                  <Chip
+                  <B4Badge
                     label="instagram.com"
                     size="small"
                     sx={{
@@ -273,7 +265,7 @@ export function DnsSettings({ config, onChange, ipv6 }: DnsSettingsProps) {
                     }}
                   />
                   <Typography variant="caption">→</Typography>
-                  <Chip
+                  <B4Badge
                     label="poisoned DNS"
                     size="small"
                     sx={{
@@ -282,7 +274,7 @@ export function DnsSettings({ config, onChange, ipv6 }: DnsSettingsProps) {
                     }}
                   />
                   <Typography variant="caption">→</Typography>
-                  <Chip
+                  <B4Badge
                     label={dns.target_dns || "select DNS"}
                     size="small"
                     sx={{
@@ -298,20 +290,16 @@ export function DnsSettings({ config, onChange, ipv6 }: DnsSettingsProps) {
 
             {/* Warnings */}
             {!dns.target_dns && (
-              <Grid size={{ xs: 12 }}>
-                <Alert severity="warning">
-                  Select or enter a DNS server IP to enable redirect.
-                </Alert>
-              </Grid>
+              <B4Alert severity="warning" sx={{ m: 0 }}>
+                Select or enter a DNS server IP to enable redirect.
+              </B4Alert>
             )}
 
             {dns.target_dns === "8.8.8.8" && (
-              <Grid size={{ xs: 12 }}>
-                <Alert severity="warning">
-                  Google DNS (8.8.8.8) is commonly poisoned by Russian ISPs.
-                  Consider Quad9 (9.9.9.9) or Cloudflare (1.1.1.1) instead.
-                </Alert>
-              </Grid>
+              <B4Alert severity="warning" sx={{ m: 0 }}>
+                Google DNS (8.8.8.8) is commonly poisoned by Russian ISPs.
+                Consider Quad9 (9.9.9.9) or Cloudflare (1.1.1.1) instead.
+              </B4Alert>
             )}
           </>
         )}

@@ -6,7 +6,6 @@ import {
   Divider,
   Stack,
   LinearProgress,
-  Alert,
   Chip,
 } from "@mui/material";
 
@@ -18,6 +17,7 @@ import {
   CloseIcon,
   CloudDownloadIcon,
 } from "@b4.icons";
+import { B4Alert } from "@b4.elements";
 import ReactMarkdown from "react-markdown";
 import { useSystemUpdate } from "@hooks/useSystemUpdate";
 import { colors } from "@design";
@@ -308,30 +308,26 @@ export const UpdateModal = ({
         );
       case "success":
         return (
-          <Box sx={{ mb: 3 }}>
-            <Alert
-              severity={updateStatus}
-              sx={{ bgcolor: colors.accent.secondary }}
-              icon={<CheckCircleIcon />}
-            >
-              {updateMessage}
-            </Alert>
-          </Box>
+          <B4Alert
+            severity={updateStatus}
+            sx={{ bgcolor: colors.accent.secondary }}
+            icon={<CheckCircleIcon />}
+          >
+            {updateMessage}
+          </B4Alert>
         );
       case "error":
         return (
-          <Box sx={{ mb: 3 }}>
-            <Alert
-              severity={updateStatus}
-              sx={{
-                bgcolor: colors.accent.primary,
-                color: colors.text.primary,
-              }}
-              icon={<CheckCircleIcon />}
-            >
-              {updateMessage}
-            </Alert>
-          </Box>
+          <B4Alert
+            severity={updateStatus}
+            sx={{
+              bgcolor: colors.accent.primary,
+              color: colors.text.primary,
+            }}
+            icon={<CheckCircleIcon />}
+          >
+            {updateMessage}
+          </B4Alert>
         );
       case "idle":
       default:

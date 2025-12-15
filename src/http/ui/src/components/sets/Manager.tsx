@@ -5,8 +5,6 @@ import {
   Stack,
   Button,
   Typography,
-  Alert,
-  Chip,
   List,
   ListItem,
   ListItemText,
@@ -23,7 +21,6 @@ import {
   AddIcon,
   ImportExportIcon,
   DragIcon,
-  SecurityIcon,
   DomainIcon,
   CollapseIcon,
   ExpandIcon,
@@ -56,7 +53,13 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { v4 as uuidv4 } from "uuid";
 
-import { B4Section, B4Dialog, B4TooltipButton } from "@b4.elements";
+import {
+  B4Section,
+  B4Dialog,
+  B4TooltipButton,
+  B4Badge,
+  B4Alert,
+} from "@b4.elements";
 
 import { SetEditor } from "./Editor";
 
@@ -414,32 +417,24 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
 
   return (
     <Stack spacing={3}>
-      {/* Info Alert */}
-      <Alert
-        severity="info"
-        sx={{
-          bgcolor: colors.accent.primary,
-          border: `1px solid ${colors.secondary}44`,
-        }}
-        icon={<ImportExportIcon />}
-      >
-        <Typography variant="subtitle2" gutterBottom>
-          Configuration Sets allow you to define different bypass strategies for
-          different domains or scenarios.
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          The Main Set is used as the default configuration when no other set
-          matches. Each set can have its own TCP/UDP limits, fragmentation, and
-          faking strategies.
-        </Typography>
-      </Alert>
-
       {/* Sets List */}
       <B4Section
         title="Configuration Sets"
         description="Manage multiple bypass configurations for different scenarios"
         icon={<ImportExportIcon />}
       >
+        {/* Info Alert */}
+        <B4Alert icon={<ImportExportIcon />}>
+          <Typography variant="subtitle2" gutterBottom>
+            Configuration Sets allow you to define different bypass strategies
+            for different domains or scenarios.
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            The Main Set is used as the default configuration when no other set
+            matches. Each set can have its own TCP/UDP limits, fragmentation,
+            and faking strategies.
+          </Typography>
+        </B4Alert>
         <Stack direction="row" justifyContent="space-between" mb={0}>
           <TextField
             size="small"
@@ -561,19 +556,10 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
                                   }}
                                 />
                               </Tooltip>
-                              <Chip
+                              <B4Badge
                                 size="small"
                                 label={isMain ? "MAIN" : `#${index + 1}`}
-                                sx={{
-                                  minWidth: 48,
-                                  fontWeight: 600,
-                                  bgcolor: isMain
-                                    ? colors.secondary
-                                    : colors.accent.tertiary,
-                                  color: isMain
-                                    ? colors.background.default
-                                    : colors.text.primary,
-                                }}
+                                color="secondary"
                               />
 
                               <Typography
@@ -615,7 +601,7 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
                                       </Box>
                                     }
                                   >
-                                    <Chip
+                                    <B4Badge
                                       icon={<DomainIcon />}
                                       label={`${
                                         setsStats[index]?.total_domains ||
@@ -626,24 +612,18 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
                                       }`}
                                       size="small"
                                       variant="outlined"
-                                      sx={{
-                                        borderColor: colors.secondary,
-                                        color: colors.secondary,
-                                      }}
+                                      color="secondary"
                                     />
                                   </Tooltip>
                                 )}
 
                                 {set.faking.sni && (
                                   <Tooltip title="SNI Faking Enabled">
-                                    <Chip
-                                      icon={<SecurityIcon />}
+                                    <B4Badge
+                                      icon={<FakingIcon />}
                                       label="SNI"
                                       size="small"
-                                      sx={{
-                                        bgcolor: `${colors.secondary}22`,
-                                        color: colors.secondary,
-                                      }}
+                                      variant="outlined"
                                     />
                                   </Tooltip>
                                 )}
@@ -829,18 +809,10 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
                                   </Typography>
                                   <Stack direction="row" spacing={0.5}>
                                     {set.fragmentation.reverse_order && (
-                                      <Chip
-                                        label="REV"
-                                        size="small"
-                                        sx={{ height: 16, fontSize: "0.65rem" }}
-                                      />
+                                      <B4Badge label="REV" size="small" />
                                     )}
                                     {set.fragmentation.middle_sni && (
-                                      <Chip
-                                        label="MID"
-                                        size="small"
-                                        sx={{ height: 16, fontSize: "0.65rem" }}
-                                      />
+                                      <B4Badge label="MID" size="small" />
                                     )}
                                   </Stack>
                                 </Stack>
@@ -910,32 +882,24 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
                                   gap={0.5}
                                 >
                                   {set.targets.geosite_categories.map((cat) => (
-                                    <Chip
+                                    <B4Badge
                                       key={cat}
                                       label={cat}
                                       size="small"
                                       icon={<DomainIcon />}
-                                      sx={{
-                                        bgcolor: `${colors.tertiary}22`,
-                                        color: colors.tertiary,
-                                      }}
                                     />
                                   ))}
                                   {set.targets.sni_domains
                                     .slice(0, 5)
                                     .map((domain) => (
-                                      <Chip
+                                      <B4Badge
                                         key={domain}
                                         label={domain}
                                         size="small"
-                                        sx={{
-                                          bgcolor: `${colors.secondary}22`,
-                                          color: colors.secondary,
-                                        }}
                                       />
                                     ))}
                                   {set.targets.sni_domains.length > 5 && (
-                                    <Chip
+                                    <B4Badge
                                       label={`+${
                                         set.targets.sni_domains.length - 5
                                       } more`}
@@ -1041,13 +1005,10 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
                   <Typography variant="h6" fontWeight={500}>
                     {activeSet.name}
                   </Typography>
-                  <Chip
+                  <B4Badge
                     size="small"
                     label={activeSet.id === MAIN_SET_ID ? "MAIN" : `Set`}
-                    sx={{
-                      bgcolor: colors.accent.tertiary,
-                      color: colors.text.primary,
-                    }}
+                    color="primary"
                   />
                 </Stack>
               </Paper>
@@ -1150,13 +1111,12 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Alert
+        <B4Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
-          sx={{ width: "100%" }}
         >
           {snackbar.message}
-        </Alert>
+        </B4Alert>
       </Snackbar>
     </Stack>
   );

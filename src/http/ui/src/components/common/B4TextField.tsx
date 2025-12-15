@@ -16,9 +16,7 @@ export const B4TextField = ({ helperText, ...props }: B4TextFieldProps) => {
       sx={{
         "& .MuiOutlinedInput-root": {
           bgcolor: colors.background.dark,
-          "& fieldset": {
-            borderColor: colors.border.default,
-          },
+          borderColor: colors.border.medium,
           "&:hover fieldset": {
             borderColor: colors.border.medium,
           },
@@ -26,8 +24,9 @@ export const B4TextField = ({ helperText, ...props }: B4TextFieldProps) => {
             borderColor: colors.secondary,
           },
         },
+
         "& .MuiFormHelperText-root": {
-          ml: 0.1,
+          m: 0,
         },
         ...props.sx,
       }}

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import {
   Grid,
   Stack,
-  Alert,
   Typography,
   Button,
   Box,
@@ -22,10 +21,9 @@ import {
   RefreshIcon,
   SuccessIcon,
 } from "@b4.icons";
-import B4Section from "@common/B4Section";
-import B4TextField from "@common/B4TextField";
-import { B4Dialog } from "@common/B4Dialog";
+import { B4Dialog, B4TextField, B4Section } from "@b4.elements";
 import { colors, radius } from "@design";
+import { B4Alert } from "@components/common/B4Alert";
 
 interface Capture {
   protocol: string;
@@ -208,7 +206,6 @@ export const CaptureSettings = () => {
     });
   };
 
-  // Group captures by domain
   const capturesByDomain = captures.reduce((acc, capture) => {
     if (!acc[capture.domain]) {
       acc[capture.domain] = [];
@@ -217,13 +214,12 @@ export const CaptureSettings = () => {
     return acc;
   }, {} as Record<string, Capture[]>);
 
-  // Sort domains alphabetically
   const sortedDomains = Object.keys(capturesByDomain).sort();
 
   return (
     <Stack spacing={3}>
       {/* Info */}
-      <Alert severity="info" icon={<CaptureIcon />}>
+      <B4Alert icon={<CaptureIcon />}>
         <Typography variant="subtitle2" gutterBottom>
           Capture real TLS/QUIC handshakes for custom payload generation
         </Typography>
@@ -231,7 +227,7 @@ export const CaptureSettings = () => {
           One capture per domain+protocol. Use captured hex in Faking → Custom
           Payload
         </Typography>
-      </Alert>
+      </B4Alert>
 
       {/* Capture Form */}
       <B4Section
@@ -317,7 +313,7 @@ export const CaptureSettings = () => {
         </Grid>
 
         {loading && (
-          <Alert severity="warning" sx={{ mt: 2 }}>
+          <B4Alert>
             <Typography variant="subtitle2" gutterBottom>
               Capture window is open for {probeForm.domain}
             </Typography>
@@ -325,7 +321,7 @@ export const CaptureSettings = () => {
               Please open https://{probeForm.domain} in your browser within 30
               seconds
             </Typography>
-          </Alert>
+          </B4Alert>
         )}
       </B4Section>
 
@@ -496,10 +492,10 @@ export const CaptureSettings = () => {
       >
         {hexDialog.capture && (
           <Stack spacing={2}>
-            <Alert severity="info" icon={<SuccessIcon />}>
+            <B4Alert icon={<SuccessIcon />}>
               {hexDialog.capture.protocol.toUpperCase()} payload for{" "}
               {hexDialog.capture.domain} • {hexDialog.capture.size} bytes
-            </Alert>
+            </B4Alert>
             <Box
               sx={{
                 p: 2,
@@ -526,13 +522,12 @@ export const CaptureSettings = () => {
         onClose={() => setNotification({ ...notification, open: false })}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Alert
+        <B4Alert
           onClose={() => setNotification({ ...notification, open: false })}
           severity={notification.severity}
-          sx={{ width: "100%" }}
         >
           {notification.message}
-        </Alert>
+        </B4Alert>
       </Snackbar>
     </Stack>
   );

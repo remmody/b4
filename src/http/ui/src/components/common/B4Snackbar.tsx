@@ -1,4 +1,5 @@
-import { Snackbar, Alert } from "@mui/material";
+import { Snackbar } from "@mui/material";
+import { B4Alert } from "@b4.elements";
 
 export interface B4SnackbarProps {
   open: boolean;
@@ -18,13 +19,9 @@ export function B4Snackbar({ ...snackbar }: Readonly<B4SnackbarProps>) {
       onClose={handleClose}
       anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
     >
-      <Alert
-        onClose={handleClose}
-        severity={snackbar.severity}
-        sx={{ width: "100%" }}
-      >
+      <B4Alert onClose={handleClose} severity={snackbar.severity}>
         {snackbar.message}
-      </Alert>
+      </B4Alert>
     </Snackbar>
   );
 }

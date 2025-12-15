@@ -1,6 +1,12 @@
-import { Grid, Alert, Divider, Chip, Box, Typography } from "@mui/material";
-import { B4Slider, B4Switch, B4Select } from "@b4.fields";
+import { Grid, Box, Typography } from "@mui/material";
 import { B4SetConfig, DisorderShuffleMode } from "@models/Config";
+import {
+  B4Alert,
+  B4Slider,
+  B4Switch,
+  B4Select,
+  B4FormHeader,
+} from "@b4.elements";
 import { colors } from "@design";
 
 interface DisorderSettingsProps {
@@ -22,18 +28,11 @@ export const DisorderSettings = ({
 
   return (
     <>
-      <Grid size={{ xs: 12 }}>
-        <Divider sx={{ my: 1 }}>
-          <Chip label="Disorder Strategy" size="small" />
-        </Divider>
-      </Grid>
-
-      <Grid size={{ xs: 12 }}>
-        <Alert severity="info">
-          Disorder sends real TCP segments out of order with timing jitter. No
-          fake packets — exploits DPI that expects sequential data.
-        </Alert>
-      </Grid>
+      <B4FormHeader label="Disorder Strategy" sx={{ mb: 0 }} />
+      <B4Alert sx={{ m: 0 }}>
+        Disorder sends real TCP segments out of order with timing jitter. No
+        fake packets — exploits DPI that expects sequential data.
+      </B4Alert>
 
       {/* SNI Split Toggle */}
       <Grid size={{ xs: 12, md: 6 }}>
@@ -130,22 +129,10 @@ export const DisorderSettings = ({
         </Box>
       </Grid>
 
-      {/* Timing */}
-      <Grid size={{ xs: 12 }}>
-        <Divider sx={{ my: 1 }}>
-          <Chip label="Timing Jitter" size="small" />
-        </Divider>
-      </Grid>
-
-      <Grid size={{ xs: 12 }}>
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ mb: 2, display: "block" }}
-        >
-          Random delay between segments. Used when TCP Seg2Delay is 0.
-        </Typography>
-      </Grid>
+      <B4FormHeader label="Timing Jitter" sx={{ mb: 0 }} />
+      <B4Alert sx={{ m: 0 }}>
+        Random delay between segments. Used when TCP Seg2Delay is 0.
+      </B4Alert>
 
       <Grid size={{ xs: 12, md: 6 }}>
         <B4Slider
@@ -176,11 +163,9 @@ export const DisorderSettings = ({
       </Grid>
 
       {disorder.min_jitter_us >= disorder.max_jitter_us && (
-        <Grid size={{ xs: 12 }}>
-          <Alert severity="warning">
-            Max jitter should be greater than min jitter for random variation.
-          </Alert>
-        </Grid>
+        <B4Alert severity="warning">
+          Max jitter should be greater than min jitter for random variation.
+        </B4Alert>
       )}
     </>
   );

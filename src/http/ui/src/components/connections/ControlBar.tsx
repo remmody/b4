@@ -1,14 +1,6 @@
-import {
-  Box,
-  Stack,
-  TextField,
-  Chip,
-  FormControlLabel,
-  Switch,
-  Typography,
-  IconButton,
-} from "@mui/material";
+import { Box, Stack, TextField } from "@mui/material";
 import { ClearIcon } from "@b4.icons";
+import { B4Badge, B4Switch, B4TooltipButton } from "@b4.elements";
 import { colors } from "@design";
 
 interface DomainsControlBarProps {
@@ -66,106 +58,35 @@ export const DomainsControlBar = ({
           }}
         />
         <Stack direction="row" spacing={1} alignItems="center">
-          <Chip
-            label={`${totalCount} connections`}
-            size="small"
-            sx={{
-              bgcolor: colors.accent.secondary,
-              color: colors.secondary,
-              fontWeight: 600,
-            }}
-          />
+          <B4Badge label={`${totalCount} connections`} />
           {filter && (
-            <Chip
-              label={`${filteredCount} filtered`}
-              size="small"
-              sx={{
-                bgcolor: colors.accent.primary,
-                color: colors.primary,
-                borderColor: colors.primary,
-              }}
-              variant="outlined"
-            />
+            <B4Badge label={`${filteredCount} filtered`} variant="outlined" />
           )}
           {sortColumn && (
-            <Chip
+            <B4Badge
               label={`Sorted by ${sortColumn}`}
               size="small"
               onDelete={onClearSort}
-              sx={{
-                bgcolor: colors.accent.tertiary,
-                color: colors.tertiary,
-                borderColor: colors.tertiary,
-              }}
               variant="outlined"
+              color="primary"
             />
           )}
         </Stack>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={showAll}
-              onChange={(e) => onShowAllChange(e.target.checked)}
-              sx={{
-                "& .MuiSwitch-switchBase.Mui-checked": {
-                  color: colors.secondary,
-                },
-                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                  backgroundColor: colors.secondary,
-                },
-              }}
-            />
-          }
-          label={
-            <Typography
-              sx={{
-                color: showAll ? colors.secondary : "text.secondary",
-                fontWeight: paused ? 600 : 400,
-              }}
-            >
-              {showAll ? "All packets" : "Domains only"}
-            </Typography>
-          }
+        <B4Switch
+          label={showAll ? "All packets" : "Domains only"}
+          checked={showAll}
+          onChange={(checked: boolean) => onShowAllChange(checked)}
         />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={paused}
-              onChange={(e) => onPauseChange(e.target.checked)}
-              sx={{
-                "& .MuiSwitch-switchBase.Mui-checked": {
-                  color: colors.secondary,
-                },
-                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                  backgroundColor: colors.secondary,
-                },
-              }}
-            />
-          }
-          label={
-            <Typography
-              sx={{
-                color: paused ? colors.secondary : "text.secondary",
-                fontWeight: paused ? 600 : 400,
-              }}
-            >
-              {paused ? "Paused" : "Streaming"}
-            </Typography>
-          }
+        <B4Switch
+          label={paused ? "Paused" : "Streaming"}
+          checked={paused}
+          onChange={(checked: boolean) => onPauseChange(checked)}
         />
-        <IconButton
-          color="inherit"
+        <B4TooltipButton
+          title={"Clear Connections"}
           onClick={onReset}
-          sx={{
-            color: "text.secondary",
-            "&:hover": {
-              color: colors.secondary,
-              bgcolor: colors.accent.secondaryHover,
-            },
-          }}
-        >
-          <ClearIcon />
-        </IconButton>
+          icon={<ClearIcon />}
+        />
       </Stack>
     </Box>
   );

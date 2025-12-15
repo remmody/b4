@@ -1,11 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Container, Paper, Snackbar, Alert } from "@mui/material";
+import { Container, Paper, Snackbar } from "@mui/material";
 import { DomainsControlBar } from "./ControlBar";
 import { AddSniModal } from "./AddSniModal";
-import {
-  DomainsTable,
-  SortColumn,
-} from "./Table";
+import { DomainsTable, SortColumn } from "./Table";
 import { SortDirection } from "@common/SortableTableCell";
 import {
   useDomainActions,
@@ -24,10 +21,11 @@ import { colors } from "@design";
 import { useWebSocket } from "@ctx/B4WsProvider";
 import { AddIpModal } from "./AddIpModal";
 import { B4Config, B4SetConfig } from "@models/Config";
+import { B4Alert } from "@b4.elements";
 
 const MAX_DISPLAY_ROWS = 1000;
 
-export  function ConnectionsPage() {
+export function ConnectionsPage() {
   const {
     domains,
     pauseDomains,
@@ -276,13 +274,9 @@ export  function ConnectionsPage() {
         onClose={closeSnackbar}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Alert
-          onClose={closeSnackbar}
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
-        >
+        <B4Alert onClose={closeSnackbar} severity={snackbar.severity}>
           {snackbar.message}
-        </Alert>
+        </B4Alert>
       </Snackbar>
     </Container>
   );

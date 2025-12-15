@@ -1,13 +1,20 @@
-import { Alert, AlertProps } from "@mui/material";
-import { colors } from "@design";
+import { Grid, Alert, AlertProps } from "@mui/material";
 
-export const B4Alert = ({ sx, ...props }: AlertProps) => (
-  <Alert
-    sx={{
-      bgcolor: colors.background.default,
-      border: `1px solid ${colors.border.default}`,
-      ...sx,
-    }}
-    {...props}
-  />
-);
+interface B4AlertProps extends Omit<AlertProps, "severity"> {
+  children: React.ReactNode;
+  severity?: AlertProps["severity"];
+}
+
+export const B4Alert = ({
+  children,
+  severity = "info",
+  ...props
+}: B4AlertProps) => {
+  return (
+    <Grid size={{ xs: 12 }} sx={{ ...props.sx }}>
+      <Alert severity={severity} {...props}>
+        {children}
+      </Alert>
+    </Grid>
+  );
+};

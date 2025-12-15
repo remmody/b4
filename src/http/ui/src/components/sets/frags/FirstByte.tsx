@@ -1,6 +1,7 @@
-import { Grid, Divider, Chip, Alert, Box, Typography } from "@mui/material";
+import { Grid, Box, Typography } from "@mui/material";
 import { colors } from "@design";
 import { B4SetConfig } from "@models/Config";
+import { B4Alert, B4FormHeader } from "@b4.elements";
 
 interface FirstByteSettingsProps {
   config: B4SetConfig;
@@ -9,18 +10,12 @@ interface FirstByteSettingsProps {
 export const FirstByteSettings = ({ config }: FirstByteSettingsProps) => {
   return (
     <>
-      <Grid size={{ xs: 12 }}>
-        <Divider sx={{ my: 1 }}>
-          <Chip label="First-Byte Desync" size="small" />
-        </Divider>
-      </Grid>
+      <B4FormHeader label="First-Byte Desync" sx={{ mb: 0 }} />
 
-      <Grid size={{ xs: 12 }}>
-        <Alert severity="info">
-          Sends just 1 byte, waits, then sends the rest. Exploits DPI timeout —
-          incomplete TLS record can't be parsed.
-        </Alert>
-      </Grid>
+      <B4Alert severity="info" sx={{ m: 0 }}>
+        Sends just 1 byte, waits, then sends the rest. Exploits DPI timeout —
+        incomplete TLS record can't be parsed.
+      </B4Alert>
 
       <Grid size={{ xs: 12 }}>
         <Box
@@ -103,11 +98,11 @@ export const FirstByteSettings = ({ config }: FirstByteSettingsProps) => {
       </Grid>
 
       <Grid size={{ xs: 12 }}>
-        <Alert severity="success">
+        <B4Alert severity="success" sx={{ m: 0 }}>
           No configuration needed. Delay controlled by{" "}
           <strong>Seg2 Delay</strong> in TCP tab (minimum 100ms applied
           automatically).
-        </Alert>
+        </B4Alert>
       </Grid>
     </>
   );

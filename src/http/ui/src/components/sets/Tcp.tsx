@@ -3,15 +3,20 @@ import {
   FormControlLabel,
   Switch,
   Typography,
-  Divider,
   Chip,
-  Alert,
   Box,
   IconButton,
 } from "@mui/material";
 import { DnsIcon, AddIcon } from "@b4.icons";
 import { B4SetConfig, WindowMode, DesyncMode } from "@models/Config";
-import { B4Slider, B4Select, B4TextField, B4Section } from "@b4.elements";
+import {
+  B4Slider,
+  B4Select,
+  B4TextField,
+  B4Section,
+  B4Alert,
+  B4FormHeader,
+} from "@b4.elements";
 import { colors } from "@design";
 import { useState } from "react";
 
@@ -195,20 +200,14 @@ export const TcpSettings = ({ config, onChange }: TcpSettingsProps) => {
       </Grid>
 
       {/* TCP Window Configuration */}
-      <Grid size={{ xs: 12 }}>
-        <Divider sx={{ my: 3 }}>
-          <Chip label="TCP Window Manipulation" size="small" />
-        </Divider>
-      </Grid>
 
+      <B4FormHeader label="TCP Window Manipulation" />
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12 }}>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Window manipulation sends fake ACK packets with modified TCP window
-            sizes before your real packet. These fakes use low TTL so they
-            expire before reaching the server but confuse middlebox DPI.
-          </Alert>
-        </Grid>
+        <B4Alert>
+          Window manipulation sends fake ACK packets with modified TCP window
+          sizes before your real packet. These fakes use low TTL so they expire
+          before reaching the server but confuse middlebox DPI.
+        </B4Alert>
 
         <Grid size={{ xs: 12, md: 6 }}>
           <B4Select
@@ -307,21 +306,14 @@ export const TcpSettings = ({ config, onChange }: TcpSettingsProps) => {
       </Grid>
 
       {/* TCP Desync Configuration */}
-      <Grid size={{ xs: 12 }}>
-        <Divider sx={{ my: 3 }}>
-          <Chip label="TCP Desync Attack" size="small" />
-        </Divider>
-      </Grid>
 
+      <B4FormHeader label="TCP Desync Attack" />
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12 }}>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Desync attacks inject fake TCP control packets (RST/FIN/ACK) with
-            corrupted checksums and low TTL. These packets confuse stateful DPI
-            systems but are discarded by the real server.
-          </Alert>
-        </Grid>
-
+        <B4Alert>
+          Desync attacks inject fake TCP control packets (RST/FIN/ACK) with
+          corrupted checksums and low TTL. These packets confuse stateful DPI
+          systems but are discarded by the real server.
+        </B4Alert>
         <Grid size={{ xs: 12, md: 4 }}>
           <B4Select
             label="Desync Mode"

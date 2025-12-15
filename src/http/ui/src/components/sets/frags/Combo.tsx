@@ -1,7 +1,8 @@
-import { Grid, Alert, Divider, Chip, Box, Typography } from "@mui/material";
+import { Grid, Box, Typography } from "@mui/material";
 import { B4Slider, B4Switch, B4Select } from "@b4.fields";
 import { B4SetConfig, ComboShuffleMode } from "@models/Config";
 import { colors } from "@design";
+import { B4Alert, B4FormHeader } from "@b4.elements";
 
 interface ComboSettingsProps {
   config: B4SetConfig;
@@ -26,17 +27,13 @@ export const ComboSettings = ({ config, onChange }: ComboSettingsProps) => {
 
   return (
     <>
-      <Grid size={{ xs: 12 }}>
-        <Divider sx={{ my: 1 }}>
-          <Chip label="Combo Strategy" size="small" />
-        </Divider>
-      </Grid>
+      <B4FormHeader label="Combo Strategy" />
 
       <Grid size={{ xs: 12 }}>
-        <Alert severity="info">
+        <B4Alert severity="info">
           Combo combines multiple split points and sends segments out of order
           with timing jitter to confuse stateful DPI.
-        </Alert>
+        </B4Alert>
       </Grid>
 
       {/* Split Points */}
@@ -206,22 +203,17 @@ export const ComboSettings = ({ config, onChange }: ComboSettingsProps) => {
       </Grid>
 
       <Grid size={{ xs: 12, md: 6 }}>
-        <Alert severity="info">
+        <B4Alert sx={{ my: 0 }}>
           {combo.shuffle_mode === "middle" &&
             "Middle: Keep first & last in place, shuffle middle segments"}
           {combo.shuffle_mode === "full" &&
             "Full: Randomly shuffle all segments"}
           {combo.shuffle_mode === "reverse" &&
             "Reverse: Send segments in reverse order"}
-        </Alert>
+        </B4Alert>
       </Grid>
 
-      {/* Timing */}
-      <Grid size={{ xs: 12 }}>
-        <Divider sx={{ my: 1 }}>
-          <Chip label="Timing" size="small" />
-        </Divider>
-      </Grid>
+      <B4FormHeader label="Timing Settings" />
 
       <Grid size={{ xs: 12, md: 6 }}>
         <B4Slider
@@ -252,12 +244,10 @@ export const ComboSettings = ({ config, onChange }: ComboSettingsProps) => {
       </Grid>
 
       {!combo.first_byte_split && !combo.extension_split && !middleSni && (
-        <Grid size={{ xs: 12 }}>
-          <Alert severity="warning">
-            No split points enabled. Enable at least one for Combo to work
-            effectively.
-          </Alert>
-        </Grid>
+        <B4Alert severity="warning">
+          No split points enabled. Enable at least one for Combo to work
+          effectively.
+        </B4Alert>
       )}
     </>
   );

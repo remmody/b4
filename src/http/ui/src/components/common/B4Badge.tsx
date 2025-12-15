@@ -1,36 +1,15 @@
 import { Chip, ChipProps } from "@mui/material";
-import { colors } from "@design";
-
-type BadgeVariant = "primary" | "secondary" | "yellowOutline";
 
 interface B4BadgeProps extends Omit<ChipProps, "color" | "variant"> {
-  badgeVariant?: BadgeVariant;
+  color?: "default" | "primary" | "secondary" | "info" | "error";
+  variant?: "filled" | "outlined";
 }
 
-const variantStyles: Record<BadgeVariant, object> = {
-  primary: {
-    bgcolor: colors.accent.primary,
-    borderColor: colors.primary,
-  },
-  secondary: {
-    bgcolor: `${colors.tertiary}`,
-    borderColor: colors.tertiary,
-  },
-  yellowOutline: {
-    color: colors.accent,
-    borderColor: colors.accent,
-  },
-};
-
-export const B4Badge = ({
-  badgeVariant = "primary",
-  sx,
-  ...props
-}: B4BadgeProps) => (
+export const B4Badge = ({ sx, ...props }: B4BadgeProps) => (
   <Chip
     size="small"
     sx={{
-      ...variantStyles[badgeVariant],
+      px: 0.5,
       ...sx,
     }}
     {...props}

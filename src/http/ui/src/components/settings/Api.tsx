@@ -1,7 +1,7 @@
 import { B4Config } from "@models/Config";
-import { Alert, Grid, Stack, Typography } from "@mui/material";
+import { Grid, Stack } from "@mui/material";
 import { ApiIcon } from "@b4.icons";
-import { B4TextField, B4Section } from "@b4.elements";
+import { B4TextField, B4Section, B4Alert } from "@b4.elements";
 
 export interface ApiSettingsProps {
   config: B4Config;
@@ -11,12 +11,10 @@ export interface ApiSettingsProps {
 export const ApiSettings = ({ config, onChange }: ApiSettingsProps) => {
   return (
     <Stack spacing={3}>
-      <Alert severity="info" icon={<ApiIcon />}>
-        <Typography variant="subtitle2" gutterBottom>
-          Here you can setup API settings for different services that can be
-          used by B4.
-        </Typography>
-      </Alert>
+      <B4Alert icon={<ApiIcon />}>
+        Here you can setup API settings for different services that can be used
+        by B4.
+      </B4Alert>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 6 }}>
           <B4Section

@@ -1,7 +1,12 @@
-import { Alert } from "@mui/material";
 import { ToggleOnIcon } from "@b4.icons";
 import { B4Config } from "@models/Config";
-import { B4Slider, B4FormGroup, B4Section, B4Switch } from "@b4.elements";
+import {
+  B4Slider,
+  B4FormGroup,
+  B4Section,
+  B4Switch,
+  B4Alert,
+} from "@b4.elements";
 
 interface FeatureSettingsProps {
   config: B4Config;
@@ -50,10 +55,10 @@ export const FeatureSettings = ({ config, onChange }: FeatureSettingsProps) => {
           helperText="Interval for monitoring B4 iptables/nftables rules"
           alert={
             config.system.tables.monitor_interval <= 0 && (
-              <Alert severity="warning">
+              <B4Alert severity="warning">
                 Warning: This <strong>disables</strong> automatic monitoring of
                 B4 iptables/nftables
-              </Alert>
+              </B4Alert>
             )
           }
         />

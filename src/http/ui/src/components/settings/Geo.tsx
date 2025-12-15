@@ -1,6 +1,5 @@
 import { B4Config } from "@models/Config";
 import {
-  Alert,
   Grid,
   Stack,
   Typography,
@@ -11,8 +10,8 @@ import {
   Chip,
   Divider,
 } from "@mui/material";
-import { InfoIcon, DomainIcon, DownloadIcon, SuccessIcon } from "@b4.icons";
-import { B4Section, B4TextField } from "@b4.elements";
+import { DomainIcon, DownloadIcon, SuccessIcon } from "@b4.icons";
+import { B4Alert, B4FormHeader, B4Section, B4TextField } from "@b4.elements";
 import { useState, useEffect, useCallback } from "react";
 import { colors } from "@design";
 
@@ -188,7 +187,7 @@ export const GeoSettings = ({ config, loadConfig }: GeoSettingsProps) => {
 
   return (
     <Stack spacing={3}>
-      <Alert severity="info" icon={<InfoIcon />}>
+      <B4Alert>
         <Typography variant="subtitle2" gutterBottom>
           Download GeoSite/GeoIP database files for domain and IP
           categorization.
@@ -196,7 +195,7 @@ export const GeoSettings = ({ config, loadConfig }: GeoSettingsProps) => {
         <Typography variant="caption" color="text.secondary">
           Files will be saved to <strong>{destPath}</strong>
         </Typography>
-      </Alert>
+      </B4Alert>
 
       {/* Current Files Status */}
       <B4Section
@@ -426,13 +425,8 @@ export const GeoSettings = ({ config, loadConfig }: GeoSettingsProps) => {
               helperText="Full URL to geosite.dat file"
             />
           </Grid>
-          <Grid size={{ xs: 12 }}>
-            <Divider>
-              <Typography variant="caption" color="text.secondary">
-                OR
-              </Typography>
-            </Divider>
-          </Grid>
+
+          <B4FormHeader label="Custom URLs" />
 
           <Grid size={{ xs: 12, md: 6 }}>
             <B4TextField

@@ -88,16 +88,12 @@ const TableRowMemo = memo<{
           }}
         >
           {(log.ipSet || log.hostSet) && (
-            <B4Badge
-              badgeVariant="secondary"
-              label={log.ipSet || log.hostSet}
-            />
+            <B4Badge color="secondary" label={log.ipSet || log.hostSet} />
           )}
         </TableCell>
         <TableCell
           sx={{
             color: "text.primary",
-            fontWeight: 500,
             borderBottom: `1px solid ${colors.border.light}`,
             cursor: log.domain && !log.hostSet ? "pointer" : "default",
             py: 1,
@@ -123,6 +119,10 @@ const TableRowMemo = memo<{
                   bgcolor: `${colors.secondary}88`,
                   color: colors.background.default,
                   borderRadius: "50%",
+                  cursor: "pointer",
+                  "&:hover": {
+                    bgcolor: colors.secondary,
+                  },
                 }}
               />
             )}
@@ -142,7 +142,6 @@ const TableRowMemo = memo<{
         <TableCell
           sx={{
             color: "text.primary",
-            fontWeight: 500,
             borderBottom: `1px solid ${colors.border.light}`,
             py: 1,
           }}
@@ -165,7 +164,7 @@ const TableRowMemo = memo<{
               {log.destination}
             </Box>
             {asnName && (
-              <B4Badge badgeVariant="yellowOutline" label={asnName} />
+              <B4Badge variant="outlined" color="primary" label={asnName} />
             )}
             <Box sx={{ flex: 1 }} />
             {!log.ipSet && (

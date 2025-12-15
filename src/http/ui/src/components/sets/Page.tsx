@@ -7,8 +7,8 @@ import {
   Stack,
   Typography,
   Snackbar,
-  Alert,
 } from "@mui/material";
+import { B4Alert } from "@b4.elements";
 import { SetsManager, SetWithStats } from "./Manager";
 import { B4Config } from "@models/Config";
 import { colors } from "@design";
@@ -86,12 +86,12 @@ export function SetsPage() {
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Alert
+        <B4Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
         >
           {snackbar.message}
-        </Alert>
+        </B4Alert>
       </Snackbar>
     </Container>
   );

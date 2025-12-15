@@ -1,11 +1,12 @@
-import { Grid, Alert, Divider, Chip } from "@mui/material";
-import { DnsIcon, WarningIcon, InfoIcon } from "@b4.icons";
+import { Grid, Divider, Chip } from "@mui/material";
+import { DnsIcon, WarningIcon } from "@b4.icons";
 import {
   B4Slider,
   B4Switch,
   B4Select,
   B4TextField,
   B4Section,
+  B4Alert,
 } from "@b4.elements";
 import { B4SetConfig } from "@models/Config";
 
@@ -56,7 +57,6 @@ const UDP_FAKING_STRATEGIES = [
 ];
 
 export const UdpSettings = ({ config, onChange }: UdpSettingsProps) => {
-  // Detect configuration state
   const isQuicEnabled = config.udp.filter_quic !== "disabled";
   const hasPortFilter =
     config.udp.dport_filter && config.udp.dport_filter.trim() !== "";
@@ -64,17 +64,13 @@ export const UdpSettings = ({ config, onChange }: UdpSettingsProps) => {
     config.targets?.sni_domains?.length > 0 ||
     config.targets?.geosite_categories?.length > 0;
 
-  // Will any UDP traffic be processed?
   const willProcessUdp = isQuicEnabled || hasPortFilter;
 
-  // Should we show action settings?
   const showActionSettings = willProcessUdp;
 
-  // Should we show fake-specific settings?
   const isFakeMode = config.udp.mode === "fake";
   const showFakeSettings = showActionSettings && isFakeMode;
 
-  // Warnings
   const showParseWarning =
     config.udp.filter_quic === "parse" && !hasDomainsConfigured;
   const showNoProcessingWarning = !willProcessUdp;
@@ -86,14 +82,12 @@ export const UdpSettings = ({ config, onChange }: UdpSettingsProps) => {
       icon={<DnsIcon />}
     >
       <Grid container spacing={3}>
-        {/* Section 1: Matching Rules */}
         <Grid size={{ xs: 12 }}>
           <Divider sx={{ mb: 2 }}>
             <Chip label="What UDP Traffic to Process" size="small" />
           </Divider>
         </Grid>
 
-        {/* QUIC Filter */}
         <Grid size={{ xs: 12, md: 6 }}>
           <B4Select
             label="QUIC Filter"
@@ -109,7 +103,6 @@ export const UdpSettings = ({ config, onChange }: UdpSettingsProps) => {
           />
         </Grid>
 
-        {/* Port Filter */}
         <Grid size={{ xs: 12, md: 6 }}>
           <B4TextField
             label="Port Filter"
@@ -132,24 +125,20 @@ export const UdpSettings = ({ config, onChange }: UdpSettingsProps) => {
 
         {/* Parse mode warning */}
         {showParseWarning && (
-          <Grid size={{ xs: 12 }}>
-            <Alert severity="warning" icon={<WarningIcon />}>
-              <strong>Parse mode requires domains:</strong> Add domains in the
-              Targets section for SNI matching to work. Without domains, no QUIC
-              traffic will be processed.
-            </Alert>
-          </Grid>
+          <B4Alert severity="warning" icon={<WarningIcon />}>
+            <strong>Parse mode requires domains:</strong> Add domains in the
+            Targets section for SNI matching to work. Without domains, no QUIC
+            traffic will be processed.
+          </B4Alert>
         )}
 
         {/* No processing warning */}
         {showNoProcessingWarning && (
-          <Grid size={{ xs: 12 }}>
-            <Alert severity="info" icon={<InfoIcon />}>
-              <strong>UDP processing disabled:</strong> Enable QUIC filtering or
-              add port filters to process UDP traffic. Currently, all UDP
-              packets will pass through unchanged.
-            </Alert>
-          </Grid>
+          <B4Alert>
+            <strong>UDP processing disabled:</strong> Enable QUIC filtering or
+            add port filters to process UDP traffic. Currently, all UDP packets
+            will pass through unchanged.
+          </B4Alert>
         )}
 
         {/* Section 2: Action Settings (only if traffic will be processed) */}
@@ -189,23 +178,21 @@ export const UdpSettings = ({ config, onChange }: UdpSettingsProps) => {
             </Grid>
 
             {/* Info about current mode */}
-            <Grid size={{ xs: 12 }}>
-              <Alert severity="info" icon={<InfoIcon />}>
-                {isFakeMode ? (
-                  <>
-                    <strong>Fake mode:</strong> Matched UDP packets will be
-                    preceded by fake packets and fragmented to bypass DPI
-                    systems. Configure fake packet settings below.
-                  </>
-                ) : (
-                  <>
-                    <strong>Drop mode:</strong> Matched UDP packets will be
-                    dropped, forcing the application to fall back to TCP (e.g.,
-                    QUIC → HTTPS).
-                  </>
-                )}
-              </Alert>
-            </Grid>
+            <B4Alert>
+              {isFakeMode ? (
+                <>
+                  <strong>Fake mode:</strong> Matched UDP packets will be
+                  preceded by fake packets and fragmented to bypass DPI systems.
+                  Configure fake packet settings below.
+                </>
+              ) : (
+                <>
+                  <strong>Drop mode:</strong> Matched UDP packets will be
+                  dropped, forcing the application to fall back to TCP (e.g.,
+                  QUIC → HTTPS).
+                </>
+              )}
+            </B4Alert>
           </>
         )}
 

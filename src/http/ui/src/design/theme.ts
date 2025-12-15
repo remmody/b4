@@ -59,19 +59,32 @@ export const theme = createTheme({
     MuiChip: {
       styleOverrides: {
         root: {
+          fontWeight: 600,
           backgroundColor: colors.accent.secondaryHover,
           color: colors.text.primary,
         },
-        outlined: {
-          borderColor: colors.border.default,
+        outlinedPrimary: {
+          borderColor: colors.primary,
           backgroundColor: colors.background.paper,
+        },
+        outlinedSecondary: {
+          borderColor: colors.secondary,
+          backgroundColor: colors.accent.secondaryHover,
+          color: colors.text.secondary,
+        },
+        filledPrimary: {
+          backgroundColor: colors.primary,
+          color: colors.text.primary,
+        },
+        filledSecondary: {
+          backgroundColor: colors.secondary,
+          color: colors.background.default,
         },
       },
     },
     MuiButton: {
       styleOverrides: {
         root: {
-          backgroundColor: colors.secondary,
           borderRadius: 4,
           "&:disabled": {
             color: colors.text.disabled,
@@ -88,42 +101,38 @@ export const theme = createTheme({
           },
         },
         containedPrimary: {
-          backgroundColor: colors.secondary,
-          color: colors.background.default,
-          "&:hover": {
-            backgroundColor: colors.primary,
-            color: colors.text.primary,
-          },
-          "&:disabled": {
-            borderColor: colors.secondary,
-            backgroundColor: colors.accent.secondary,
-          },
-        },
-        containedSizeSmall: {
-          padding: 16,
-          height: 16,
-        },
-        outlinedPrimary: {
-          borderColor: colors.secondary,
-          backgroundColor: colors.accent.secondaryHover,
+          backgroundColor: colors.primary,
           color: colors.text.primary,
           "&:hover": {
-            borderColor: colors.primary,
-            backgroundColor: colors.accent.primaryHover,
-            color: colors.text.primary,
+            backgroundColor: colors.secondary,
+            color: colors.text.tertiary,
           },
           "&:disabled": {
-            borderColor: colors.accent.secondary,
+            borderColor: colors.primary,
+            backgroundColor: colors.accent.primary,
           },
         },
-        outlinedSecondary: {
+        outlinedPrimary: {
           borderColor: colors.primary,
           backgroundColor: colors.accent.primaryHover,
-          color: colors.text.secondary,
+          color: colors.text.primary,
           "&:hover": {
             borderColor: colors.secondary,
             backgroundColor: colors.accent.secondaryHover,
             color: colors.text.secondary,
+          },
+          "&:disabled": {
+            borderColor: colors.accent.primary,
+          },
+        },
+        outlinedSecondary: {
+          borderColor: colors.secondary,
+          backgroundColor: colors.accent.secondaryHover,
+          color: colors.text.secondary,
+          "&:hover": {
+            borderColor: colors.primary,
+            backgroundColor: colors.accent.primaryHover,
+            color: colors.text.primary,
           },
           "&:disabled": {
             borderColor: colors.accent.secondary,

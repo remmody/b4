@@ -5,7 +5,6 @@ import {
   Box,
   Stack,
   Button,
-  Alert,
   Snackbar,
   CircularProgress,
   Typography,
@@ -41,7 +40,7 @@ import { ApiSettings } from "./Api";
 
 import { B4Config, B4SetConfig } from "@models/Config";
 import { colors, spacing } from "@design";
-import { B4Dialog } from "@common/B4Dialog";
+import { B4Alert, B4Dialog } from "@b4.elements";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -373,10 +372,10 @@ export function SettingsPage() {
 
             <Stack direction="row" spacing={1}>
               {categoryHasChanges[TABS.GENERAL] && (
-                <Alert severity="warning" sx={{ py: 0, px: spacing.sm }}>
+                <B4Alert severity="warning" sx={{ py: 0, px: spacing.sm }}>
                   Core settings require <strong>B4</strong> restart to take
                   effect
-                </Alert>
+                </B4Alert>
               )}
               <Button
                 size="small"
@@ -541,13 +540,12 @@ export function SettingsPage() {
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Alert
+        <B4Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
-          sx={{ width: "100%" }}
         >
           {snackbar.message}
-        </Alert>
+        </B4Alert>
       </Snackbar>
     </Container>
   );

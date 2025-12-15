@@ -1,17 +1,10 @@
 import { useState } from "react";
-import {
-  Grid,
-  Alert,
-  Divider,
-  Chip,
-  Box,
-  Typography,
-  IconButton,
-} from "@mui/material";
+import { Grid, Chip, Box, Typography, IconButton } from "@mui/material";
 import { AddIcon } from "@b4.icons";
 import { B4TextField } from "@b4.fields";
 import { B4SetConfig } from "@models/Config";
 import { colors } from "@design";
+import { B4Alert, B4FormHeader } from "@b4.elements";
 
 interface OverlapSettingsProps {
   config: B4SetConfig;
@@ -49,19 +42,13 @@ export const OverlapSettings = ({ config, onChange }: OverlapSettingsProps) => {
 
   return (
     <>
-      <Grid size={{ xs: 12 }}>
-        <Divider sx={{ my: 1 }}>
-          <Chip label="Overlap Strategy" size="small" />
-        </Divider>
-      </Grid>
+      <B4FormHeader label="Overlap Strategy" sx={{ mb: 0 }} />
 
-      <Grid size={{ xs: 12 }}>
-        <Alert severity="info">
-          Exploits RFC 793: server keeps FIRST received data for overlapping
-          segments. Real SNI sent first (server sees), fake SNI sent second (DPI
-          sees).
-        </Alert>
-      </Grid>
+      <B4Alert severity="info" sx={{ m: 0 }}>
+        Exploits RFC 793: server keeps FIRST received data for overlapping
+        segments. Real SNI sent first (server sees), fake SNI sent second (DPI
+        sees).
+      </B4Alert>
 
       {/* Visual explanation */}
       <Grid size={{ xs: 12 }}>
@@ -245,21 +232,17 @@ export const OverlapSettings = ({ config, onChange }: OverlapSettingsProps) => {
       </Grid>
 
       {fakeSNIs.length === 0 && (
-        <Grid size={{ xs: 12 }}>
-          <Alert severity="warning">
-            Using default domains (ya.ru, vk.com, etc). Add custom domains that
-            are known to be unblocked in your region.
-          </Alert>
-        </Grid>
+        <B4Alert severity="warning" sx={{ m: 0 }}>
+          Using default domains (ya.ru, vk.com, etc). Add custom domains that
+          are known to be unblocked in your region.
+        </B4Alert>
       )}
 
       {fakeSNIs.length > 0 && fakeSNIs.length < 3 && (
-        <Grid size={{ xs: 12 }}>
-          <Alert severity="info">
-            Tip: Add more domains for variety. A random one is selected per
-            connection.
-          </Alert>
-        </Grid>
+        <B4Alert severity="info" sx={{ m: 0 }}>
+          Tip: Add more domains for variety. A random one is selected per
+          connection.
+        </B4Alert>
       )}
     </>
   );

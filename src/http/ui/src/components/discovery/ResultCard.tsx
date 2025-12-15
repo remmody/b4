@@ -1,16 +1,9 @@
-import {
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  Stack,
-  Alert,
-} from "@mui/material";
+import { Card, CardContent, Typography, Box, Stack } from "@mui/material";
 import { DomainIcon, TimerIcon } from "@b4.icons";
 import { colors } from "@design";
 import { TestStatusBadge, TestStatus } from "@common/Badge";
 import { SpeedIndicator } from "./SpeedIndicator";
-import { B4Badge } from "@common/B4Badge";
+import { B4Alert, B4Badge } from "@b4.elements";
 
 interface TestResultCardProps {
   domain: string;
@@ -91,7 +84,7 @@ export const TestResultCard = ({
                 </Typography>
                 <Box sx={{ flex: 1 }} />
                 <B4Badge
-                  badgeVariant="secondary"
+                  color="secondary"
                   label={"http status: " + status_code}
                 />
               </Box>
@@ -100,7 +93,7 @@ export const TestResultCard = ({
 
           {/* Error */}
           {status === "failed" && error && (
-            <Alert
+            <B4Alert
               severity="error"
               sx={{
                 p: 1,
@@ -109,7 +102,7 @@ export const TestResultCard = ({
               }}
             >
               {error}
-            </Alert>
+            </B4Alert>
           )}
         </Stack>
       </CardContent>

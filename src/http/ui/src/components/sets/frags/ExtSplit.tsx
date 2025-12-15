@@ -1,21 +1,15 @@
-import { Grid, Divider, Chip, Alert, Box, Typography } from "@mui/material";
+import { Grid, Box, Typography } from "@mui/material";
 import { colors } from "@design";
+import { B4Alert, B4FormHeader } from "@b4.elements";
 
 export const ExtSplitSettings = () => {
   return (
     <>
-      <Grid size={{ xs: 12 }}>
-        <Divider sx={{ my: 1 }}>
-          <Chip label="Extension Split" size="small" />
-        </Divider>
-      </Grid>
-
-      <Grid size={{ xs: 12 }}>
-        <Alert severity="info">
-          Automatically splits TLS ClientHello just before the SNI extension.
-          DPI sees incomplete extension list and fails to parse SNI.
-        </Alert>
-      </Grid>
+      <B4FormHeader label="Extension Split" sx={{ mb: 0 }} />
+      <B4Alert severity="info" sx={{ m: 0 }}>
+        Automatically splits TLS ClientHello just before the SNI extension. DPI
+        sees incomplete extension list and fails to parse SNI.
+      </B4Alert>
 
       <Grid size={{ xs: 12 }}>
         <Box
@@ -130,10 +124,10 @@ export const ExtSplitSettings = () => {
       </Grid>
 
       <Grid size={{ xs: 12 }}>
-        <Alert severity="success">
+        <B4Alert severity="success" sx={{ m: 0 }}>
           No configuration needed. Uses <strong>Reverse Order</strong> toggle
           above and <strong>Seg2 Delay</strong> from TCP tab.
-        </Alert>
+        </B4Alert>
       </Grid>
     </>
   );

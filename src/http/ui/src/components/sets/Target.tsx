@@ -5,7 +5,6 @@ import {
   Chip,
   IconButton,
   Typography,
-  Alert,
   Button,
   List,
   ListItem,
@@ -25,7 +24,13 @@ import {
   IpIcon,
 } from "@b4.icons";
 
-import { B4TextField, B4Section, B4Dialog } from "@b4.elements";
+import {
+  B4TextField,
+  B4Section,
+  B4Dialog,
+  B4Alert,
+  B4Badge,
+} from "@b4.elements";
 import SettingAutocomplete from "@common/B4Autocomplete";
 import { colors } from "@design";
 import { B4SetConfig, GeoConfig } from "@models/Config";
@@ -280,10 +285,10 @@ export const TargetSettings = ({
           </Box>
           {/* DPI Bypass Tab */}
           <TabPanel value={tabValue} index={0}>
-            <Alert severity="info" sx={{ mb: 2 }}>
+            <B4Alert severity="info" sx={{ m: 0 }}>
               Domains in this list will use DPI bypass techniques
               (fragmentation, faking) when matched.
-            </Alert>
+            </B4Alert>
 
             <Grid container spacing={2}>
               {/* Manual Bypass Domains */}
@@ -357,7 +362,7 @@ export const TargetSettings = ({
                         </Typography>
                       ) : (
                         config.targets.sni_domains.map((domain) => (
-                          <Chip
+                          <B4Badge
                             key={domain}
                             label={domain}
                             onDelete={() => handleRemoveBypassDomain(domain)}
@@ -426,7 +431,7 @@ export const TargetSettings = ({
                             const count =
                               stats?.geosite_category_breakdown?.[category];
                             return (
-                              <Chip
+                              <B4Badge
                                 size="small"
                                 key={category}
                                 label={
@@ -479,10 +484,10 @@ export const TargetSettings = ({
           </TabPanel>
           <TabPanel value={tabValue} index={1}>
             {/* Bypass GeoIP Categories */}
-            <Alert severity="info" sx={{ mb: 2 }}>
+            <B4Alert>
               IP ranges in these categories will use DPI bypass techniques
               (fragmentation, faking) when matched.
-            </Alert>
+            </B4Alert>
 
             <Grid container spacing={2}>
               {/* Manual Bypass IPs */}
@@ -730,13 +735,13 @@ export const TargetSettings = ({
             } else if (previewDialog.data) {
               return (
                 <>
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    Total domains in category:{" "}
+                  <B4Alert severity="info" sx={{ mb: 2 }}>
+                    Total domains in category:
                     {previewDialog.data.total_domains}
                     {previewDialog.data.total_domains >
                       previewDialog.data.preview_count &&
                       ` (showing first ${previewDialog.data.preview_count})`}
-                  </Alert>
+                  </B4Alert>
                   <List dense sx={{ maxHeight: 600, overflow: "auto" }}>
                     {previewDialog.data.preview.map((domain) => (
                       <ListItem key={domain}>
@@ -748,7 +753,9 @@ export const TargetSettings = ({
               );
             } else {
               return (
-                <Alert severity="error">Failed to load category preview</Alert>
+                <B4Alert severity="error">
+                  Failed to load category preview
+                </B4Alert>
               );
             }
           })()}

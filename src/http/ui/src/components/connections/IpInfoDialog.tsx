@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
 import {
   Button,
-  Alert,
   Typography,
   Box,
   CircularProgress,
   Stack,
 } from "@mui/material";
 import { InfoIcon, AddIcon } from "@b4.icons";
-import { button_primary, button_secondary } from "@design";
 import { B4Dialog } from "@common/B4Dialog";
 import { B4Badge } from "@common/B4Badge";
+import { B4Alert } from "@b4.elements";
 
 interface IpInfo {
   ip: string;
@@ -87,17 +86,12 @@ export const IpInfoModal = ({
               onClick={handleAddHostname}
               variant="contained"
               startIcon={<AddIcon />}
-              sx={{ ...button_primary }}
             >
               Add Hostname
             </Button>
           )}
           <Box sx={{ flex: 1 }} />
-          <Button
-            onClick={onClose}
-            variant="outlined"
-            sx={{ ...button_secondary }}
-          >
+          <Button onClick={onClose} variant="outlined">
             Close
           </Button>
         </>
@@ -111,9 +105,9 @@ export const IpInfoModal = ({
         )}
 
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <B4Alert severity="error" sx={{ mb: 2 }}>
             {error}
-          </Alert>
+          </B4Alert>
         )}
 
         {ipInfo && !loading && (
@@ -141,7 +135,7 @@ export const IpInfoModal = ({
                   Hostname
                 </Typography>
                 <Typography variant="body1" fontFamily="monospace">
-                  <B4Badge label={ipInfo.hostname} badgeVariant="secondary" />
+                  <B4Badge label={ipInfo.hostname} color="secondary" />
                 </Typography>
               </Box>
             )}

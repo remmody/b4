@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   Button,
-  Alert,
   Typography,
   List,
   ListItem,
@@ -12,6 +11,7 @@ import {
   Box,
 } from "@mui/material";
 import { AddIcon, DomainIcon } from "@b4.icons";
+import { B4Alert } from "@b4.elements";
 import { colors } from "@design";
 import { B4Dialog } from "@common/B4Dialog";
 import { B4Badge } from "@common/B4Badge";
@@ -66,9 +66,7 @@ export const AddSniModal = ({
       onClose={onClose}
       actions={
         <>
-          <Button onClick={onClose} variant="outlined">
-            Cancel
-          </Button>
+          <Button onClick={onClose}>Cancel</Button>
           <Box sx={{ flex: 1 }} />
           <Button
             onClick={handleAdd}
@@ -82,13 +80,13 @@ export const AddSniModal = ({
       }
     >
       <>
-        <Alert severity="info" sx={{ mb: 2 }}>
+        <B4Alert severity="info" sx={{ mb: 2 }}>
           Select which domain pattern to add to the manual domains list. More
           specific patterns will only match exact subdomains, while broader
           patterns will match all subdomains.
-        </Alert>
+        </B4Alert>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Original domain: <B4Badge label={domain} badgeVariant="secondary" />
+          Original domain: <B4Badge label={domain} color="primary" />
         </Typography>
         {!createNewSet && sets.length > 0 && (
           <SetSelector

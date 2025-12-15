@@ -1,8 +1,9 @@
-import { Grid, Alert, Divider, Chip, Box, Typography } from "@mui/material";
+import { Grid, Divider, Chip, Box, Typography } from "@mui/material";
 
 import { B4Slider, B4Switch } from "@b4.fields";
 import { B4SetConfig } from "@models/Config";
 import { colors } from "@design";
+import { B4Alert } from "@components/common/B4Alert";
 
 interface TcpIpSettingsProps {
   config: B4SetConfig;
@@ -27,6 +28,7 @@ export const TcpIpSettings = ({ config, onChange }: TcpIpSettingsProps) => {
           <Chip label="Where to Split" size="small" />
         </Divider>
       </Grid>
+      
 
       <Grid size={{ xs: 12 }}>
         <B4Switch
@@ -166,9 +168,9 @@ export const TcpIpSettings = ({ config, onChange }: TcpIpSettingsProps) => {
         </Grid>
         {config.fragmentation.sni_position > 0 &&
           config.fragmentation.middle_sni && (
-            <Alert severity="info" sx={{ mt: 2 }}>
+            <B4Alert severity="info" sx={{ mt: 2 }}>
               Both enabled → packet splits into 3 segments
-            </Alert>
+            </B4Alert>
           )}
       </Grid>
     </>

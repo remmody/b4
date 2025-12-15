@@ -1,6 +1,13 @@
-import { Grid, Alert, Divider, Chip, Typography, Box } from "@mui/material";
+import { Grid, Divider, Chip, Typography, Box } from "@mui/material";
 import { FragIcon } from "@b4.icons";
-import { B4Section, B4Switch, B4Select, B4Slider } from "@b4.elements";
+import {
+  B4Section,
+  B4Switch,
+  B4Select,
+  B4Slider,
+  B4Alert,
+  B4FormHeader,
+} from "@b4.elements";
 import { B4SetConfig, FragmentationStrategy } from "@models/Config";
 import { ComboSettings } from "./frags/Combo";
 import { DisorderSettings } from "./frags/Disorder";
@@ -72,45 +79,31 @@ export const FragmentationSettings = ({
           />
         </Grid>
 
-        {/* TCP/IP: Simplified SNI Split */}
         {isTcpOrIp && <TcpIpSettings config={config} onChange={onChange} />}
 
-        {/* Combo Settings */}
         {strategy === "combo" && (
           <ComboSettings config={config} onChange={onChange} />
         )}
 
-        {/* Disorder Settings */}
         {strategy === "disorder" && (
           <DisorderSettings config={config} onChange={onChange} />
         )}
 
-        {/* Overlap Settings */}
         {strategy === "overlap" && (
           <OverlapSettings config={config} onChange={onChange} />
         )}
-
-        {/* ExtSplit Settings */}
         {strategy === "extsplit" && <ExtSplitSettings />}
 
-        {/* FirstByte Settings */}
         {strategy === "firstbyte" && <FirstByteSettings config={config} />}
 
-        {/* OOB Settings */}
         {isOob && (
           <>
-            <Grid size={{ xs: 12 }}>
-              <Divider sx={{ my: 1 }}>
-                <Chip label="OOB Configuration" size="small" />
-              </Divider>
-            </Grid>
+            <B4FormHeader label="OOB (Out-of-Band) Strategy" sx={{ mb: 0 }} />
 
-            <Grid size={{ xs: 12 }}>
-              <Alert severity="info">
-                Inserts a byte with TCP URG flag. Server ignores it, but
-                stateful DPI gets confused.
-              </Alert>
-            </Grid>
+            <B4Alert>
+              Inserts a byte with TCP URG flag. Server ignores it, but stateful
+              DPI gets confused.
+            </B4Alert>
 
             <Grid size={{ xs: 12, md: 6 }}>
               <B4Slider
@@ -153,12 +146,10 @@ export const FragmentationSettings = ({
               </Divider>
             </Grid>
 
-            <Grid size={{ xs: 12 }}>
-              <Alert severity="info">
-                Splits ClientHello into multiple TLS records. DPI expecting
-                single-record handshake fails to match.
-              </Alert>
-            </Grid>
+            <B4Alert>
+              Splits ClientHello into multiple TLS records. DPI expecting
+              single-record handshake fails to match.
+            </B4Alert>
 
             <Grid size={{ xs: 12, md: 6 }}>
               <B4Slider
@@ -176,14 +167,11 @@ export const FragmentationSettings = ({
           </>
         )}
 
-        {/* Disabled state */}
         {!isActive && (
-          <Grid size={{ xs: 12 }}>
-            <Alert severity="warning">
-              Fragmentation disabled. Only fake packets (if enabled) will be
-              used for bypass.
-            </Alert>
-          </Grid>
+          <B4Alert severity="warning">
+            Fragmentation disabled. Only fake packets (if enabled) will be used
+            for bypass.
+          </B4Alert>
         )}
       </Grid>
     </B4Section>

@@ -1,17 +1,16 @@
 import { useState } from "react";
 import {
   Button,
-  Alert,
   CircularProgress,
   Stack,
   Typography,
   LinearProgress,
   Box,
 } from "@mui/material";
-import { InfoIcon, RestartIcon, CheckIcon, ErrorIcon } from "@b4.icons";
+import { RestartIcon, CheckIcon, ErrorIcon } from "@b4.icons";
 import { useSystemRestart } from "@hooks/useSystemRestart";
 import { colors } from "@design";
-import { B4Dialog } from "@common/B4Dialog";
+import { B4Alert, B4Dialog } from "@b4.elements";
 
 interface RestartDialogProps {
   open: boolean;
@@ -105,17 +104,7 @@ export const RestartDialog = ({ open, onClose }: RestartDialogProps) => {
     switch (state) {
       case "confirm":
         return (
-          <Alert
-            severity="info"
-            icon={<InfoIcon />}
-            sx={{
-              bgcolor: colors.background.default,
-              border: `1px solid ${colors.border.default}`,
-              "& .MuiAlert-icon": {
-                color: colors.secondary,
-              },
-            }}
-          >
+          <B4Alert>
             <Typography variant="body2" sx={{ mb: 1 }}>
               This will restart the B4 service. The web interface will be
               temporarily unavailable during the restart.
@@ -123,7 +112,7 @@ export const RestartDialog = ({ open, onClose }: RestartDialogProps) => {
             <Typography variant="caption" sx={{ color: colors.text.secondary }}>
               Expected downtime: 5-10 seconds
             </Typography>
-          </Alert>
+          </B4Alert>
         );
 
       case "restarting":
@@ -223,15 +212,7 @@ export const RestartDialog = ({ open, onClose }: RestartDialogProps) => {
               >
                 Restart Failed
               </Typography>
-              <Alert
-                severity="error"
-                sx={{
-                  bgcolor: colors.background.default,
-                  border: `1px solid ${colors.quaternary}44`,
-                }}
-              >
-                {message}
-              </Alert>
+              <B4Alert severity="error">{message}</B4Alert>
             </Box>
           </Stack>
         );

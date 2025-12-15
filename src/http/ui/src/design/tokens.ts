@@ -13,6 +13,7 @@ export const colors = {
     primary: "#ffe8f4",
     secondary: "#f8d7e9",
     disabled: "rgba(255, 232, 244, 0.5)",
+    tertiary: "#1a0e15",
   },
   border: {
     default: "rgba(245, 173, 24, 0.24)",

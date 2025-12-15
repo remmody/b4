@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Button,
-  Alert,
   Typography,
   List,
   ListItem,
@@ -11,7 +10,6 @@ import {
   Radio,
   Box,
   Stack,
-  Chip,
 } from "@mui/material";
 import { AddIcon, DomainIcon } from "@b4.icons";
 import { colors } from "@design";
@@ -21,6 +19,7 @@ import { B4SetConfig, MAIN_SET_ID } from "@models/Config";
 import { SetSelector } from "@common/SetSelector";
 import { asnStorage } from "@utils";
 import { clearAsnLookupCache } from "@hooks/useDomainActions";
+import { B4Alert } from "@b4.elements";
 
 interface IpInfo {
   ip: string;
@@ -220,16 +219,16 @@ export const AddIpModal = ({
       }
     >
       <>
-        <Alert severity="info" sx={{ mb: 2 }}>
+        <B4Alert severity="info">
           Select the desired IP or CIDR range. You can enrich with network
           information to load all ASN prefixes.
-        </Alert>
+        </B4Alert>
 
         <Box sx={{ mb: 3 }}>
           {!ipInfo ? (
             <Stack direction="row" spacing={2} alignItems="center">
               <Typography variant="body2" color="text.secondary">
-                Original IP: <B4Badge label={ip} badgeVariant="secondary" />
+                Original IP: <B4Badge label={ip} color="primary" />
               </Typography>
               <Box sx={{ flex: 1 }} />
               {ipInfoToken && (
@@ -254,7 +253,7 @@ export const AddIpModal = ({
           ) : (
             <>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Original IP: <B4Badge label={ip} badgeVariant="secondary" />
+                Original IP: <B4Badge label={ip} color="secondary" />
               </Typography>
               <Box
                 sx={{
@@ -326,47 +325,23 @@ export const AddIpModal = ({
               Loaded {prefixes.length} prefixes from AS{asn}
             </Typography>
             <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-              <Chip
+              <B4Badge
                 label={`Add ${ip} only`}
                 onClick={() => {
                   setAddMode("single");
                   onSelectVariant(initialVariants[0]);
                 }}
-                sx={{
-                  bgcolor:
-                    addMode === "single"
-                      ? colors.accent.primary
-                      : colors.background.dark,
-                  color: addMode === "single" ? colors.primary : "text.primary",
-                  cursor: "pointer",
-                  "&:hover": {
-                    bgcolor:
-                      addMode === "single"
-                        ? colors.accent.primaryHover
-                        : colors.accent.primaryStrong,
-                  },
-                }}
+                color="secondary"
+                variant="outlined"
               />
-              <Chip
+              <B4Badge
                 label={`Add all ${prefixes.length} prefixes`}
                 onClick={() => {
                   setAddMode("all");
                   onSelectVariant(prefixes);
                 }}
-                sx={{
-                  bgcolor:
-                    addMode === "all"
-                      ? colors.accent.primary
-                      : colors.background.dark,
-                  color: addMode === "all" ? colors.primary : "text.primary",
-                  cursor: "pointer",
-                  "&:hover": {
-                    bgcolor:
-                      addMode === "all"
-                        ? colors.accent.primaryHover
-                        : colors.accent.primaryStrong,
-                  },
-                }}
+                variant="outlined"
+                color="primary"
               />
             </Stack>
           </>

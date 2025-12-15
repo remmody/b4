@@ -5,10 +5,8 @@ import {
   Stack,
   Typography,
   LinearProgress,
-  Alert,
   Paper,
   Divider,
-  Chip,
   IconButton,
   Tooltip,
   Snackbar,
@@ -31,7 +29,7 @@ import {
 import { colors } from "@design";
 import { B4SetConfig } from "@models/Config";
 import { DiscoveryAddDialog } from "./AddDialog";
-import { B4Section, B4TextField } from "@b4.elements";
+import { B4Alert, B4Badge, B4Section, B4TextField } from "@b4.elements";
 
 type StrategyFamily =
   | "none"
@@ -453,58 +451,36 @@ export const DiscoveryRunner = () => {
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
             DPI Fingerprint
           </Typography>
-          <Chip
+          <B4Badge
             label={`${fingerprint.confidence}% confidence`}
             size="small"
-            sx={{
-              bgcolor:
-                fingerprint.confidence > 70
-                  ? colors.secondary
-                  : colors.accent.secondary,
-              color:
-                fingerprint.confidence > 70
-                  ? colors.background.default
-                  : colors.text.primary,
-            }}
           />
         </Box>
 
         {/* Main Info Row */}
         <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-          <Chip
+          <B4Badge
             icon={<SecurityIcon />}
             label={dpiTypeLabels[fingerprint.type]}
-            sx={{
-              bgcolor:
-                fingerprint.type === "none"
-                  ? colors.secondary
-                  : colors.quaternary,
-              color: colors.background.default,
-            }}
+            color="primary"
           />
-          <Chip
+          <B4Badge
             label={`Method: ${blockingLabels[fingerprint.blocking_method]}`}
-            variant="outlined"
-            size="small"
+            color="primary"
           />
           {fingerprint.dpi_hop_count > 0 && (
-            <Chip
+            <B4Badge
               label={`${fingerprint.dpi_hop_count} hops away`}
               variant="outlined"
-              size="small"
             />
           )}
           {fingerprint.is_inline && (
-            <Chip label="Inline DPI" size="small" color="warning" />
+            <B4Badge label="Inline DPI" color="error" />
           )}
           {fingerprint.optimal_ttl > 0 && (
-            <Chip
+            <B4Badge
               label={`Optimal TTL: ${fingerprint.optimal_ttl}`}
-              size="small"
-              sx={{
-                bgcolor: colors.secondary,
-                color: colors.background.default,
-              }}
+              color="primary"
             />
           )}
         </Stack>
@@ -523,57 +499,25 @@ export const DiscoveryRunner = () => {
           gap={0.5}
           sx={{ mb: 2 }}
         >
-          <Chip
+          <B4Badge
             label="TTL"
-            size="small"
-            sx={{
-              bgcolor: fingerprint.vulnerable_to_ttl
-                ? colors.secondary
-                : colors.background.dark,
-              color: fingerprint.vulnerable_to_ttl
-                ? colors.background.default
-                : colors.text.secondary,
-              opacity: fingerprint.vulnerable_to_ttl ? 1 : 0.5,
-            }}
+            color={fingerprint.vulnerable_to_ttl ? "secondary" : "primary"}
+            variant={fingerprint.vulnerable_to_ttl ? "filled" : "outlined"}
           />
-          <Chip
+          <B4Badge
             label="Fragmentation"
-            size="small"
-            sx={{
-              bgcolor: fingerprint.vulnerable_to_frag
-                ? colors.secondary
-                : colors.background.dark,
-              color: fingerprint.vulnerable_to_frag
-                ? colors.background.default
-                : colors.text.secondary,
-              opacity: fingerprint.vulnerable_to_frag ? 1 : 0.5,
-            }}
+            color={fingerprint.vulnerable_to_frag ? "secondary" : "primary"}
+            variant={fingerprint.vulnerable_to_frag ? "filled" : "outlined"}
           />
-          <Chip
+          <B4Badge
             label="Desync"
-            size="small"
-            sx={{
-              bgcolor: fingerprint.vulnerable_to_desync
-                ? colors.secondary
-                : colors.background.dark,
-              color: fingerprint.vulnerable_to_desync
-                ? colors.background.default
-                : colors.text.secondary,
-              opacity: fingerprint.vulnerable_to_desync ? 1 : 0.5,
-            }}
+            color={fingerprint.vulnerable_to_desync ? "secondary" : "primary"}
+            variant={fingerprint.vulnerable_to_desync ? "filled" : "outlined"}
           />
-          <Chip
+          <B4Badge
             label="OOB"
-            size="small"
-            sx={{
-              bgcolor: fingerprint.vulnerable_to_oob
-                ? colors.secondary
-                : colors.background.dark,
-              color: fingerprint.vulnerable_to_oob
-                ? colors.background.default
-                : colors.text.secondary,
-              opacity: fingerprint.vulnerable_to_oob ? 1 : 0.5,
-            }}
+            color={fingerprint.vulnerable_to_oob ? "secondary" : "primary"}
+            variant={fingerprint.vulnerable_to_oob ? "filled" : "outlined"}
           />
         </Stack>
 
@@ -589,18 +533,11 @@ export const DiscoveryRunner = () => {
               </Typography>
               <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
                 {fingerprint.recommended_families.map((family, idx) => (
-                  <Chip
+                  <B4Badge
                     key={family}
                     label={`${idx + 1}. ${familyNames[family] || family}`}
-                    size="small"
-                    sx={{
-                      bgcolor:
-                        idx === 0
-                          ? colors.accent.secondary
-                          : colors.background.dark,
-                      border:
-                        idx === 0 ? `1px solid ${colors.secondary}` : "none",
-                    }}
+                    color="secondary"
+                    variant={idx === 0 ? "filled" : "outlined"}
                   />
                 ))}
               </Stack>
@@ -618,6 +555,12 @@ export const DiscoveryRunner = () => {
         description="Hierarchical testing: Strategy Detection → Optimization → Combination"
         icon={<DiscoveryIcon />}
       >
+        <B4Alert icon={<DiscoveryIcon />}>
+          <strong>Configuration Discovery:</strong> Automatically test multiple
+          configuration presets to find the most effective DPI bypass settings
+          for the domains you specify below. B4 will temporarily apply different
+          configurations and measure their performance.
+        </B4Alert>
         {/* Header with actions */}
         <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
           <B4TextField
@@ -673,7 +616,7 @@ export const DiscoveryRunner = () => {
             </Button>
           )}
         </Box>
-        {error && <Alert severity="error">{error}</Alert>}
+        {error && <B4Alert severity="error">{error}</B4Alert>}
 
         {isReconnecting && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -692,7 +635,7 @@ export const DiscoveryRunner = () => {
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Typography variant="body2" color="text.secondary">
                   {suite.current_phase && (
-                    <Chip
+                    <B4Badge
                       icon={
                         suite.current_phase === "fingerprint" ? (
                           <FingerprintIcon />
@@ -700,18 +643,12 @@ export const DiscoveryRunner = () => {
                       }
                       label={phaseNames[suite.current_phase]}
                       size="small"
-                      sx={{
-                        mr: 1,
-                        bgcolor:
-                          suite.current_phase === "fingerprint"
-                            ? colors.accent.primary
-                            : colors.accent.secondary,
-                        color:
-                          suite.current_phase === "fingerprint"
-                            ? colors.text.primary
-                            : colors.secondary,
-                        fontWeight: 600,
-                      }}
+                      color={
+                        suite.current_phase === "fingerprint"
+                          ? "primary"
+                          : "secondary"
+                      }
+                      sx={{ mr: 2 }}
                     />
                   )}
                   {suite.current_phase === "fingerprint"
@@ -758,14 +695,14 @@ export const DiscoveryRunner = () => {
 
       {/* No DPI Alert */}
       {suite?.fingerprint && suite.fingerprint.type === "none" && (
-        <Alert
+        <B4Alert
           severity="success"
           icon={<FingerprintIcon />}
           sx={{ bgcolor: colors.accent.secondary }}
         >
           <strong>No DPI Detected!</strong> The domain appears to be accessible
           without any bypass techniques.
-        </Alert>
+        </B4Alert>
       )}
 
       {suite?.domain_discovery_results &&
@@ -819,50 +756,35 @@ export const DiscoveryRunner = () => {
                           {domainResult.domain}
                         </Typography>
                         {domainResult.best_success ? (
-                          <Chip
+                          <B4Badge
                             label="Success"
                             size="small"
-                            sx={{
-                              bgcolor: colors.secondary,
-                              color: colors.background.default,
-                            }}
+                            variant="filled"
+                            color="primary"
                           />
                         ) : running ? (
-                          <Chip
+                          <B4Badge
                             label="Testing..."
                             size="small"
-                            sx={{
-                              bgcolor: colors.accent.primary,
-                              color: colors.text.secondary,
-                            }}
+                            variant="outlined"
+                            color="primary"
                           />
                         ) : (
-                          <Chip
-                            label="Failed"
-                            size="small"
-                            sx={{
-                              bgcolor: colors.quaternary,
-                              color: colors.text.primary,
-                            }}
-                          />
+                          <B4Badge label="Failed" size="small" color="error" />
                         )}
-                        <Chip
+                        <B4Badge
                           label={`${successCount}/${totalCount} configs`}
                           size="small"
-                          variant="outlined"
-                          sx={{ borderColor: colors.border.light }}
+                          variant="filled"
+                          color="primary"
                         />
                         {domainResult.improvement &&
                           domainResult.improvement > 0 && (
-                            <Chip
+                            <B4Badge
                               icon={<ImprovementIcon />}
                               label={`+${domainResult.improvement.toFixed(0)}%`}
                               size="small"
-                              sx={{
-                                bgcolor: colors.accent.secondary,
-                                color: colors.secondary,
-                                "& .MuiChip-icon": { color: colors.secondary },
-                              }}
+                              color="primary"
                             />
                           )}
                       </Box>
@@ -931,7 +853,7 @@ export const DiscoveryRunner = () => {
                                 {domainResult.best_preset}
                                 {domainResult.results[domainResult.best_preset]
                                   ?.family && (
-                                  <Chip
+                                  <B4Badge
                                     label={
                                       familyNames[
                                         domainResult.results[
@@ -939,11 +861,7 @@ export const DiscoveryRunner = () => {
                                         ].family!
                                       ]
                                     }
-                                    size="small"
-                                    sx={{
-                                      ml: 1,
-                                      bgcolor: colors.accent.primary,
-                                    }}
+                                    color="primary"
                                   />
                                 )}
                               </Typography>
@@ -979,7 +897,7 @@ export const DiscoveryRunner = () => {
                         </Box>
                         {/* Info message while still running */}
                         {running && domainResult.best_success && (
-                          <Alert
+                          <B4Alert
                             severity="info"
                             sx={{
                               borderRadius: 0,
@@ -991,7 +909,7 @@ export const DiscoveryRunner = () => {
                             Found a working configuration! Still testing{" "}
                             {suite ? suite.total_checks - totalCount : "..."}{" "}
                             more configs — a faster option may be found.
-                          </Alert>
+                          </B4Alert>
                         )}
                       </Box>
                     )}
@@ -1034,10 +952,10 @@ export const DiscoveryRunner = () => {
                                 }}
                               >
                                 {phaseNames[phase]}
-                                <Chip
+                                <B4Badge
                                   label={groupedResults[phase].length}
                                   size="small"
-                                  sx={{ height: 18, fontSize: "0.65rem" }}
+                                  color="primary"
                                 />
                               </Typography>
                               <Stack
@@ -1057,48 +975,23 @@ export const DiscoveryRunner = () => {
                                         gap: 0.5,
                                       }}
                                     >
-                                      <Tooltip
-                                        title={
+                                      <B4Badge
+                                        label={`${result.preset_name}: ${
                                           result.status === "complete"
-                                            ? `${result.preset_name}: ${(
+                                            ? `${(
                                                 result.speed /
                                                 1024 /
                                                 1024
                                               ).toFixed(2)} MB/s`
-                                            : `${result.preset_name}: ${
-                                                result.error || "Failed"
-                                              }`
+                                            : "Failed"
+                                        }`}
+                                        size="small"
+                                        color={
+                                          result.status === "complete"
+                                            ? "primary"
+                                            : "error"
                                         }
-                                      >
-                                        <Chip
-                                          label={`${result.preset_name}: ${
-                                            result.status === "complete"
-                                              ? `${(
-                                                  result.speed /
-                                                  1024 /
-                                                  1024
-                                                ).toFixed(2)} MB/s`
-                                              : "Failed"
-                                          }`}
-                                          size="small"
-                                          sx={{
-                                            bgcolor:
-                                              result.preset_name ===
-                                              domainResult.best_preset
-                                                ? colors.accent.secondary
-                                                : colors.background.dark,
-                                            color:
-                                              result.status === "complete"
-                                                ? colors.text.primary
-                                                : colors.quaternary,
-                                            border:
-                                              result.preset_name ===
-                                              domainResult.best_preset
-                                                ? `2px solid ${colors.secondary}`
-                                                : `1px solid ${colors.border.light}`,
-                                          }}
-                                        />
-                                      </Tooltip>
+                                      />
                                       {result.status === "complete" &&
                                         result.preset_name !==
                                           domainResult.best_preset && (
@@ -1138,11 +1031,11 @@ export const DiscoveryRunner = () => {
                     {/* Failed state */}
                     {!domainResult.best_success && !running && (
                       <Box sx={{ p: 3 }}>
-                        <Alert severity="error">
+                        <B4Alert severity="error">
                           All {Object.keys(domainResult.results).length} tested
                           configurations failed for this domain. Check your
                           network connection and domain accessibility.
-                        </Alert>
+                        </B4Alert>
                       </Box>
                     )}
                     {!domainResult.best_success && running && (
@@ -1202,13 +1095,12 @@ export const DiscoveryRunner = () => {
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Alert
+        <B4Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
-          sx={{ width: "100%" }}
         >
           {snackbar.message}
-        </Alert>
+        </B4Alert>
       </Snackbar>
     </Stack>
   );
