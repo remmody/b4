@@ -294,12 +294,18 @@ export function useFilteredLogs(
 
     return parsedLogs.filter((log: ParsedLog) => {
       for (const [field, values] of Object.entries(fieldFilters)) {
-        const fieldValue =
-          log[field as keyof typeof log]?.toString().toLowerCase() || "";
+        let fieldValue: string;
+        if (field === "asn") {
+          fieldValue = getAsnForIp(log.destination)?.toLowerCase() || "";
+        } else {
+          fieldValue =
+            log[field as keyof typeof log]?.toString().toLowerCase() || "";
+        }
         if (!values.some((value) => fieldValue.includes(value))) return false;
       }
 
       for (const filterTerm of globalFilters) {
+        const asnName = getAsnForIp(log.destination);
         const matches = [
           log.hostSet,
           log.ipSet,
@@ -307,6 +313,7 @@ export function useFilteredLogs(
           log.source,
           log.protocol,
           log.destination,
+          asnName,
         ].some((value) => value?.toLowerCase().includes(filterTerm));
         if (!matches) return false;
       }

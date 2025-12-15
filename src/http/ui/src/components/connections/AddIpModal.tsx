@@ -13,13 +13,11 @@ import {
 } from "@mui/material";
 import { AddIcon, DomainIcon } from "@b4.icons";
 import { colors } from "@design";
-import { B4Dialog } from "@common/B4Dialog";
-import { B4Badge } from "@common/B4Badge";
 import { B4SetConfig, MAIN_SET_ID } from "@models/Config";
 import { SetSelector } from "@common/SetSelector";
 import { asnStorage } from "@utils";
 import { clearAsnLookupCache } from "@hooks/useDomainActions";
-import { B4Alert } from "@b4.elements";
+import { B4Alert, B4Badge, B4Dialog } from "@b4.elements";
 
 interface IpInfo {
   ip: string;
@@ -219,7 +217,7 @@ export const AddIpModal = ({
       }
     >
       <>
-        <B4Alert severity="info">
+        <B4Alert severity="info" sx={{ mb: 2 }}>
           Select the desired IP or CIDR range. You can enrich with network
           information to load all ASN prefixes.
         </B4Alert>
