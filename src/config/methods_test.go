@@ -117,8 +117,10 @@ func TestValidate(t *testing.T) {
 
 	t.Run("geosite categories without path", func(t *testing.T) {
 		cfg := NewConfig()
-		cfg.Validate()
-		cfg.MainSet.Targets.GeoSiteCategories = []string{"youtube"}
+		mainSet := NewSetConfig()
+		mainSet.Id = MAIN_SET_ID
+		mainSet.Targets.GeoSiteCategories = []string{"youtube"}
+		cfg.Sets = []*SetConfig{&mainSet}
 		cfg.System.Geo.GeoSitePath = ""
 
 		if err := cfg.Validate(); err == nil {
@@ -128,8 +130,10 @@ func TestValidate(t *testing.T) {
 
 	t.Run("geoip categories without path", func(t *testing.T) {
 		cfg := NewConfig()
-		cfg.Validate()
-		cfg.MainSet.Targets.GeoIpCategories = []string{"ru"}
+		mainSet := NewSetConfig()
+		mainSet.Id = MAIN_SET_ID
+		mainSet.Targets.GeoIpCategories = []string{"ru"}
+		cfg.Sets = []*SetConfig{&mainSet}
 		cfg.System.Geo.GeoIpPath = ""
 
 		if err := cfg.Validate(); err == nil {
@@ -170,7 +174,7 @@ func TestValidate(t *testing.T) {
 		}
 	})
 
-	t.Run("set TCP ConnBytesLimit > main fails", func(t *testing.T) {
+	t.Run("set TCP ConnBytesLimit > main gets capped", func(t *testing.T) {
 		cfg := NewConfig()
 		cfg.Validate()
 
@@ -179,12 +183,16 @@ func TestValidate(t *testing.T) {
 		secondSet.TCP.ConnBytesLimit = cfg.MainSet.TCP.ConnBytesLimit + 10
 		cfg.Sets = append(cfg.Sets, &secondSet)
 
-		if err := cfg.Validate(); err == nil {
-			t.Error("expected error when set TCP ConnBytesLimit > main")
+		if err := cfg.Validate(); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if secondSet.TCP.ConnBytesLimit != cfg.MainSet.TCP.ConnBytesLimit {
+			t.Errorf("expected TCP ConnBytesLimit to be capped to %d, got %d",
+				cfg.MainSet.TCP.ConnBytesLimit, secondSet.TCP.ConnBytesLimit)
 		}
 	})
 
-	t.Run("set UDP ConnBytesLimit > main fails", func(t *testing.T) {
+	t.Run("set UDP ConnBytesLimit > main gets capped", func(t *testing.T) {
 		cfg := NewConfig()
 		cfg.Validate()
 
@@ -193,11 +201,14 @@ func TestValidate(t *testing.T) {
 		secondSet.UDP.ConnBytesLimit = cfg.MainSet.UDP.ConnBytesLimit + 10
 		cfg.Sets = append(cfg.Sets, &secondSet)
 
-		if err := cfg.Validate(); err == nil {
-			t.Error("expected error when set UDP ConnBytesLimit > main")
+		if err := cfg.Validate(); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if secondSet.UDP.ConnBytesLimit != cfg.MainSet.UDP.ConnBytesLimit {
+			t.Errorf("expected UDP ConnBytesLimit to be capped to %d, got %d",
+				cfg.MainSet.UDP.ConnBytesLimit, secondSet.UDP.ConnBytesLimit)
 		}
 	})
-
 	t.Run("set without id fails", func(t *testing.T) {
 		cfg := NewConfig()
 		cfg.Validate()
