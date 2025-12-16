@@ -3,6 +3,7 @@
 ## [1.23.1] - 2025-12-16
 
 - FIXED: crash in `overlap` fragmentation strategy when SNI extends beyond payload bounds (index out of range panic).
+- FIXED: panic errors not being captured to `errors.log` file.
 
 ## [1.23.0] - 2025-12-16
 

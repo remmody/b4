@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -134,6 +135,9 @@ func InitErrorFile(path string) error {
 	}
 	errFile = f
 	errLogger = log.New(f, "", log.Ldate|log.Ltime|log.Lmicroseconds)
+
+	syscall.Dup2(int(f.Fd()), int(os.Stderr.Fd()))
+
 	return nil
 }
 
