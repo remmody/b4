@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"sort"
+	"strings"
 
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/log"
@@ -116,10 +117,49 @@ func getSystemInterfaces() ([]string, error) {
 		return nil, err
 	}
 
+	// Known virtual/internal interface prefixes to exclude
+	excludePrefixes := []string{
+		"lo", "dummy", "gre", "erspan", "ifb", "imq",
+		"ip6_vti", "ip6gre", "ip6tnl", "ip_vti", "sit",
+		"spu_", "bcmsw", "blog", "veth", "docker", "virbr",
+	}
+
 	var ifaceNames []string
 	for _, iface := range ifaces {
-		ifaceNames = append(ifaceNames, iface.Name)
+		// Skip loopback
+		if iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+
+		// Skip interfaces that are down
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		// Skip known virtual prefixes
+		skip := false
+		for _, prefix := range excludePrefixes {
+			if strings.HasPrefix(iface.Name, prefix) {
+				skip = true
+				break
+			}
+		}
+		if skip {
+			continue
+		}
+
+		// Keep if it has addresses OR is a bridge/wireless (br*, wl*, tun*, tap*)
+		addrs, _ := iface.Addrs()
+		isBridgeOrWireless := strings.HasPrefix(iface.Name, "br") ||
+			strings.HasPrefix(iface.Name, "wl") ||
+			strings.HasPrefix(iface.Name, "tun") ||
+			strings.HasPrefix(iface.Name, "tap")
+
+		if len(addrs) > 0 || isBridgeOrWireless {
+			ifaceNames = append(ifaceNames, iface.Name)
+		}
 	}
+
 	return ifaceNames, nil
 }
 
