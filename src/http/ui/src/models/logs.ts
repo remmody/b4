@@ -5,6 +5,7 @@ export interface ParsedLog {
   ipSet: string;
   domain: string;
   source: string;
+  sourceAlias: string;
   destination: string;
   raw: string;
 }

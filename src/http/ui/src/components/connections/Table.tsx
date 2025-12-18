@@ -9,6 +9,7 @@ import {
   Typography,
   Stack,
   Box,
+  Tooltip,
 } from "@mui/material";
 import { AddIcon } from "@b4.icons";
 import { SortableTableCell, SortDirection } from "@common/SortableTableCell";
@@ -39,19 +40,24 @@ interface DomainsTableProps {
 const ROW_HEIGHT = 41;
 const OVERSCAN = 5;
 
-// Memoized row component to prevent unnecessary re-renders
 const TableRowMemo = memo<{
   log: ParsedLog;
   onDomainClick: (domain: string) => void;
   onIpClick: (ip: string) => void;
+  deviceMap: Record<string, string>;
 }>(
-  ({ log, onDomainClick, onIpClick }) => {
-    // Compute ASN inline with simple cache lookup - no hook
+  ({ log, onDomainClick, onIpClick, deviceMap }) => {
     const asnName = useMemo(() => {
       if (!log.destination) return null;
       const asn = asnStorage.findAsnForIp(log.destination);
       return asn?.name || null;
     }, [log.destination]);
+
+    const deviceName = useMemo(() => {
+      if (!log.sourceAlias) return null;
+      const normalized = log.sourceAlias.toUpperCase().replace(/-/g, ":");
+      return deviceMap[normalized] || null;
+    }, [log.sourceAlias, deviceMap]);
 
     return (
       <TableRow
@@ -137,7 +143,13 @@ const TableRowMemo = memo<{
             py: 1,
           }}
         >
-          {log.source}
+          <Tooltip title={log.source} placement="top" arrow>
+            {deviceName ? (
+              <B4Badge label={deviceName || log.source} color="primary" />
+            ) : (
+              <span>{log.source}</span>
+            )}
+          </Tooltip>
         </TableCell>
         <TableCell
           sx={{
@@ -208,6 +220,25 @@ export const DomainsTable = ({
   const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
   const visibleCount = Math.ceil(containerHeight / ROW_HEIGHT) + OVERSCAN * 2;
   const endIndex = Math.min(data.length, startIndex + visibleCount);
+  const [deviceMap, setDeviceMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch("/api/devices")
+      .then((r) => r.json())
+      .then(
+        (data: {
+          devices?: Array<{ mac: string; alias?: string; vendor?: string }>;
+        }) => {
+          const map: Record<string, string> = {};
+          for (const d of data.devices || []) {
+            const normalized = d.mac.toUpperCase().replace(/-/g, ":");
+            map[normalized] = d.alias || d.vendor || "";
+          }
+          setDeviceMap(map);
+        }
+      )
+      .catch(() => {});
+  }, []);
 
   const visibleData = useMemo(
     () => data.slice(startIndex, endIndex),
@@ -349,6 +380,7 @@ export const DomainsTable = ({
                   log={log}
                   onDomainClick={onDomainClick}
                   onIpClick={onIpClick}
+                  deviceMap={deviceMap}
                 />
               ))}
 

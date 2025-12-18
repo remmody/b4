@@ -21,6 +21,7 @@ export interface ParsedLog {
   source: string;
   destination: string;
   raw: string;
+  sourceAlias: string;
 }
 
 interface DomainModalState {
@@ -105,8 +106,16 @@ function parseSniLogLine(line: string): ParsedLog | null {
     return null;
   }
 
-  const [timestamp, protocol, hostSet, domain, source, ipSet, destination] =
-    tokens;
+  const [
+    timestamp,
+    protocol,
+    hostSet,
+    domain,
+    source,
+    ipSet,
+    destination,
+    sourceAlias,
+  ] = tokens;
 
   const result: ParsedLog = {
     timestamp: timestamp.replaceAll(" [INFO]", "").trim().split(".")[0],
@@ -117,6 +126,7 @@ function parseSniLogLine(line: string): ParsedLog | null {
     ipSet,
     destination,
     raw: line,
+    sourceAlias,
   };
 
   parseCache.set(line, result);
