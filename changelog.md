@@ -1,8 +1,12 @@
 # B4 - Bye Bye Big Bro
 
-## [1.24.1] - 2025-12-17
+## [1.25.0] - 2025-12-19
 
 - REMOVED: `--skip-local-traffic` as it did actually nothing causing connection issues and solving real problem.
+- ADDED: DHCP Device names:
+  - **Device Names**: See which device (phone, laptop, TV) is making each connection instead of cryptic IP addresses
+  - **Device Filtering**: Choose which devices on your network should use DPI bypass (whitelist or blacklist mode)
+  - **Custom Names**: Give your devices friendly names in `Settings → Devices`
 
 ## [1.24.0] - 2025-12-17
 
