@@ -308,14 +308,127 @@ func (ipt *IPTablesManager) Apply() error {
 }
 
 func (ipt *IPTablesManager) Clear() error {
-
 	m, err := ipt.buildManifest()
 	if err != nil {
 		return err
 	}
+
+	ipt.clearB4JumpRules()
+
 	m.RemoveRules()
 	time.Sleep(30 * time.Millisecond)
 	m.RemoveChains()
-	//m.RevertSysctls()
 	return nil
+}
+
+func (ipt *IPTablesManager) clearB4JumpRules() {
+	ipts := []string{}
+	if ipt.cfg.Queue.IPv4Enabled && hasBinary("iptables") {
+		ipts = append(ipts, "iptables")
+	}
+	if ipt.cfg.Queue.IPv6Enabled && hasBinary("ip6tables") {
+		ipts = append(ipts, "ip6tables")
+	}
+
+	for _, iptBin := range ipts {
+		// Clean POSTROUTING
+		for {
+			_, err := run(iptBin, "-w", "-t", "mangle", "-D", "POSTROUTING", "-j", "B4")
+			if err != nil {
+				break
+			}
+		}
+
+		// Clean FORWARD
+		for {
+			out, _ := run(iptBin, "-w", "-t", "mangle", "-S", "FORWARD")
+			if !strings.Contains(out, "B4") && !strings.Contains(out, "--mac-source") {
+				break
+			}
+
+			_, err1 := run(iptBin, "-w", "-t", "mangle", "-D", "FORWARD", "-j", "B4")
+
+			lines := strings.Split(out, "\n")
+			removedAny := false
+			for _, line := range lines {
+				if strings.Contains(line, "--mac-source") {
+					parts := strings.Fields(line)
+					for i, p := range parts {
+						if p == "--mac-source" && i+1 < len(parts) {
+							mac := strings.ToUpper(parts[i+1])
+							if _, err := run(iptBin, "-w", "-t", "mangle", "-D", "FORWARD",
+								"-m", "mac", "--mac-source", mac, "-j", "RETURN"); err == nil {
+								removedAny = true
+							}
+							if _, err := run(iptBin, "-w", "-t", "mangle", "-D", "FORWARD",
+								"-m", "mac", "--mac-source", mac, "-j", "B4"); err == nil {
+								removedAny = true
+							}
+							break
+						}
+					}
+				}
+			}
+
+			if err1 != nil && !removedAny {
+				break
+			}
+		}
+
+		// Clean PREROUTING - parse and remove any NFQUEUE rules for DNS
+		for {
+			out, _ := run(iptBin, "-w", "-t", "mangle", "--line-numbers", "-nL", "PREROUTING")
+			lines := strings.Split(out, "\n")
+			removed := false
+			for _, line := range lines {
+				if strings.Contains(line, "spt:53") && strings.Contains(line, "NFQUEUE") {
+					parts := strings.Fields(line)
+					if len(parts) > 0 {
+						lineNum := parts[0]
+						if _, err := run(iptBin, "-w", "-t", "mangle", "-D", "PREROUTING", lineNum); err == nil {
+							removed = true
+							break // Re-parse after deletion since line numbers shift
+						}
+					}
+				}
+			}
+			if !removed {
+				break
+			}
+		}
+
+		// Clean OUTPUT - parse and remove any B4 mark rules
+		for {
+			out, _ := run(iptBin, "-w", "-t", "mangle", "-S", "OUTPUT")
+			if !strings.Contains(out, "ACCEPT") || !strings.Contains(out, "mark") {
+				break
+			}
+
+			removed := false
+			lines := strings.Split(out, "\n")
+			for _, line := range lines {
+				if strings.Contains(line, "-j ACCEPT") && strings.Contains(line, "--mark") {
+					// Extract the mark value
+					parts := strings.Fields(line)
+					for i, p := range parts {
+						if p == "--mark" && i+1 < len(parts) {
+							mark := parts[i+1]
+							_, err := run(iptBin, "-w", "-t", "mangle", "-D", "OUTPUT",
+								"-m", "mark", "--mark", mark, "-j", "ACCEPT")
+							if err == nil {
+								removed = true
+							}
+							break
+						}
+					}
+					if removed {
+						break
+					}
+				}
+			}
+			if !removed {
+				break
+			}
+		}
+	}
 }
