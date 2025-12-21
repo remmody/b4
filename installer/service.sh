@@ -121,16 +121,39 @@ STOP=10
 
 PROG=PROG_PLACEHOLDER
 CONFIG_FILE=CONFIG_PLACEHOLDER
+PIDFILE=/var/run/b4.pid
 
 start() {
     echo "Starting b4..."
+    if [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE") 2>/dev/null; then
+        echo "b4 is already running"
+        return 1
+    fi
+
     kernel_mod_load
-    $PROG --config $CONFIG_FILE &
+
+    nohup $PROG --config $CONFIG_FILE > /var/log/b4.log 2>&1 &
+    echo $! > "$PIDFILE"
+    sleep 1
+    if kill -0 $(cat "$PIDFILE") 2>/dev/null; then
+        echo "b4 started (PID: $(cat "$PIDFILE"))"
+    else
+        echo "Warning: b4 may have failed to start, check /var/log/b4.log"
+        rm -f "$PIDFILE"
+        return 1
+    fi
 }
 
 stop() {
     echo "Stopping b4..."
-    killall b4 2>/dev/null || true
+    if [ -f "$PIDFILE" ]; then
+        kill $(cat "$PIDFILE") 2>/dev/null
+        rm -f "$PIDFILE"
+        echo "b4 stopped"
+    else
+        killall b4 2>/dev/null || true
+        echo "b4 stopped"
+    fi
 }
 
 restart() {
@@ -140,8 +163,20 @@ restart() {
 }
 
 kernel_mod_load() {
-    modprobe xt_connbytes 2>/dev/null || true
-    modprobe xt_NFQUEUE 2>/dev/null || true
+    KERNEL=$(uname -r)
+
+    connbytes_mod_path=$(find /lib/modules/$KERNEL -name "xt_connbytes.ko*" 2>/dev/null | head -1)
+    if [ -n "$connbytes_mod_path" ]; then
+        insmod "$connbytes_mod_path" >/dev/null 2>&1 && echo "xt_connbytes.ko loaded"
+    fi
+
+    nfqueue_mod_path=$(find /lib/modules/$KERNEL -name "xt_NFQUEUE.ko*" 2>/dev/null | head -1)
+    if [ -n "$nfqueue_mod_path" ]; then
+        insmod "$nfqueue_mod_path" >/dev/null 2>&1 && echo "xt_NFQUEUE.ko loaded"
+    fi
+
+    modprobe xt_connbytes >/dev/null 2>&1 || true
+    modprobe xt_NFQUEUE >/dev/null 2>&1 || true
 }
 EOF
 
