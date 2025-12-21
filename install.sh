@@ -759,6 +759,20 @@ restart() {
     start
 }
 
+status() {
+    if [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE") 2>/dev/null; then
+        echo "b4 is running (PID: $(cat "$PIDFILE"))"
+        return 0
+    else
+        if pgrep -x b4 >/dev/null 2>&1; then
+            echo "b4 is running (no pidfile)"
+            return 0
+        fi
+        echo "b4 is not running"
+        return 1
+    fi
+}
+
 kernel_mod_load() {
     KERNEL=$(uname -r)
 
@@ -850,8 +864,20 @@ case "$1" in
         sleep 1
         start
         ;;
+    status)
+        if [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE") 2>/dev/null; then
+            echo "b4 is running (PID: $(cat "$PIDFILE"))"
+            exit 0
+        elif pgrep -x b4 >/dev/null 2>&1; then
+            echo "b4 is running (no pidfile)"
+            exit 0
+        else
+            echo "b4 is not running"
+            exit 1
+        fi
+        ;;
     *)
-        echo "Usage: $0 {start|stop|restart}"
+        echo "Usage: $0 {start|stop|restart|status}"
         exit 1
         ;;
 esac
