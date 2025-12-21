@@ -706,6 +706,42 @@ fi
 
 EOF
 
+        elif [ -f "/etc/openwrt_release" ] && [ -f "/etc/rc.common" ]; then
+            # OpenWRT procd-style init script
+            print_info "Creating OpenWRT init script"
+            cat >"${INIT_FULL_PATH}" <<'EOF'
+#!/bin/sh /etc/rc.common
+# B4 DPI Bypass Service - OpenWRT
+
+START=99
+STOP=10
+
+PROG=PROG_PLACEHOLDER
+CONFIG_FILE=CONFIG_PLACEHOLDER
+
+start() {
+    echo "Starting b4..."
+    kernel_mod_load
+    $PROG --config $CONFIG_FILE &
+}
+
+stop() {
+    echo "Stopping b4..."
+    killall b4 2>/dev/null || true
+}
+
+restart() {
+    stop
+    sleep 1
+    start
+}
+
+kernel_mod_load() {
+    modprobe xt_connbytes 2>/dev/null || true
+    modprobe xt_NFQUEUE 2>/dev/null || true
+}
+EOF
+
         else
             print_info "Creating standard init.d script"
             cat >"${INIT_FULL_PATH}" <<'EOF'
@@ -797,6 +833,12 @@ EOF
         print_info "  ${INIT_FULL_PATH} start"
         print_info "  ${INIT_FULL_PATH} stop"
         print_info "  ${INIT_FULL_PATH} restart"
+
+        # OpenWRT-specific enable hint
+        if [ -f "/etc/openwrt_release" ]; then
+            print_info "  ${INIT_FULL_PATH} enable   # Start on boot"
+            print_info "  ${INIT_FULL_PATH} disable  # Don't start on boot"
+        fi
 
     else
         print_warning "Could not create init script - no writable init directory found"
