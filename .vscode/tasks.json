@@ -26,7 +26,7 @@
       "label": "b4",
       "type": "shell",
       "options": { "cwd": "${workspaceFolder}" },
-      "command": "sudo ./out/linux-amd64/b4 --config ./out/linux-amd64/b4config.json",
+      "command": "$SHELL",
       "isBackground": true,
       "problemMatcher": [],
       "presentation": {
@@ -39,7 +39,7 @@
     {
       "label": "b4:frontend",
       "type": "shell",
-      "command": "pnpm run dev",
+      "command": "$SHELL",
       "options": { "cwd": "${workspaceFolder}/src/http/ui" },
       "isBackground": true,
       "problemMatcher": [],

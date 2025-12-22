@@ -156,10 +156,10 @@ func (n *NFTablesManager) Apply() error {
 			}
 		}
 	} else {
-		if err := n.createChain("forward", "forward", -1, "accept"); err != nil {
+		if err := n.createChain("postrouting", "postrouting", 149, "accept"); err != nil {
 			return err
 		}
-		if err := n.addRuleArgs("forward", "jump", nftChainName); err != nil {
+		if err := n.addRuleArgs("postrouting", "jump", nftChainName); err != nil {
 			return err
 		}
 	}
@@ -193,7 +193,14 @@ func (n *NFTablesManager) Apply() error {
 		return err
 	}
 
-	udpRuleArgs := []string{"meta", "l4proto", "udp", "ct", "original", "packets", "<", udpLimit, "counter"}
+	udpPorts := collectUDPPorts(cfg)
+	var udpPortExpr string
+	if len(udpPorts) == 1 {
+		udpPortExpr = udpPorts[0]
+	} else {
+		udpPortExpr = "{ " + strings.Join(udpPorts, ", ") + " }"
+	}
+	udpRuleArgs := []string{"udp", "dport", udpPortExpr, "ct", "original", "packets", "<", udpLimit, "counter"}
 	udpRuleArgs = append(udpRuleArgs, strings.Fields(n.buildNFQueueAction())...)
 	if err := n.addRuleArgs(nftChainName, udpRuleArgs...); err != nil {
 		return err

@@ -3,6 +3,7 @@ package tables
 import (
 	"bytes"
 	"os/exec"
+	"sort"
 	"strings"
 	"sync"
 
@@ -110,4 +111,31 @@ func loadKernelModules() {
 		_, _ = run("sh", "-c", "modprobe -q nft_queue 2>/dev/null || true")
 		_, _ = run("sh", "-c", "modprobe -q nft_ct 2>/dev/null || true")
 	})
+}
+
+func collectUDPPorts(cfg *config.Config) []string {
+	portSet := make(map[string]bool)
+
+	for _, set := range cfg.Sets {
+		if !set.Enabled || set.UDP.DPortFilter == "" {
+			continue
+		}
+		for _, p := range strings.Split(set.UDP.DPortFilter, ",") {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				portSet[p] = true
+			}
+		}
+	}
+
+	if len(portSet) == 0 {
+		return []string{"443"}
+	}
+
+	ports := make([]string, 0, len(portSet))
+	for p := range portSet {
+		ports = append(ports, p)
+	}
+	sort.Strings(ports)
+	return ports
 }

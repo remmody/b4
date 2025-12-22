@@ -218,10 +218,13 @@ func (manager *IPTablesManager) buildManifest() (Manifest, error) {
 				"--connbytes-mode", "packets", "--connbytes", tcpConnbytesRange},
 			manager.buildNFQSpec(queueNum, threads)...,
 		)
+
+		udpPorts := collectUDPPorts(cfg)
+		udpPortSpec := []string{"-p", "udp", "-m", "multiport", "--dports", strings.Join(udpPorts, ",")}
 		udpSpec := append(
-			[]string{"-p", "udp",
+			append(udpPortSpec,
 				"-m", "connbytes", "--connbytes-dir", "original",
-				"--connbytes-mode", "packets", "--connbytes", udpConnbytesRange},
+				"--connbytes-mode", "packets", "--connbytes", udpConnbytesRange),
 			manager.buildNFQSpec(queueNum, threads)...,
 		)
 

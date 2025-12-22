@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -20,7 +21,7 @@ type Monitor struct {
 func NewMonitor(cfg *config.Config) *Monitor {
 	interval := time.Duration(cfg.System.Tables.MonitorInterval) * time.Second
 	if interval < time.Second {
-		interval = 10 * time.Second // Default fallback
+		interval = 10 * time.Second
 	}
 
 	return &Monitor{
@@ -121,8 +122,12 @@ func (m *Monitor) checkIPTablesRules() bool {
 			return false
 		}
 
+		markHex := fmt.Sprintf("0x%x", m.cfg.Queue.Mark)
+		if m.cfg.Queue.Mark == 0 {
+			markHex = "0x8000"
+		}
 		out, _ = run(ipt, "-w", "-t", "mangle", "-S", "OUTPUT")
-		if !strings.Contains(out, "0x8000") {
+		if !strings.Contains(out, markHex) {
 			log.Tracef("Monitor: OUTPUT mark accept rule missing")
 			return false
 		}
@@ -149,9 +154,19 @@ func (m *Monitor) checkNFTablesRules() bool {
 			log.Tracef("Monitor: forward chain missing")
 			return false
 		}
+		out, _ := nft.runNft("list", "chain", "inet", nftTableName, "forward")
+		if !strings.Contains(out, nftChainName) {
+			log.Tracef("Monitor: forward->b4_chain jump missing")
+			return false
+		}
 	} else {
 		if !nft.chainExists("postrouting") {
 			log.Tracef("Monitor: postrouting chain missing")
+			return false
+		}
+		out, _ := nft.runNft("list", "chain", "inet", nftTableName, "postrouting")
+		if !strings.Contains(out, nftChainName) {
+			log.Tracef("Monitor: postrouting->b4_chain jump missing")
 			return false
 		}
 	}
@@ -160,9 +175,19 @@ func (m *Monitor) checkNFTablesRules() bool {
 		log.Tracef("Monitor: prerouting chain missing")
 		return false
 	}
+	out, _ := nft.runNft("list", "chain", "inet", nftTableName, "prerouting")
+	if !strings.Contains(out, "sport 53") {
+		log.Tracef("Monitor: prerouting DNS response rule missing")
+		return false
+	}
 
 	if !nft.chainExists("output") {
 		log.Tracef("Monitor: output chain missing")
+		return false
+	}
+	out, _ = nft.runNft("list", "chain", "inet", nftTableName, "output")
+	if !strings.Contains(out, "accept") {
+		log.Tracef("Monitor: output mark accept rule missing")
 		return false
 	}
 
