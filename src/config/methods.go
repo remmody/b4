@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -149,6 +150,8 @@ func (c *Config) Validate() error {
 			set.UDP.DPortFilter = utils.ValidatePorts(set.UDP.DPortFilter)
 		}
 	}
+
+	c.LoadCapturePayloads()
 
 	return nil
 }
@@ -375,4 +378,24 @@ func (c *Config) Clone() *Config {
 
 	clone.Validate()
 	return &clone
+}
+
+func (c *Config) LoadCapturePayloads() {
+	if c.ConfigPath == "" {
+		return
+	}
+	capturesDir := filepath.Join(filepath.Dir(c.ConfigPath), "captures")
+
+	for _, set := range c.Sets {
+		if set.Faking.SNIType == FakePayloadCapture && set.Faking.PayloadFile != "" {
+			capturePath := filepath.Join(capturesDir, set.Faking.PayloadFile)
+			data, err := os.ReadFile(capturePath)
+			if err != nil {
+				log.Errorf("Failed to load capture file %s: %v", set.Faking.PayloadFile, err)
+				continue
+			}
+			set.Faking.PayloadData = data
+			log.Tracef("Loaded capture payload %s (%d bytes)", set.Faking.PayloadFile, len(data))
+		}
+	}
 }

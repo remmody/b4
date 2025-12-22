@@ -7,6 +7,7 @@ const (
 	FakePayloadCustom
 	FakePayloadDefault1
 	FakePayloadDefault2
+	FakePayloadCapture
 )
 
 type ApiConfig struct {
@@ -83,6 +84,8 @@ type FakingConfig struct {
 	SNISeqLength  int    `json:"sni_seq_length" bson:"sni_seq_length"`
 	SNIType       int    `json:"sni_type" bson:"sni_type"`
 	CustomPayload string `json:"custom_payload" bson:"custom_payload"`
+	PayloadFile   string `json:"payload_file" bson:"payload_file"`
+	PayloadData   []byte `json:"-" bson:"-"`
 
 	SNIMutation SNIMutationConfig `json:"sni_mutation" bson:"sni_mutation"`
 }

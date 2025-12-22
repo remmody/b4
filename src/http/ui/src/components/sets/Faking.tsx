@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Grid, Box } from "@mui/material";
+import { useEffect, useState } from "react";
+import { Grid, Box, Stack } from "@mui/material";
 import { SecurityIcon } from "@b4.icons";
+import { Link } from "react-router-dom";
 import {
   B4Section,
   B4Switch,
@@ -10,7 +11,9 @@ import {
   B4FormHeader,
   B4ChipList,
   B4PlusButton,
+  B4Alert,
 } from "@b4.elements";
+import { useCaptures } from "@b4.capture";
 
 import { B4SetConfig, FakingPayloadType, MutationMode } from "@models/config";
 
@@ -32,9 +35,10 @@ const FAKE_STRATEGIES = [
 
 const FAKE_PAYLOAD_TYPES = [
   { value: 0, label: "Random" },
-  { value: 1, label: "Custom" },
+  // { value: 1, label: "Custom" },
   { value: 2, label: "Preset: Google (classic)" },
   { value: 3, label: "Preset: DuckDuckGo" },
+  { value: 4, label: "My own Payload File" },
 ];
 
 const MUTATION_MODES: { value: MutationMode; label: string }[] = [
@@ -59,6 +63,11 @@ const mutationModeDescriptions: Record<MutationMode, string> = {
 
 export const FakingSettings = ({ config, onChange }: FakingSettingsProps) => {
   const [newFakeSni, setNewFakeSni] = useState("");
+  const { captures, loadCaptures } = useCaptures();
+
+  useEffect(() => {
+    void loadCaptures();
+  }, [loadCaptures]);
 
   const mutation = config.faking.sni_mutation || {
     mode: "off" as MutationMode,
@@ -124,17 +133,75 @@ export const FakingSettings = ({ config, onChange }: FakingSettingsProps) => {
             />
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
-            <B4Select
-              label="Fake Payload Type"
-              value={config.faking.sni_type}
-              options={FAKE_PAYLOAD_TYPES}
-              onChange={(e) =>
-                onChange("faking.sni_type", Number(e.target.value))
-              }
-              helperText="Content of fake packets"
-              disabled={!config.faking.sni}
-            />
+            <Stack>
+              <B4Select
+                label="Fake Payload Type"
+                value={config.faking.sni_type}
+                options={FAKE_PAYLOAD_TYPES}
+                onChange={(e) =>
+                  onChange("faking.sni_type", Number(e.target.value))
+                }
+                helperText="Content of fake packets"
+                disabled={!config.faking.sni}
+              />
+
+              {config.faking.sni_type === FakingPayloadType.CUSTOM && (
+                <Box sx={{ mt: 2 }}>
+                  <B4TextField
+                    label="Custom Payload (Hex)"
+                    value={config.faking.custom_payload}
+                    onChange={(e) =>
+                      onChange("faking.custom_payload", e.target.value)
+                    }
+                    helperText="Hex-encoded payload for fake packets (use Capture feature to get real payloads)"
+                    disabled={!config.faking.sni}
+                    multiline
+                    rows={2}
+                  />
+                </Box>
+              )}
+            </Stack>
           </Grid>
+          {config.faking.sni_type === FakingPayloadType.CAPTURE && (
+            <Grid container size={{ xs: 12 }}>
+              {captures.length > 0 && (
+                <Grid size={{ xs: 6 }}>
+                  <B4Select
+                    label="Captured Payload"
+                    value={config.faking.payload_file}
+                    options={[
+                      { value: "", label: "Select a capture..." },
+                      ...captures.map((c) => ({
+                        value: c.filepath,
+                        label: `${c.domain} (${c.size} bytes)`,
+                      })),
+                    ]}
+                    onChange={(e) =>
+                      onChange("faking.payload_file", e.target.value as string)
+                    }
+                    helperText={
+                      captures.length === 0
+                        ? "No TLS captures available. Use Capture feature first."
+                        : "Select a previously captured/uploaded TLS ClientHello"
+                    }
+                    disabled={!config.faking.sni || captures.length === 0}
+                  />
+                </Grid>
+              )}
+              <Grid size={{ xs: captures.length > 0 ? 6 : 12 }}>
+                <B4Alert>
+                  {captures.length === 0 &&
+                    "No TLS captures available. You can use the Capture feature to record ClientHello payloads or  upload your own capture files."}
+
+                  <Link to="/settings/capture">
+                    {" "}
+                    Navigate to the Settings section to capture or upload your
+                    own TLS ClientHello payloads.
+                  </Link>
+                </B4Alert>
+              </Grid>
+            </Grid>
+          )}
           <Grid size={{ xs: 12, md: 4 }}>
             <B4Slider
               label="Fake TTL"
@@ -173,21 +240,6 @@ export const FakingSettings = ({ config, onChange }: FakingSettingsProps) => {
               disabled={!config.faking.sni}
             />
           </Grid>
-          {config.faking.sni_type === FakingPayloadType.CUSTOM && (
-            <Grid size={{ xs: 12 }}>
-              <B4TextField
-                label="Custom Payload (Hex)"
-                value={config.faking.custom_payload}
-                onChange={(e) =>
-                  onChange("faking.custom_payload", e.target.value)
-                }
-                helperText="Hex-encoded payload for fake packets (use Capture feature to get real payloads)"
-                disabled={!config.faking.sni}
-                multiline
-                rows={2}
-              />
-            </Grid>
-          )}
         </Grid>
       </B4Section>
 

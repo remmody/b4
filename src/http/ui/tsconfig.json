@@ -32,7 +32,8 @@
       "@b4.fields": ["./src/barrels/fields.ts"],
       "@b4.elements": ["./src/barrels/elements.ts"],
       "@b4.icons": ["./src/barrels/icons.ts"],
-      "@b4.devices": ["./src/barrels/devices.ts"]
+      "@b4.devices": ["./src/barrels/devices.ts"],
+      "@b4.capture": ["./src/barrels/capture.ts"]
     }
   },
   "include": ["src"]

@@ -9,6 +9,8 @@ export enum FakingPayloadType {
   RANDOM = 0,
   CUSTOM = 1,
   DEFAULT = 2,
+  DEFAULT2 = 3,
+  CAPTURE = 4,
 }
 
 export type MutationMode =
@@ -36,6 +38,7 @@ export interface FakingConfig {
   sni_type: FakingPayloadType;
   custom_payload: string;
   sni_mutation: SNIMutationConfig;
+  payload_file: string;
 }
 export type FragmentationStrategy =
   | "tcp"

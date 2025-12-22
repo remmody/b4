@@ -26,6 +26,8 @@ func BuildFakeSNIPacketV4(original []byte, cfg *config.SetConfig) []byte {
 		fakePayload = FakeSNI1
 	case config.FakePayloadDefault2:
 		fakePayload = FakeSNI2
+	case config.FakePayloadCapture:
+		fakePayload = cfg.Faking.PayloadData
 	default:
 		fakePayload = FakeSNI1
 	}
