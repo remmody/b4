@@ -1,5 +1,11 @@
 # B4 - Bye Bye Big Bro
 
+## [1.26.0] - 2025-12-22
+
+- CHANGED: UDP traffic now only listens on port `443` (QUIC) by default instead of all UDP ports, reducing unnecessary packet processing.
+- ADDED: Custom UDP port filtering - configure specific ports per set using the UDP port filter option, and B4 will automatically listen only on those ports.
+- ADDED: Live firewall rule updates - changing UDP ports, connection limits, or other core settings in the web UI now takes effect immediately without restarting the service.
+
 ## [1.25.4] - 2025-12-21
 
 - FIXED: installer failing to download on `OpenWRT` devices - improved compatibility with minimal `BusyBox` environments.
