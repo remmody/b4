@@ -54,16 +54,16 @@ export function useDiscovery() {
   }, [suiteId, discoveryRunning]);
 
   const startDiscovery = useCallback(
-    async (domain: string): Promise<ApiResponse<void>> => {
+    async (url: string): Promise<ApiResponse<void>> => {
       setError(null);
       setSuite(null);
       setDiscoveryRunning(true);
       try {
-        domain = domain
-          .trim()
-          .replace(/^https?:\/\//, "")
-          .replace(/\/.*$/, "");
-        const res = await discoveryApi.start(domain);
+        url = url.trim();
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+          url = `https://${url}`;
+        }
+        const res = await discoveryApi.start(url);
         setSuiteId(res.id); // assuming start returns { id: string }
         return { success: true };
       } catch (e) {

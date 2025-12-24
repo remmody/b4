@@ -99,4 +99,6 @@ export interface DiscoveryResponse {
   id: string;
   estimated_tests: number;
   message: string;
+  domain: string;
+  check_url: string;
 }

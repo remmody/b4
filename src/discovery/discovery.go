@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -42,7 +43,6 @@ type DiscoverySuite struct {
 
 	pool         *nfq.Pool
 	cfg          *config.Config
-	domain       string
 	domainResult *DomainDiscoveryResult
 
 	// Detected working payload(s)
@@ -51,18 +51,31 @@ type DiscoverySuite struct {
 	baselineFailed  bool
 }
 
-func NewDiscoverySuite(checkURL string, pool *nfq.Pool, domain string) *DiscoverySuite {
+func NewDiscoverySuite(input string, pool *nfq.Pool) *DiscoverySuite {
+
 	return &DiscoverySuite{
-		CheckSuite: NewCheckSuite(checkURL),
+		CheckSuite: NewCheckSuite(input),
 		pool:       pool,
-		domain:     domain,
 		domainResult: &DomainDiscoveryResult{
-			Domain:  domain,
 			Results: make(map[string]*DomainPresetResult),
 		},
 		workingPayloads: []PayloadTestResult{},
 		bestPayload:     config.FakePayloadDefault1, // default
 	}
+}
+
+func parseDiscoveryInput(input string) (domain string, testURL string) {
+	input = strings.TrimSpace(input)
+
+	if strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://") {
+		u, err := url.Parse(input)
+		if err == nil && u.Host != "" {
+			return u.Host, input
+		}
+	}
+
+	// Plain domain - construct default URL
+	return input, "https://" + input + "/"
 }
 
 func (ds *DiscoverySuite) RunDiscovery() {
@@ -93,7 +106,7 @@ func (ds *DiscoverySuite) RunDiscovery() {
 	// Measure network baseline before any testing
 	ds.networkBaseline = ds.measureNetworkBaseline()
 
-	log.Infof("Starting discovery for domain: %s", ds.domain)
+	log.Infof("Starting discovery for domain: %s", ds.Domain)
 
 	ds.setPhase(PhaseFingerprint)
 	fingerprint := ds.runFingerprinting()
@@ -113,14 +126,14 @@ func (ds *DiscoverySuite) RunDiscovery() {
 	}
 
 	if fingerprint != nil && fingerprint.Type == DPITypeNone {
-		log.Infof("Fingerprint suggests no DPI for %s - verifying with download test", ds.domain)
+		log.Infof("Fingerprint suggests no DPI for %s - verifying with download test", ds.Domain)
 
 		baselinePreset := GetPhase1Presets()[0] // no-bypass preset
 		baselineResult := ds.testPreset(baselinePreset)
 		ds.storeResult(baselinePreset, baselineResult)
 
 		if baselineResult.Status == CheckStatusComplete {
-			log.Infof("Verified: no DPI detected for %s (%.2f KB/s)", ds.domain, baselineResult.Speed/1024)
+			log.Infof("Verified: no DPI detected for %s (%.2f KB/s)", ds.Domain, baselineResult.Speed/1024)
 			ds.domainResult.BestPreset = "no-bypass"
 			ds.domainResult.BestSpeed = baselineResult.Speed
 			ds.domainResult.BestSuccess = true
@@ -156,7 +169,7 @@ func (ds *DiscoverySuite) RunDiscovery() {
 	ds.determineBest(baselineSpeed)
 
 	if baselineWorks {
-		log.Infof("Baseline succeeded for %s - no DPI bypass needed, skipping optimization", ds.domain)
+		log.Infof("Baseline succeeded for %s - no DPI bypass needed, skipping optimization", ds.Domain)
 
 		ds.CheckSuite.mu.Lock()
 		ds.TotalChecks = 1
@@ -181,7 +194,7 @@ func (ds *DiscoverySuite) RunDiscovery() {
 		workingFamilies = ds.runExtendedSearch()
 
 		if len(workingFamilies) == 0 {
-			log.Warnf("No working bypass strategies found for %s", ds.domain)
+			log.Warnf("No working bypass strategies found for %s", ds.Domain)
 			ds.restoreConfig()
 			ds.finalize()
 			ds.logDiscoverySummary()
@@ -209,9 +222,9 @@ func (ds *DiscoverySuite) RunDiscovery() {
 }
 
 func (ds *DiscoverySuite) runFingerprinting() *DPIFingerprint {
-	log.Infof("Phase 0: DPI Fingerprinting for %s", ds.domain)
+	log.Infof("Phase 0: DPI Fingerprinting for %s", ds.Domain)
 
-	prober := NewDPIProber(ds.domain, ds.cfg.System.Checker.ReferenceDomain, time.Duration(ds.cfg.System.Checker.DiscoveryTimeoutSec)*time.Second)
+	prober := NewDPIProber(ds.Domain, ds.cfg.System.Checker.ReferenceDomain, time.Duration(ds.cfg.System.Checker.DiscoveryTimeoutSec)*time.Second)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -740,7 +753,7 @@ func (ds *DiscoverySuite) testPresetInternal(preset ConfigPreset) CheckResult {
 	if err := ds.pool.UpdateConfig(testConfig); err != nil {
 		log.Errorf("Failed to apply preset %s: %v", preset.Name, err)
 		return CheckResult{
-			Domain: ds.domain,
+			Domain: ds.Domain,
 			Status: CheckStatusFailed,
 			Error:  err.Error(),
 		}
@@ -766,12 +779,11 @@ func (ds *DiscoverySuite) testPreset(preset ConfigPreset) CheckResult {
 
 func (ds *DiscoverySuite) fetchWithTimeout(timeout time.Duration) CheckResult {
 	result := CheckResult{
-		Domain:    ds.domain,
+		Domain:    ds.Domain,
 		Status:    CheckStatusRunning,
 		Timestamp: time.Now(),
 	}
 
-	testURL := fmt.Sprintf("https://%s/", ds.domain)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -788,7 +800,7 @@ func (ds *DiscoverySuite) fetchWithTimeout(timeout time.Duration) CheckResult {
 		},
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", testURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", ds.CheckURL, nil)
 	if err != nil {
 		result.Status = CheckStatusFailed
 		result.Error = err.Error()
@@ -930,7 +942,7 @@ func (ds *DiscoverySuite) storeResult(preset ConfigPreset, result CheckResult) {
 		}
 	}
 
-	ds.DomainDiscoveryResults = map[string]*DomainDiscoveryResult{ds.domain: ds.domainResult}
+	ds.DomainDiscoveryResults = map[string]*DomainDiscoveryResult{ds.Domain: ds.domainResult}
 }
 
 func (ds *DiscoverySuite) determineBest(baselineSpeed float64) {
@@ -988,8 +1000,8 @@ func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset) *config.Config {
 		mainSet.Enabled = false
 	} else {
 		mainSet.Enabled = true
-		mainSet.Targets.SNIDomains = []string{ds.domain}
-		mainSet.Targets.DomainsToMatch = []string{ds.domain}
+		mainSet.Targets.SNIDomains = []string{ds.Domain}
+		mainSet.Targets.DomainsToMatch = []string{ds.Domain}
 	}
 
 	return &config.Config{
@@ -1015,7 +1027,7 @@ func (ds *DiscoverySuite) setPhase(phase DiscoveryPhase) {
 
 func (ds *DiscoverySuite) finalize() {
 	ds.CheckSuite.mu.Lock()
-	ds.DomainDiscoveryResults = map[string]*DomainDiscoveryResult{ds.domain: ds.domainResult}
+	ds.DomainDiscoveryResults = map[string]*DomainDiscoveryResult{ds.Domain: ds.domainResult}
 	ds.Status = CheckStatusComplete
 	ds.CheckSuite.mu.Unlock()
 
@@ -1038,7 +1050,7 @@ func (ds *DiscoverySuite) logDiscoverySummary() {
 	ds.CheckSuite.mu.RLock()
 	defer ds.CheckSuite.mu.RUnlock()
 
-	log.Infof("\n=== Discovery Results for %s ===", ds.domain)
+	log.Infof("\n=== Discovery Results for %s ===", ds.Domain)
 
 	// Log payload detection results
 	for _, pr := range ds.workingPayloads {

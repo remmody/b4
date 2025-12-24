@@ -86,25 +86,26 @@ func (api *API) handleStartDiscovery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Domain == "" {
-		http.Error(w, "Domain is required", http.StatusBadRequest)
+	if req.CheckURL == "" {
+		http.Error(w, "Check URL is required", http.StatusBadRequest)
 		return
 	}
 
-	suite := discovery.NewDiscoverySuite(req.CheckURL, globalPool, req.Domain)
+	suite := discovery.NewDiscoverySuite(req.CheckURL, globalPool)
 
 	phase1Count := len(discovery.GetPhase1Presets())
 
 	go func() {
 		suite.RunDiscovery()
-		log.Infof("Discovery complete for %s", req.Domain)
+		log.Infof("Discovery complete for %s", suite.Domain)
 	}()
 
 	response := DiscoveryResponse{
 		Id:             suite.Id,
-		Domain:         req.Domain,
+		Domain:         suite.Domain,
+		CheckURL:       suite.CheckURL,
 		EstimatedTests: phase1Count + 15, // rough estimate
-		Message:        fmt.Sprintf("Discovery started for %s", req.Domain),
+		Message:        fmt.Sprintf("Discovery started for %s", suite.Domain),
 	}
 
 	setJsonHeader(w)

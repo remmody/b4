@@ -19,10 +19,10 @@ type DNSProber struct {
 }
 
 func (ds *DiscoverySuite) runDNSDiscovery() *DNSDiscoveryResult {
-	log.Infof("Phase DNS: Checking DNS poisoning for %s", ds.domain)
+	log.Infof("Phase DNS: Checking DNS poisoning for %s", ds.Domain)
 
 	prober := NewDNSProber(
-		ds.domain,
+		ds.Domain,
 		time.Duration(ds.cfg.System.Checker.DiscoveryTimeoutSec)*time.Second,
 		ds.pool,
 		ds.cfg,

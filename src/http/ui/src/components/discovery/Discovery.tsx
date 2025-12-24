@@ -92,7 +92,7 @@ export const DiscoveryRunner = () => {
     new Set()
   );
 
-  const [domain, setDomain] = useState("");
+  const [checkUrl, setCheckUrl] = useState("");
   const [addingPreset, setAddingPreset] = useState(false);
   const [addDialog, setAddDialog] = useState<{
     open: boolean;
@@ -130,11 +130,11 @@ export const DiscoveryRunner = () => {
   const handleDomainKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key !== "Enter") return;
-      if (!domain.trim()) return;
+      if (!checkUrl.trim()) return;
       e.preventDefault();
-      void startDiscovery(domain);
+      void startDiscovery(checkUrl);
     },
-    [domain, startDiscovery]
+    [checkUrl, startDiscovery]
   );
 
   const handleAddNew = async (name: string, domain: string) => {
@@ -354,23 +354,23 @@ export const DiscoveryRunner = () => {
         {/* Header with actions */}
         <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
           <B4TextField
-            label="Domain to test"
-            value={domain}
-            onChange={(e) => setDomain(e.target.value)}
+            label="Domain or URL to test"
+            value={checkUrl}
+            onChange={(e) => setCheckUrl(e.target.value)}
             onKeyDown={handleDomainKeyDown}
             inputRef={domainInputRef}
-            placeholder="youtube.com"
+            placeholder="youtube.com or https://youtube.com/some/path"
             disabled={running || !!isReconnecting}
-            helperText="Enter a domain to discover optimal bypass configuration"
+            helperText="Enter a domain or full URL to discover optimal bypass configuration"
           />
           {!running && !suite && (
             <Button
               startIcon={<StartIcon />}
               variant="contained"
               onClick={() => {
-                void startDiscovery(domain);
+                void startDiscovery(checkUrl);
               }}
-              disabled={!domain.trim()}
+              disabled={!checkUrl.trim()}
               sx={{
                 whiteSpace: "nowrap",
               }}

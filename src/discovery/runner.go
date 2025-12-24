@@ -13,12 +13,15 @@ var (
 )
 
 func NewCheckSuite(url string) *CheckSuite {
+	domain, checkURL := parseDiscoveryInput(url)
+
 	return &CheckSuite{
 		Id:        uuid.New().String(),
 		Status:    CheckStatusPending,
 		StartTime: time.Now(),
 		cancel:    make(chan struct{}),
-		CheckURL:  url,
+		CheckURL:  checkURL,
+		Domain:    domain,
 	}
 }
 

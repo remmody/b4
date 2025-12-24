@@ -74,6 +74,7 @@ type CheckSuite struct {
 	FailedChecks           int                               `json:"failed_checks"`
 	DomainDiscoveryResults map[string]*DomainDiscoveryResult `json:"domain_discovery_results,omitempty"`
 	CheckURL               string                            `json:"check_url"`
+	Domain                 string                            `json:"domain"`
 	CurrentPhase           DiscoveryPhase                    `json:"current_phase,omitempty"`
 	mu                     sync.RWMutex                      `json:"-"`
 	cancel                 chan struct{}                     `json:"-"`
@@ -95,6 +96,7 @@ type DomainPresetResult struct {
 
 type DomainDiscoveryResult struct {
 	Domain        string                         `json:"domain"`
+	Url           string                         `json:"url"`
 	BestPreset    string                         `json:"best_preset"`
 	BestSpeed     float64                        `json:"best_speed"`
 	BestSuccess   bool                           `json:"best_success"`
