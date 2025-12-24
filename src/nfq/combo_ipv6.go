@@ -9,7 +9,6 @@ import (
 	"github.com/daniellavrushin/b4/utils"
 )
 
-// sendComboFragmentsV6 - IPv6 version: combines multiple evasion techniques
 func (w *Worker) sendComboFragmentsV6(cfg *config.SetConfig, packet []byte, dst net.IP) {
 	pi, ok := ExtractPacketInfoV6(packet)
 	if !ok || pi.PayloadLen < 20 {
@@ -30,23 +29,15 @@ func (w *Worker) sendComboFragmentsV6(cfg *config.SetConfig, packet []byte, dst 
 
 	segments := make([]Segment, 0, len(splits)+1)
 	prevEnd := 0
-	segIdx := 0
 
-	for _, splitPos := range splits {
+	for idx, splitPos := range splits {
 		if splitPos <= prevEnd {
 			continue
 		}
-		realPayload := pi.Payload[prevEnd:splitPos]
-
-		if segIdx == 0 && seqovlLen > 0 {
-			seg := BuildSegmentWithOverlapV6(packet, pi, realPayload, uint32(prevEnd), seqovlPattern)
-			segments = append(segments, Segment{Data: seg, Seq: pi.Seq0 - uint32(seqovlLen)})
-		} else {
-			seg := BuildSegmentV6(packet, pi, realPayload, uint32(prevEnd))
-			segments = append(segments, Segment{Data: seg, Seq: pi.Seq0 + uint32(prevEnd)})
-		}
+		seg := BuildSegmentV6(packet, pi, pi.Payload[prevEnd:splitPos], uint32(prevEnd))
+		segments = append(segments, Segment{Data: seg, Seq: pi.Seq0 + uint32(prevEnd)})
 		prevEnd = splitPos
-		segIdx++
+		_ = idx
 	}
 
 	if prevEnd < pi.PayloadLen {
@@ -61,7 +52,6 @@ func (w *Worker) sendComboFragmentsV6(cfg *config.SetConfig, packet []byte, dst 
 
 	r := utils.NewRand()
 	ShuffleSegments(segments, combo.ShuffleMode, r)
-
 	SetMaxSeqPSH(segments, pi.IPHdrLen, sock.FixTCPChecksumV6)
 
 	firstDelayMs := combo.FirstDelayMs
@@ -74,6 +64,18 @@ func (w *Worker) sendComboFragmentsV6(cfg *config.SetConfig, packet []byte, dst 
 	}
 
 	for i, seg := range segments {
+		if i == 0 && seqovlLen > 0 {
+			payloadLen := len(seg.Data) - pi.PayloadStart
+			if seqovlLen <= payloadLen {
+				seqOffset := seg.Seq - pi.Seq0
+				fakeSeg := BuildFakeOverlapSegmentV6(packet, pi, payloadLen, seqOffset, seqovlPattern, cfg.Faking.TTL, true)
+				if fakeSeg != nil {
+					_ = w.sock.SendIPv6(fakeSeg, dst)
+					time.Sleep(50 * time.Microsecond)
+				}
+			}
+		}
+
 		_ = w.sock.SendIPv6(seg.Data, dst)
 
 		if i == 0 {

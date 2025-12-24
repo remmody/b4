@@ -33,21 +33,12 @@ func (w *Worker) sendDisorderFragmentsV6(cfg *config.SetConfig, packet []byte, d
 		start, end := validSplits[i], validSplits[i+1]
 		realPayload := pi.Payload[start:end]
 
-		if i == 1 && seqovlLen > 0 && seqovlLen < start {
-			seg := BuildSegmentWithOverlapV6(packet, pi, realPayload, uint32(start), seqovlPattern)
-			if i < len(validSplits)-2 {
-				ClearPSH(seg, pi.IPHdrLen)
-				sock.FixTCPChecksumV6(seg)
-			}
-			segments = append(segments, Segment{Data: seg, Seq: pi.Seq0 + uint32(start) - uint32(seqovlLen)})
-		} else {
-			seg := BuildSegmentV6(packet, pi, realPayload, uint32(start))
-			if i < len(validSplits)-2 {
-				ClearPSH(seg, pi.IPHdrLen)
-				sock.FixTCPChecksumV6(seg)
-			}
-			segments = append(segments, Segment{Data: seg, Seq: pi.Seq0 + uint32(start)})
+		seg := BuildSegmentV6(packet, pi, realPayload, uint32(start))
+		if i < len(validSplits)-2 {
+			ClearPSH(seg, pi.IPHdrLen)
+			sock.FixTCPChecksumV6(seg)
 		}
+		segments = append(segments, Segment{Data: seg, Seq: pi.Seq0 + uint32(start)})
 	}
 
 	r := utils.NewRand()
@@ -57,6 +48,18 @@ func (w *Worker) sendDisorderFragmentsV6(cfg *config.SetConfig, packet []byte, d
 
 	seg2d := cfg.TCP.Seg2Delay
 	for i, seg := range segments {
+		if i == 0 && seqovlLen > 0 {
+			payloadLen := len(seg.Data) - pi.PayloadStart
+			if seqovlLen <= payloadLen {
+				seqOffset := seg.Seq - pi.Seq0
+				fakeSeg := BuildFakeOverlapSegmentV6(packet, pi, payloadLen, seqOffset, seqovlPattern, cfg.Faking.TTL, true)
+				if fakeSeg != nil {
+					_ = w.sock.SendIPv6(fakeSeg, dst)
+					time.Sleep(50 * time.Microsecond)
+				}
+			}
+		}
+
 		_ = w.sock.SendIPv6(seg.Data, dst)
 		if i < len(segments)-1 {
 			if seg2d > 0 {

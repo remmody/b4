@@ -325,21 +325,121 @@ func BuildValidSplits(splits []int, payloadLen int) []int {
 
 func BuildSegmentWithOverlapV4(packet []byte, pi PacketInfo, payloadSlice []byte, seqOffset uint32, idOffset uint16, overlapPattern []byte) []byte {
 	overlapLen := len(overlapPattern)
-	totalPayload := make([]byte, overlapLen+len(payloadSlice))
-	copy(totalPayload[:overlapLen], overlapPattern)
-	copy(totalPayload[overlapLen:], payloadSlice)
+	if overlapLen == 0 || overlapLen > len(payloadSlice) {
+		return BuildSegmentV4(packet, pi, payloadSlice, seqOffset, idOffset)
+	}
 
-	segLen := pi.PayloadStart + len(totalPayload)
+	segLen := pi.PayloadStart + len(payloadSlice)
 	seg := make([]byte, segLen)
 	copy(seg[:pi.PayloadStart], packet[:pi.PayloadStart])
-	copy(seg[pi.PayloadStart:], totalPayload)
 
-	newSeq := pi.Seq0 + seqOffset - uint32(overlapLen)
-	binary.BigEndian.PutUint32(seg[pi.IPHdrLen+4:pi.IPHdrLen+8], newSeq)
+	copy(seg[pi.PayloadStart:pi.PayloadStart+overlapLen], overlapPattern)
+	copy(seg[pi.PayloadStart+overlapLen:], payloadSlice[overlapLen:])
+
+	binary.BigEndian.PutUint32(seg[pi.IPHdrLen+4:pi.IPHdrLen+8], pi.Seq0+seqOffset)
 	binary.BigEndian.PutUint16(seg[4:6], pi.ID0+idOffset)
 	binary.BigEndian.PutUint16(seg[2:4], uint16(segLen))
 
 	sock.FixIPv4Checksum(seg[:pi.IPHdrLen])
 	sock.FixTCPChecksum(seg)
 	return seg
+}
+
+func BuildFakeOverlapSegmentV4(packet []byte, pi PacketInfo, payloadLen int, seqOffset uint32, idOffset uint16, fakePattern []byte, fakeTTL uint8, corruptChecksum bool) []byte {
+	if payloadLen <= 0 {
+		return nil
+	}
+
+	segLen := pi.PayloadStart + payloadLen
+	seg := make([]byte, segLen)
+	copy(seg[:pi.PayloadStart], packet[:pi.PayloadStart])
+
+	patLen := len(fakePattern)
+	if patLen == 0 {
+		for i := 0; i < payloadLen; i++ {
+			seg[pi.PayloadStart+i] = byte((i * 7) & 0xFF)
+		}
+	} else {
+		for i := 0; i < payloadLen; i++ {
+			seg[pi.PayloadStart+i] = fakePattern[i%patLen]
+		}
+	}
+
+	binary.BigEndian.PutUint32(seg[pi.IPHdrLen+4:pi.IPHdrLen+8], pi.Seq0+seqOffset)
+	binary.BigEndian.PutUint16(seg[4:6], pi.ID0+idOffset)
+	binary.BigEndian.PutUint16(seg[2:4], uint16(segLen))
+
+	if fakeTTL == 0 {
+		fakeTTL = 3
+	}
+	seg[8] = fakeTTL
+
+	seg[pi.IPHdrLen+13] &^= 0x08
+
+	sock.FixIPv4Checksum(seg[:pi.IPHdrLen])
+	sock.FixTCPChecksum(seg)
+
+	if corruptChecksum {
+		seg[pi.IPHdrLen+16] ^= 0xFF
+		seg[pi.IPHdrLen+17] ^= 0xFF
+	}
+
+	return seg
+}
+
+func (w *Worker) SendFakeThenRealV4(packet []byte, pi PacketInfo, realPayload []byte, seqOffset uint32, dst net.IP, cfg *config.SetConfig) {
+	overlapPattern := cfg.Fragmentation.SeqOverlapBytes
+	overlapLen := len(overlapPattern)
+	if overlapLen == 0 || overlapLen > len(realPayload) {
+		seg := BuildSegmentV4(packet, pi, realPayload, seqOffset, 0)
+		_ = w.sock.SendIPv4(seg, dst)
+		return
+	}
+
+	fakeSeg := BuildFakeOverlapSegmentV4(packet, pi, overlapLen, seqOffset, 0, overlapPattern, cfg.Faking.TTL, true)
+	if fakeSeg != nil {
+		_ = w.sock.SendIPv4(fakeSeg, dst)
+	}
+
+	if cfg.TCP.Seg2Delay > 0 {
+		time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
+	} else {
+		time.Sleep(100 * time.Microsecond)
+	}
+
+	realSeg := BuildSegmentV4(packet, pi, realPayload, seqOffset, 1)
+	_ = w.sock.SendIPv4(realSeg, dst)
+}
+
+func (w *Worker) SendOverlapSequenceV4(packet []byte, pi PacketInfo, segments []Segment, overlapFirstN int, dst net.IP, cfg *config.SetConfig) {
+	overlapPattern := cfg.Fragmentation.SeqOverlapBytes
+	if len(overlapPattern) == 0 || overlapFirstN <= 0 {
+		for _, seg := range segments {
+			_ = w.sock.SendIPv4(seg.Data, dst)
+			if cfg.TCP.Seg2Delay > 0 {
+				time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
+			}
+		}
+		return
+	}
+
+	for i, seg := range segments {
+		if i < overlapFirstN {
+			payloadLen := len(seg.Data) - pi.PayloadStart
+			if payloadLen > 0 {
+				seqOffset := seg.Seq - pi.Seq0
+				fakeSeg := BuildFakeOverlapSegmentV4(packet, pi, payloadLen, seqOffset, uint16(i*2), overlapPattern, cfg.Faking.TTL, true)
+				if fakeSeg != nil {
+					_ = w.sock.SendIPv4(fakeSeg, dst)
+					time.Sleep(50 * time.Microsecond)
+				}
+			}
+		}
+
+		_ = w.sock.SendIPv4(seg.Data, dst)
+
+		if i < len(segments)-1 && cfg.TCP.Seg2Delay > 0 {
+			time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
+		}
+	}
 }

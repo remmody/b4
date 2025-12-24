@@ -9,8 +9,6 @@ import (
 	"github.com/daniellavrushin/b4/utils"
 )
 
-// sendComboFragments combines multiple evasion techniques
-// Strategy: split at multiple points + send out of order + optional delay
 func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst net.IP) {
 	pi, ok := ExtractPacketInfoV4(packet)
 	if !ok || pi.PayloadLen < 20 {
@@ -21,7 +19,6 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 	combo := &cfg.Fragmentation.Combo
 
 	splits := GetComboSplitPoints(pi.Payload, pi.PayloadLen, combo, cfg.Fragmentation.MiddleSNI)
-
 	splits = uniqueSorted(splits, pi.PayloadLen)
 
 	if len(splits) < 1 {
@@ -33,27 +30,18 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 
 	segments := make([]Segment, 0, len(splits)+1)
 	prevEnd := 0
-	segIdx := 0
 
-	for _, splitPos := range splits {
+	for idx, splitPos := range splits {
 		if splitPos <= prevEnd {
 			continue
 		}
-		realPayload := pi.Payload[prevEnd:splitPos]
-
-		if segIdx == 0 && seqovlLen > 0 {
-			seg := BuildSegmentWithOverlapV4(packet, pi, realPayload, uint32(prevEnd), uint16(segIdx), seqovlPattern)
-			segments = append(segments, Segment{Data: seg, Seq: pi.Seq0 - uint32(seqovlLen)})
-		} else {
-			seg := BuildSegmentV4(packet, pi, realPayload, uint32(prevEnd), uint16(segIdx))
-			segments = append(segments, Segment{Data: seg, Seq: pi.Seq0 + uint32(prevEnd)})
-		}
+		seg := BuildSegmentV4(packet, pi, pi.Payload[prevEnd:splitPos], uint32(prevEnd), uint16(idx))
+		segments = append(segments, Segment{Data: seg, Seq: pi.Seq0 + uint32(prevEnd)})
 		prevEnd = splitPos
-		segIdx++
 	}
 
 	if prevEnd < pi.PayloadLen {
-		seg := BuildSegmentV4(packet, pi, pi.Payload[prevEnd:], uint32(prevEnd), uint16(segIdx))
+		seg := BuildSegmentV4(packet, pi, pi.Payload[prevEnd:], uint32(prevEnd), uint16(len(segments)))
 		segments = append(segments, Segment{Data: seg, Seq: pi.Seq0 + uint32(prevEnd)})
 	}
 
@@ -64,10 +52,8 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 
 	r := utils.NewRand()
 	ShuffleSegments(segments, combo.ShuffleMode, r)
-
 	SetMaxSeqPSH(segments, pi.IPHdrLen, sock.FixTCPChecksum)
 
-	// Send with delays
 	firstDelayMs := combo.FirstDelayMs
 	if firstDelayMs <= 0 {
 		firstDelayMs = 100
@@ -77,7 +63,21 @@ func (w *Worker) sendComboFragments(cfg *config.SetConfig, packet []byte, dst ne
 		jitterMaxUs = 2000
 	}
 
+	// Send with overlap: fake first, then real
 	for i, seg := range segments {
+		// For first segment, send fake overlap before real
+		if i == 0 && seqovlLen > 0 {
+			payloadLen := len(seg.Data) - pi.PayloadStart
+			if seqovlLen <= payloadLen {
+				seqOffset := seg.Seq - pi.Seq0
+				fakeSeg := BuildFakeOverlapSegmentV4(packet, pi, payloadLen, seqOffset, 0, seqovlPattern, cfg.Faking.TTL, true)
+				if fakeSeg != nil {
+					_ = w.sock.SendIPv4(fakeSeg, dst)
+					time.Sleep(50 * time.Microsecond)
+				}
+			}
+		}
+
 		_ = w.sock.SendIPv4(seg.Data, dst)
 
 		if i == 0 {

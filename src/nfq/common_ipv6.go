@@ -79,19 +79,117 @@ func (w *Worker) SendTwoSegmentsV6(seg1, seg2 []byte, dst net.IP, delay int, rev
 
 func BuildSegmentWithOverlapV6(packet []byte, pi PacketInfo, payloadSlice []byte, seqOffset uint32, overlapPattern []byte) []byte {
 	overlapLen := len(overlapPattern)
-	totalPayload := make([]byte, overlapLen+len(payloadSlice))
-	copy(totalPayload[:overlapLen], overlapPattern)
-	copy(totalPayload[overlapLen:], payloadSlice)
+	if overlapLen == 0 || overlapLen > len(payloadSlice) {
+		return BuildSegmentV6(packet, pi, payloadSlice, seqOffset)
+	}
 
-	segLen := pi.PayloadStart + len(totalPayload)
+	segLen := pi.PayloadStart + len(payloadSlice)
 	seg := make([]byte, segLen)
 	copy(seg[:pi.PayloadStart], packet[:pi.PayloadStart])
-	copy(seg[pi.PayloadStart:], totalPayload)
 
-	newSeq := pi.Seq0 + seqOffset - uint32(overlapLen)
-	binary.BigEndian.PutUint32(seg[pi.IPHdrLen+4:pi.IPHdrLen+8], newSeq)
+	copy(seg[pi.PayloadStart:pi.PayloadStart+overlapLen], overlapPattern)
+	copy(seg[pi.PayloadStart+overlapLen:], payloadSlice[overlapLen:])
+
+	binary.BigEndian.PutUint32(seg[pi.IPHdrLen+4:pi.IPHdrLen+8], pi.Seq0+seqOffset)
 	binary.BigEndian.PutUint16(seg[4:6], uint16(segLen-pi.IPHdrLen))
 
 	sock.FixTCPChecksumV6(seg)
 	return seg
+}
+
+func BuildFakeOverlapSegmentV6(packet []byte, pi PacketInfo, payloadLen int, seqOffset uint32, fakePattern []byte, fakeHopLimit uint8, corruptChecksum bool) []byte {
+	if payloadLen <= 0 {
+		return nil
+	}
+
+	segLen := pi.PayloadStart + payloadLen
+	seg := make([]byte, segLen)
+	copy(seg[:pi.PayloadStart], packet[:pi.PayloadStart])
+
+	patLen := len(fakePattern)
+	if patLen == 0 {
+		for i := 0; i < payloadLen; i++ {
+			seg[pi.PayloadStart+i] = byte((i * 7) & 0xFF)
+		}
+	} else {
+		for i := 0; i < payloadLen; i++ {
+			seg[pi.PayloadStart+i] = fakePattern[i%patLen]
+		}
+	}
+
+	binary.BigEndian.PutUint32(seg[pi.IPHdrLen+4:pi.IPHdrLen+8], pi.Seq0+seqOffset)
+	binary.BigEndian.PutUint16(seg[4:6], uint16(segLen-pi.IPHdrLen))
+
+	if fakeHopLimit == 0 {
+		fakeHopLimit = 3
+	}
+	seg[7] = fakeHopLimit
+
+	seg[pi.IPHdrLen+13] &^= 0x08
+
+	sock.FixTCPChecksumV6(seg)
+
+	if corruptChecksum {
+		seg[pi.IPHdrLen+16] ^= 0xFF
+		seg[pi.IPHdrLen+17] ^= 0xFF
+	}
+
+	return seg
+}
+
+func (w *Worker) SendFakeThenRealV6(packet []byte, pi PacketInfo, realPayload []byte, seqOffset uint32, dst net.IP, cfg *config.SetConfig) {
+	overlapPattern := cfg.Fragmentation.SeqOverlapBytes
+	overlapLen := len(overlapPattern)
+	if overlapLen == 0 || overlapLen > len(realPayload) {
+		seg := BuildSegmentV6(packet, pi, realPayload, seqOffset)
+		_ = w.sock.SendIPv6(seg, dst)
+		return
+	}
+
+	fakeSeg := BuildFakeOverlapSegmentV6(packet, pi, overlapLen, seqOffset, overlapPattern, cfg.Faking.TTL, true)
+	if fakeSeg != nil {
+		_ = w.sock.SendIPv6(fakeSeg, dst)
+	}
+
+	if cfg.TCP.Seg2Delay > 0 {
+		time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
+	} else {
+		time.Sleep(100 * time.Microsecond)
+	}
+
+	realSeg := BuildSegmentV6(packet, pi, realPayload, seqOffset)
+	_ = w.sock.SendIPv6(realSeg, dst)
+}
+
+func (w *Worker) SendOverlapSequenceV6(packet []byte, pi PacketInfo, segments []Segment, overlapFirstN int, dst net.IP, cfg *config.SetConfig) {
+	overlapPattern := cfg.Fragmentation.SeqOverlapBytes
+	if len(overlapPattern) == 0 || overlapFirstN <= 0 {
+		for _, seg := range segments {
+			_ = w.sock.SendIPv6(seg.Data, dst)
+			if cfg.TCP.Seg2Delay > 0 {
+				time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
+			}
+		}
+		return
+	}
+
+	for i, seg := range segments {
+		if i < overlapFirstN {
+			payloadLen := len(seg.Data) - pi.PayloadStart
+			if payloadLen > 0 {
+				seqOffset := seg.Seq - pi.Seq0
+				fakeSeg := BuildFakeOverlapSegmentV6(packet, pi, payloadLen, seqOffset, overlapPattern, cfg.Faking.TTL, true)
+				if fakeSeg != nil {
+					_ = w.sock.SendIPv6(fakeSeg, dst)
+					time.Sleep(50 * time.Microsecond)
+				}
+			}
+		}
+
+		_ = w.sock.SendIPv6(seg.Data, dst)
+
+		if i < len(segments)-1 && cfg.TCP.Seg2Delay > 0 {
+			time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
+		}
+	}
 }
