@@ -672,7 +672,79 @@ func GetPhase1Presets() []ConfigPreset {
 				},
 			},
 		},
+
+		// 20. Combo + SeqOverlap
+		{
+			Name:        "combo-seqovl",
+			Description: "Combo with sequence overlap bytes",
+			Family:      FamilyCombo,
+			Phase:       PhaseStrategy,
+			Priority:    20,
+			Config: config.SetConfig{
+				TCP: config.TCPConfig{
+					ConnBytesLimit: 19,
+					Seg2Delay:      50,
+				},
+				UDP: defaultUDP(),
+				Fragmentation: config.FragmentationConfig{
+					Strategy:          "combo",
+					ReverseOrder:      true,
+					MiddleSNI:         true,
+					SNIPosition:       1,
+					SeqOverlapPattern: []string{"0x00", "0x00", "0x00", "0x00"},
+					Combo: config.ComboFragConfig{
+						FirstByteSplit: true,
+						ExtensionSplit: true,
+						ShuffleMode:    "full",
+						FirstDelayMs:   30,
+						JitterMaxUs:    1000,
+					},
+				},
+				Faking: config.FakingConfig{
+					SNI:          true,
+					TTL:          8,
+					Strategy:     "pastseq",
+					SeqOffset:    10000,
+					SNISeqLength: 1,
+					SNIType:      config.FakePayloadDefault1,
+				},
+			},
+		},
+
+		// 21. Disorder + SeqOverlap
+		{
+			Name:        "disorder-seqovl",
+			Description: "Disorder with sequence overlap",
+			Family:      FamilyDisorder,
+			Phase:       PhaseStrategy,
+			Priority:    21,
+			Config: config.SetConfig{
+				TCP: config.TCPConfig{
+					ConnBytesLimit: 19,
+					Seg2Delay:      10,
+				},
+				UDP: defaultUDP(),
+				Fragmentation: config.FragmentationConfig{
+					Strategy:          "disorder",
+					SeqOverlapPattern: []string{"0x00", "0x00", "0x00", "0x00"},
+					Disorder: config.DisorderFragConfig{
+						ShuffleMode: "full",
+						MinJitterUs: 1000,
+						MaxJitterUs: 3000,
+					},
+				},
+				Faking: config.FakingConfig{
+					SNI:          true,
+					TTL:          8,
+					Strategy:     "pastseq",
+					SeqOffset:    10000,
+					SNISeqLength: 1,
+					SNIType:      config.FakePayloadDefault1,
+				},
+			},
+		},
 	}
+
 }
 
 func defaultUDP() config.UDPConfig {
