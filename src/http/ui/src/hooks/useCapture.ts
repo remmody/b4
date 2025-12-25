@@ -14,15 +14,37 @@ export function useCaptures() {
       return list;
     } catch (e) {
       console.error("Failed to load captures:", e);
-      setLoading(false);
       return [];
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   const probe = useCallback(async (domain: string, protocol: string) => {
     setLoading(true);
     try {
-      return await captureApi.probe(domain, protocol);
+      const result = await captureApi.probe(domain, protocol);
+
+      if (result.already_captured) {
+        return result;
+      }
+
+      const normalizedDomain = domain.toLowerCase().trim();
+      for (let i = 0; i < 30; i++) {
+        await new Promise((r) => setTimeout(r, 1000));
+        const list = await captureApi.list();
+        const found = list.some(
+          (c) =>
+            c.domain === normalizedDomain &&
+            (protocol === "both" || c.protocol === protocol)
+        );
+        if (found) {
+          setCaptures(list);
+          return result;
+        }
+      }
+
+      return result;
     } finally {
       setLoading(false);
     }
