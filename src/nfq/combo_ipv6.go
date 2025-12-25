@@ -30,14 +30,13 @@ func (w *Worker) sendComboFragmentsV6(cfg *config.SetConfig, packet []byte, dst 
 	segments := make([]Segment, 0, len(splits)+1)
 	prevEnd := 0
 
-	for idx, splitPos := range splits {
+	for _, splitPos := range splits {
 		if splitPos <= prevEnd {
 			continue
 		}
 		seg := BuildSegmentV6(packet, pi, pi.Payload[prevEnd:splitPos], uint32(prevEnd))
 		segments = append(segments, Segment{Data: seg, Seq: pi.Seq0 + uint32(prevEnd)})
 		prevEnd = splitPos
-		_ = idx
 	}
 
 	if prevEnd < pi.PayloadLen {
