@@ -1,5 +1,9 @@
 # B4 - Bye Bye Big Bro
 
+## [1.26.2] - 2025-12-25
+
+- FIXED: Normalize UDP port filter format by replacing dashes with colons before creating UDP rules in the `iptables`.
+
 ## [1.26.1] - 2025-12-24
 
 - ADDED: **Upload Custom Payloads** - upload your own binary payload files instead of capturing from live traffic (avilable in the `Settings` -> `Capture` tab).
