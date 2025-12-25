@@ -822,6 +822,7 @@ func (ds *DiscoverySuite) fetchWithTimeout(timeout time.Duration) CheckResult {
 	defer resp.Body.Close()
 
 	result.StatusCode = resp.StatusCode
+	result.ContentSize = resp.ContentLength
 
 	// Read in chunks to detect mid-transfer blocking
 	buf := make([]byte, 16*1024)
@@ -886,12 +887,21 @@ func (ds *DiscoverySuite) fetchWithTimeout(timeout time.Duration) CheckResult {
 		return result
 	}
 
+	if result.ContentSize > 0 && bytesRead < 100*1024 {
+		completionRatio := float64(bytesRead) / float64(result.ContentSize)
+		if completionRatio < 0.5 && result.ContentSize > int64(bytesRead)+1024 {
+			result.Status = CheckStatusFailed
+			result.Error = fmt.Sprintf("incomplete transfer: got %d/%d bytes (%.0f%%)",
+				bytesRead, result.ContentSize, completionRatio*100)
+			return result
+		}
+	}
+
 	if duration.Seconds() > 0 {
 		result.Speed = float64(bytesRead) / duration.Seconds()
 	}
 
 	if !ds.baselineFailed {
-		// Strict checks for baseline/unblocked sites
 		if result.Speed < MIN_SPEED_FOR_SUCCESS {
 			result.Status = CheckStatusFailed
 			result.Error = fmt.Sprintf("too slow: %.0f B/s (need %d B/s)", result.Speed, MIN_SPEED_FOR_SUCCESS)

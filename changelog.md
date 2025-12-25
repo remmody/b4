@@ -3,6 +3,8 @@
 ## [1.26.2] - 2025-12-25
 
 - FIXED: Normalize UDP port filter format by replacing dashes with colons before creating UDP rules in the `iptables`.
+- FIXED: `Discovery` now detects when DPI blocks downloads mid-transfer (e.g., cuts connection after 16KB), potentially preventing false "success" reports.
+- FIXED: `Payload` capture always showing "timeout" even when visiting the target site correctly.
 
 ## [1.26.1] - 2025-12-24
 

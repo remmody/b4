@@ -20,7 +20,13 @@ import {
   UploadIcon,
 } from "@b4.icons";
 import { useSnackbar } from "@context/SnackbarProvider";
-import { B4Dialog, B4TextField, B4Section, B4Alert } from "@b4.elements";
+import {
+  B4Dialog,
+  B4TextField,
+  B4Section,
+  B4Alert,
+  B4Badge,
+} from "@b4.elements";
 import { useCaptures, Capture } from "@b4.capture";
 import { colors, radius } from "@design";
 
@@ -31,6 +37,7 @@ export const CaptureSettings = () => {
     domain: string;
     file: File | null;
   }>({ domain: "", file: null });
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   const {
     captures,
@@ -56,34 +63,35 @@ export const CaptureSettings = () => {
   const probeCapture = async () => {
     if (!probeForm.domain) return;
 
-    const capturedDomain = probeForm.domain;
-    showSuccess(
-      `Capturing enabled for ${capturedDomain}. Open https://${capturedDomain} in your browser.`
-    );
+    const capturedDomain = probeForm.domain.toLowerCase().trim();
+
+    setCountdown(30);
+    const countdownInterval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(countdownInterval);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
     try {
-      await probe(probeForm.domain, "tls");
+      const result = await probe(capturedDomain, "tls");
+      clearInterval(countdownInterval);
+      setCountdown(null);
 
-      let attempts = 0;
-      const maxAttempts = 10;
-      const checkInterval = setInterval(() => {
-        void (async () => {
-          attempts++;
-          const list = await loadCaptures();
-          const found = list.some((c) => c.domain === capturedDomain);
-
-          if (found || attempts >= maxAttempts) {
-            clearInterval(checkInterval);
-            if (found) {
-              showSuccess(`Captured payload for ${capturedDomain}`);
-              setProbeForm({ domain: "" });
-            } else {
-              showError(`Capture timed out for ${capturedDomain}`);
-            }
-          }
-        })();
-      }, 1000);
+      if (result.already_captured) {
+        showSuccess(`Already have payload for ${capturedDomain}`);
+      } else if (captures.some((c) => c.domain === capturedDomain)) {
+        showSuccess(`Captured payload for ${capturedDomain}`);
+        setProbeForm({ domain: "" });
+      } else {
+        showError(`Capture timed out for ${capturedDomain}`);
+      }
     } catch (error) {
+      clearInterval(countdownInterval);
+      setCountdown(null);
       console.error("Failed to probe:", error);
       showError("Failed to initiate capture");
     }
@@ -257,13 +265,46 @@ export const CaptureSettings = () => {
                   </Tooltip>
                 )}
               </Stack>
-              {loading && (
+              {loading && countdown !== null && (
                 <B4Alert>
                   <Typography variant="subtitle2" gutterBottom>
                     Capture window is open for {probeForm.domain}
                   </Typography>
-                  <Typography variant="caption">
-                    Open https://{probeForm.domain} in your browser within 30s
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="caption">
+                      Visit{" "}
+                      <a
+                        href={`https://${probeForm.domain}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: colors.secondary }}
+                      >
+                        https://{probeForm.domain}
+                      </a>
+                    </Typography>
+                    <B4Badge
+                      label={`${countdown}s`}
+                      size="small"
+                      sx={{
+                        bgcolor:
+                          countdown <= 10
+                            ? colors.accent.secondary
+                            : colors.accent.primary,
+                        fontWeight: 600,
+                        minWidth: 48,
+                      }}
+                    />
+                  </Stack>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mt: 1, display: "block" }}
+                  >
+                    Or run:{" "}
+                    <code style={{ color: colors.secondary }}>
+                      curl -o /dev/null -s https://{probeForm.domain}
+                    </code>{" "}
+                    in your terminal
                   </Typography>
                 </B4Alert>
               )}

@@ -52,15 +52,16 @@ const (
 )
 
 type CheckResult struct {
-	Domain     string            `json:"domain"`
-	Status     CheckStatus       `json:"status"`
-	Duration   time.Duration     `json:"duration"`
-	Speed      float64           `json:"speed"`
-	BytesRead  int64             `json:"bytes_read"`
-	Error      string            `json:"error,omitempty"`
-	Timestamp  time.Time         `json:"timestamp"`
-	StatusCode int               `json:"status_code"`
-	Set        *config.SetConfig `json:"set"`
+	ContentSize int64             `json:"content_size,omitempty"`
+	Domain      string            `json:"domain"`
+	Status      CheckStatus       `json:"status"`
+	Duration    time.Duration     `json:"duration"`
+	Speed       float64           `json:"speed"`
+	BytesRead   int64             `json:"bytes_read"`
+	Error       string            `json:"error,omitempty"`
+	Timestamp   time.Time         `json:"timestamp"`
+	StatusCode  int               `json:"status_code"`
+	Set         *config.SetConfig `json:"set"`
 }
 
 type CheckSuite struct {
