@@ -21,6 +21,13 @@ export const NetworkSettings = ({ config, onChange }: NetworkSettingsProps) => (
         onChange={(e) => onChange("queue.start_num", Number(e.target.value))}
         helperText="Netfilter queue number (0-65535)"
       />
+      <B4TextField
+        label="Packet Mark"
+        type="number"
+        value={config.queue.mark}
+        onChange={(e) => onChange("queue.mark", Number(e.target.value))}
+        helperText="Netfilter packet mark for iptables rules (default: 32768)"
+      />
       <B4Slider
         label="Worker Threads"
         value={config.queue.threads}
