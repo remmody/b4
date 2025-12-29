@@ -43,4 +43,10 @@ type Worker struct {
 	matcher          atomic.Value
 	sock             *sock.Sender
 	ipToMac          atomic.Value
+	connState        sync.Map
+}
+
+type ConnState struct {
+	PacketCount int32
+	LastSeen    int64
 }

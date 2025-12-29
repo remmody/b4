@@ -156,7 +156,7 @@ export const TcpIpSettings = ({ config, onChange }: TcpIpSettingsProps) => {
                 onChange("fragmentation.sni_position", value)
               }
               min={0}
-              max={10}
+              max={50}
               step={1}
               helperText="Bytes from TLS payload start (0 = disabled)"
             />
