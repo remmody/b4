@@ -6,6 +6,7 @@
 - IMPROVED: `Discovery` now finds the optimal TTL for a specific network, instead of using a fixed value.
 - IMPROVED: Removed DPI fingerprinting phase from discovery - it was slow and unreliable. Discovery now starts testing bypass strategies immediately, making the process faster.
 - FIXED: DPI bypass not working for LAN devices on routers using `nftables` (e.g., OpenWrt with fw4 firewall).
+- FIXED: TCP `desync` bypass methods (`rst`, `fin`, `ack`, `combo`, `full` modes) were sending malformed packets, causing them to fail or be ignored. Affects both `IPv4` and `IPv6`.
 
 ## [1.27.2] - 2025-12-27
 
