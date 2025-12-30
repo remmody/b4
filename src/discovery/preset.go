@@ -43,10 +43,17 @@ func GetPhase1Presets() []ConfigPreset {
 					ConnBytesLimit: 8,
 				},
 				Fragmentation: config.FragmentationConfig{
-					Strategy:     "tcp",
+					Strategy:     "combo",
 					ReverseOrder: true,
 					MiddleSNI:    true,
 					SNIPosition:  1,
+					Combo: config.ComboFragConfig{
+						FirstByteSplit: true,
+						ExtensionSplit: true,
+						ShuffleMode:    "full",
+						FirstDelayMs:   30,
+						JitterMaxUs:    1000,
+					},
 				},
 				Faking: config.FakingConfig{
 					SNI:          true,
@@ -80,10 +87,17 @@ func GetPhase1Presets() []ConfigPreset {
 					ConnBytesLimit: 8,
 				},
 				Fragmentation: config.FragmentationConfig{
-					Strategy:     "tcp",
+					Strategy:     "combo",
 					ReverseOrder: true,
 					MiddleSNI:    true,
 					SNIPosition:  1,
+					Combo: config.ComboFragConfig{
+						FirstByteSplit: true,
+						ExtensionSplit: true,
+						ShuffleMode:    "full",
+						FirstDelayMs:   30,
+						JitterMaxUs:    1000,
+					},
 				},
 				Faking: config.FakingConfig{
 					SNI:          true,
@@ -1117,6 +1131,7 @@ func GetPhase2Presets(family StrategyFamily) []ConfigPreset {
 		}{
 			{"payload1", config.FakePayloadDefault1},
 			{"payload2", config.FakePayloadDefault2},
+			{"payloadRand", config.FakePayloadRandom},
 		}
 		for _, pt := range payloadTypes {
 			presets = append(presets, ConfigPreset{
