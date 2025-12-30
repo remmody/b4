@@ -61,13 +61,17 @@ func (w *Worker) Start() error {
 			id := *a.PacketID
 
 			if a.Mark != nil && *a.Mark == uint32(mark) {
-				_ = q.SetVerdict(id, nfqueue.NfAccept)
+				if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+					log.Tracef("failed to set verdict on packet %d: %v", id, err)
+				}
 				return 0
 			}
 
 			// Interface filtering
 			if !w.matchesInterface(a) {
-				_ = q.SetVerdict(id, nfqueue.NfAccept)
+				if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+					log.Tracef("failed to set verdict on packet %d: %v", id, err)
+				}
 				return 0
 			}
 
@@ -80,13 +84,20 @@ func (w *Worker) Start() error {
 			atomic.AddUint64(&w.packetsProcessed, 1)
 
 			if a.PacketID == nil || a.Payload == nil || len(*a.Payload) == 0 {
+				if a.PacketID != nil && q != nil {
+					if err := q.SetVerdict(*a.PacketID, nfqueue.NfAccept); err != nil {
+						log.Tracef("failed to set verdict on invalid packet %d: %v", *a.PacketID, err)
+					}
+				}
 				return 0
 			}
 			raw := *a.Payload
 
 			v := raw[0] >> 4
 			if v != IPv4 && v != IPv6 {
-				_ = q.SetVerdict(id, nfqueue.NfAccept)
+				if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+					log.Tracef("failed to set verdict on packet %d: %v", id, err)
+				}
 				return 0
 			}
 			var proto uint8
@@ -94,12 +105,16 @@ func (w *Worker) Start() error {
 			var ihl int
 			if v == IPv4 {
 				if len(raw) < 20 {
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+						log.Tracef("failed to set verdict on packet %d: %v", id, err)
+					}
 					return 0
 				}
 				ihl = int(raw[0]&0x0f) * 4
 				if len(raw) < ihl {
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+						log.Tracef("failed to set verdict on packet %d: %v", id, err)
+					}
 					return 0
 				}
 				proto = raw[9]
@@ -108,7 +123,9 @@ func (w *Worker) Start() error {
 
 			} else {
 				if len(raw) < IPv6HeaderLen {
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+						log.Tracef("failed to set verdict on packet %d: %v", id, err)
+					}
 					return 0
 				}
 				ihl = IPv6HeaderLen
@@ -119,7 +136,9 @@ func (w *Worker) Start() error {
 					switch nextHeader {
 					case 0, 43, 60: // Hop-by-Hop, Routing, Destination Options
 						if len(raw) < offset+2 {
-							_ = q.SetVerdict(id, nfqueue.NfAccept)
+							if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+								log.Tracef("failed to set verdict on packet %d: %v", id, err)
+							}
 							return 0
 						}
 						nextHeader = raw[offset]
@@ -127,7 +146,9 @@ func (w *Worker) Start() error {
 						offset += hdrLen
 					case 44:
 						if len(raw) < offset+8 {
-							_ = q.SetVerdict(id, nfqueue.NfAccept)
+							if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+								log.Tracef("failed to set verdict on packet %d: %v", id, err)
+							}
 							return 0
 						}
 						nextHeader = raw[offset]
@@ -144,7 +165,9 @@ func (w *Worker) Start() error {
 			}
 
 			if src.IsLoopback() || dst.IsLoopback() {
-				_ = q.SetVerdict(id, nfqueue.NfAccept)
+				if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+					log.Tracef("failed to set verdict on packet %d: %v", id, err)
+				}
 				return 0
 			}
 			srcStr := src.String()
@@ -161,12 +184,16 @@ func (w *Worker) Start() error {
 			if proto == 6 && len(raw) >= ihl+TCPHeaderMinLen {
 				tcp := raw[ihl:]
 				if len(tcp) < TCPHeaderMinLen {
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+						log.Tracef("failed to set verdict on packet %d: %v", id, err)
+					}
 					return 0
 				}
 				datOff := int((tcp[12]>>4)&0x0f) * 4
 				if len(tcp) < datOff {
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+						log.Tracef("failed to set verdict on packet %d: %v", id, err)
+					}
 					return 0
 				}
 				payload := tcp[datOff:]
@@ -196,12 +223,16 @@ func (w *Worker) Start() error {
 							w.sendFakeSynV6(set, raw, ihl, datOff)
 							_ = w.sock.SendIPv6(raw, dst)
 						}
-						_ = q.SetVerdict(id, nfqueue.NfDrop)
+						if err := q.SetVerdict(id, nfqueue.NfDrop); err != nil {
+							log.Tracef("failed to set drop verdict on packet %d: %v", id, err)
+						}
 						return 0
 					}
 
 					log.Tracef("TCP SYN to %s:%d - passing through", dstStr, dport)
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+						log.Tracef("failed to set verdict on packet %d: %v", id, err)
+					}
 					return 0
 				}
 
@@ -265,9 +296,14 @@ func (w *Worker) Start() error {
 					copy(dstCopy, dst)
 					setCopy := set
 
-					_ = q.SetVerdict(id, nfqueue.NfDrop)
+					if err := q.SetVerdict(id, nfqueue.NfDrop); err != nil {
+						log.Tracef("failed to set drop verdict on packet %d: %v", id, err)
+						return 0
+					}
 
+					w.wg.Add(1)
 					go func(s *config.SetConfig, pkt []byte, d net.IP) {
+						defer w.wg.Done()
 						if v == 4 {
 							w.dropAndInjectTCP(s, pkt, d)
 						} else {
@@ -277,7 +313,9 @@ func (w *Worker) Start() error {
 					return 0
 				}
 
-				_ = q.SetVerdict(id, nfqueue.NfAccept)
+				if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+					log.Tracef("failed to set verdict on packet %d: %v", id, err)
+				}
 				return 0
 			}
 
@@ -285,7 +323,9 @@ func (w *Worker) Start() error {
 			if proto == 17 && len(raw) >= ihl+8 {
 				udp := raw[ihl:]
 				if len(udp) < 8 {
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+						log.Tracef("failed to set verdict on packet %d: %v", id, err)
+					}
 					return 0
 				}
 
@@ -300,7 +340,9 @@ func (w *Worker) Start() error {
 				}
 
 				if utils.IsPrivateIP(dst) {
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+						log.Tracef("failed to set verdict on packet %d: %v", id, err)
+					}
 					return 0
 				}
 
@@ -363,13 +405,17 @@ func (w *Worker) Start() error {
 				}
 				// Early exit for STUN
 				if isSTUN && set.UDP.FilterSTUN {
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+						log.Tracef("failed to set verdict on packet %d: %v", id, err)
+					}
 					return 0
 				}
 
 				// Accept if no match
 				if !shouldHandle {
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+						log.Tracef("failed to set verdict on packet %d: %v", id, err)
+					}
 					return 0
 				}
 
@@ -380,7 +426,9 @@ func (w *Worker) Start() error {
 				// Apply configured UDP mode
 				switch set.UDP.Mode {
 				case "drop":
-					_ = q.SetVerdict(id, nfqueue.NfDrop)
+					if err := q.SetVerdict(id, nfqueue.NfDrop); err != nil {
+						log.Tracef("failed to set drop verdict on packet %d: %v", id, err)
+					}
 					return 0
 
 				case "fake":
@@ -390,9 +438,14 @@ func (w *Worker) Start() error {
 					copy(dstCopy, dst)
 					setCopy := set
 
-					_ = q.SetVerdict(id, nfqueue.NfDrop)
+					if err := q.SetVerdict(id, nfqueue.NfDrop); err != nil {
+						log.Tracef("failed to set drop verdict on UDP packet %d: %v", id, err)
+						return 0
+					}
 
+					w.wg.Add(1)
 					go func(s *config.SetConfig, pkt []byte, d net.IP) {
+						defer w.wg.Done()
 						if v == IPv4 {
 							w.dropAndInjectQUIC(s, pkt, d)
 						} else {
@@ -402,15 +455,31 @@ func (w *Worker) Start() error {
 					return 0
 
 				default:
-					_ = q.SetVerdict(id, nfqueue.NfAccept)
+					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+						log.Tracef("failed to set verdict on packet %d: %v", id, err)
+					}
 					return 0
 				}
 			}
 
-			_ = q.SetVerdict(id, nfqueue.NfAccept)
+			if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+				log.Tracef("failed to set verdict on packet %d: %v", id, err)
+			}
 			return 0
 		}, func(e error) int {
 			if w.ctx.Err() != nil {
+
+				if errors.Is(e, syscall.ENOBUFS) {
+					now := time.Now().Unix()
+					last := atomic.LoadInt64(&w.lastOverflowLog)
+					if now-last >= 5 {
+						if atomic.CompareAndSwapInt64(&w.lastOverflowLog, last, now) {
+							log.Warnf("nfq queue %d overflow - packets dropped", w.qnum)
+						}
+					}
+					return 0
+				}
+
 				return 0
 			}
 			if errors.Is(e, os.ErrClosed) || errors.Is(e, net.ErrClosed) || errors.Is(e, syscall.EBADF) {
