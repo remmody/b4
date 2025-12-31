@@ -56,6 +56,13 @@ var DefaultSetConfig = SetConfig{
 			Count:      3,
 			PostDesync: false,
 		},
+
+		Incoming: IncomingConfig{
+			Mode:      ConfigOff,
+			Threshold: 14,
+			FakeTTL:   3,
+			FakeCount: 3,
+		},
 	},
 
 	DNS: DNSConfig{

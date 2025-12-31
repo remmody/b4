@@ -208,6 +208,37 @@ func (w *Worker) Start() error {
 				sport := binary.BigEndian.Uint16(tcp[0:2])
 				dport := binary.BigEndian.Uint16(tcp[2:4])
 
+				if sport == HTTPSPort {
+					incomingSet := connState.GetSetForIncoming(dstStr, dport, srcStr, sport)
+
+					if incomingSet != nil && incomingSet.TCP.Incoming.Mode != config.ConfigOff {
+						payloadLen := len(payload)
+
+						if payloadLen > 0 {
+							switch incomingSet.TCP.Incoming.Mode {
+							case "fake":
+								if v == IPv4 {
+									w.InjectFakeIncoming(incomingSet, raw, ihl, src)
+								}
+
+							case "reset":
+								if connState.TrackIncomingBytes(dstStr, dport, srcStr, sport, uint64(payloadLen), incomingSet.TCP.Incoming.Threshold) {
+									log.Tracef("Incoming: %dKB threshold for %s:%d, injecting reset", incomingSet.TCP.Incoming.Threshold, srcStr, sport)
+									if v == IPv4 {
+										w.InjectResetIncoming(incomingSet, raw, ihl, src)
+									}
+								}
+							}
+						}
+					}
+
+					// Always accept incoming
+					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
+						log.Tracef("failed to accept incoming packet %d: %v", id, err)
+					}
+					return 0
+				}
+
 				tcpFlags := tcp[13]
 				isSyn := (tcpFlags & 0x02) != 0 // SYN flag
 				isAck := (tcpFlags & 0x10) != 0 // ACK flag
@@ -288,6 +319,11 @@ func (w *Worker) Start() error {
 					metrics := metrics.GetMetricsCollector()
 					metrics.RecordConnection("TCP", host, srcStr, dstStr, true)
 					metrics.RecordPacket(uint64(len(raw)))
+
+					if matched && set.TCP.Incoming.Mode != config.ConfigOff {
+						connKey := fmt.Sprintf("%s:%d->%s:%d", srcStr, sport, dstStr, dport)
+						connState.RegisterOutgoing(connKey, set)
+					}
 
 					packetCopy := make([]byte, len(raw))
 					copy(packetCopy, raw)

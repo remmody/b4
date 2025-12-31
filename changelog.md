@@ -1,5 +1,9 @@
 # B4 - Bye Bye Big Bro
 
+## [1.29.0] - 2025-xx-xx
+
+- PRERELEASE - not yet ready.
+
 ## [1.28.1] - 2025-12-30
 
 - ADDED: Web server bind address setting - control which network interface the web UI listens on (e.g., `127.0.0.1` for localhost-only access, `0.0.0.0` for all interfaces). Supports `IPv6`.

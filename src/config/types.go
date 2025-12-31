@@ -58,10 +58,10 @@ type DesyncConfig struct {
 }
 
 type IncomingConfig struct {
-	Mode        string `json:"mode"` // "off", "fake", "reset"
-	ThresholdKB int    `json:"threshold_kb"`
-	FakeTTL     uint8  `json:"fake_ttl"`
-	FakeCount   int    `json:"fake_count"`
+	Mode      string `json:"mode"` // "off", "fake", "reset"
+	Threshold int    `json:"threshold"`
+	FakeTTL   uint8  `json:"fake_ttl"`
+	FakeCount int    `json:"fake_count"`
 }
 
 type UDPConfig struct {

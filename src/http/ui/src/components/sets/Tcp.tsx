@@ -1,6 +1,11 @@
 import { Grid, FormControlLabel, Switch, Typography, Box } from "@mui/material";
 import { DnsIcon } from "@b4.icons";
-import { B4SetConfig, WindowMode, DesyncMode } from "@models/config";
+import {
+  B4SetConfig,
+  WindowMode,
+  DesyncMode,
+  IncomingMode,
+} from "@models/config";
 import {
   B4Slider,
   B4Select,
@@ -54,6 +59,19 @@ const windowModeDescriptions: Record<WindowMode, string> = {
   random: "Send 3-5 fake packets with random window sizes from your list",
   oscillate: "Cycle through your custom window values sequentially",
   escalate: "Gradually increase: 0 → 100 → 500 → 1460 → 8192 → 32768 → 65535",
+};
+
+const incomingModeOptions: { label: string; value: IncomingMode }[] = [
+  { label: "Disabled", value: "off" },
+  { label: "Fake Packets", value: "fake" },
+  { label: "Reset Injection", value: "reset" },
+];
+
+const incomingModeDescriptions: Record<IncomingMode, string> = {
+  off: "No incoming packet manipulation",
+  fake: "Inject corrupted copies of server packets with low TTL before real ones",
+  reset:
+    "Inject fake RST when incoming bytes threshold reached to reset DPI state",
 };
 
 export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
@@ -346,6 +364,79 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
                 </Typography>
               </Box>
             }
+          />
+        </Grid>
+      </Grid>
+      {/* Incoming Response Manipulation */}
+      <B4FormHeader label="Incoming Response Bypass" />
+      <Grid container spacing={3}>
+        <B4Alert>
+          Manipulates incoming server responses to bypass DPI that throttles
+          connections after receiving ~15-20KB. Experimental feature for
+          TSPU-style behavioral throttling.
+        </B4Alert>
+
+        <Grid size={{ xs: 12, md: 4 }}>
+          <B4Select
+            label="Incoming Mode"
+            value={config.tcp.incoming?.mode || "off"}
+            options={incomingModeOptions}
+            onChange={(e) =>
+              onChange("tcp.incoming.mode", e.target.value as string)
+            }
+            helperText={
+              incomingModeDescriptions[config.tcp.incoming?.mode || "off"]
+            }
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 4 }}>
+          <B4Slider
+            label="Threshold"
+            value={config.tcp.incoming.threshold || 14}
+            onChange={(value: number) =>
+              onChange("tcp.incoming.threshold", value)
+            }
+            min={5}
+            max={50}
+            step={1}
+            valueSuffix=" KB"
+            disabled={config.tcp.incoming.mode !== "reset"}
+            helperText={
+              config.tcp.incoming.mode === "reset"
+                ? "Inject reset when this many KB received"
+                : "Only used in reset mode"
+            }
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 4 }}>
+          <B4Slider
+            label="Fake TTL"
+            value={config.tcp.incoming.fake_ttl || 3}
+            onChange={(value: number) =>
+              onChange("tcp.incoming.fake_ttl", value)
+            }
+            min={1}
+            max={20}
+            step={1}
+            disabled={config.tcp.incoming.mode === "off"}
+            helperText="Low TTL ensures fakes expire before reaching server"
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 4 }}>
+          <B4Slider
+            label="Fake Count"
+            value={config.tcp.incoming.fake_count || 3}
+            onChange={(value: number) =>
+              onChange("tcp.incoming.fake_count", value)
+            }
+            min={1}
+            max={10}
+            step={1}
+            disabled={config.tcp.incoming.mode === "off"}
+            helperText="Number of fake packets to inject"
           />
         </Grid>
       </Grid>

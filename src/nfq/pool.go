@@ -61,6 +61,14 @@ func NewPool(cfg *config.Config) *Pool {
 	}
 	log.Infof("DHCP: initial load %d IP->MAC mappings", len(initialMappings))
 
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			connState.Cleanup()
+		}
+	}()
+
 	return pool
 }
 
