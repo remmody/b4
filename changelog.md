@@ -1,6 +1,6 @@
 # B4 - Bye Bye Big Bro
 
-## [1.xx.x] - 2026-01-xx
+## [1.30.0] - 2026-01-02
 
 - ADDED: Custom payload support in `Discovery` - test bypass strategies using your own captured TLS payloads instead of built-in defaults.
 - FIXED: Crash during `Discovery` when checking status (e.g. clicking "Create Set" or refreshing page while discovery is running. Reported by `Andrew B.`).
