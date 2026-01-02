@@ -1,5 +1,9 @@
 # B4 - Bye Bye Big Bro
 
+## [1.30.1] - 2026-01-02
+
+- FIXED: White screen when importing old set configurations (sets saved before v1.29 now automatically convert to current format).
+
 ## [1.30.0] - 2026-01-02
 
 - ADDED: Custom payload support in `Discovery` - test bypass strategies using your own captured TLS payloads instead of built-in defaults.
