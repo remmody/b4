@@ -26,13 +26,7 @@ import {
 import { colors } from "@design";
 import { B4SetConfig } from "@models/config";
 import { DiscoveryAddDialog } from "./AddDialog";
-import {
-  B4Alert,
-  B4Badge,
-  B4Section,
-  B4Switch,
-  B4TextField,
-} from "@b4.elements";
+import { B4Alert, B4Badge, B4Section, B4TextField } from "@b4.elements";
 import { useSnackbar } from "@context/SnackbarProvider";
 import { DiscoveryLogPanel } from "./LogPanel";
 import {
@@ -42,8 +36,9 @@ import {
   DomainPresetResult,
 } from "@b4.discovery";
 import { useSets } from "@hooks/useSets";
+import { useCaptures } from "@b4.capture";
+import { DiscoveryOptionsPanel, DiscoveryOptions } from "./Options";
 
-// Friendly names for strategy families
 const familyNames: Record<StrategyFamily, string> = {
   none: "Baseline",
   tcp_frag: "TCP Fragmentation",
@@ -65,7 +60,6 @@ const familyNames: Record<StrategyFamily, string> = {
   incoming: "Incoming",
 };
 
-// Friendly names for phases
 const phaseNames: Record<DiscoveryPhase, string> = {
   baseline: "Baseline Test",
   strategy_detection: "Strategy Detection",
@@ -93,10 +87,21 @@ export const DiscoveryRunner = () => {
     new Set()
   );
 
+  const { captures, loadCaptures } = useCaptures();
+  const [options, setOptions] = useState<DiscoveryOptions>(() => ({
+    skipDNS: localStorage.getItem("b4_discovery_skipdns") === "true",
+    payloadFiles: [],
+  }));
+
+  useEffect(() => {
+    void loadCaptures();
+  }, [loadCaptures]);
+
+  useEffect(() => {
+    localStorage.setItem("b4_discovery_skipdns", String(options.skipDNS));
+  }, [options.skipDNS]);
   const [checkUrl, setCheckUrl] = useState("");
-  const [skipDNS, setSkipDNS] = useState(() => {
-    return localStorage.getItem("b4_discovery_skipdns") === "true";
-  });
+
   const [addingPreset, setAddingPreset] = useState(false);
   const [addDialog, setAddDialog] = useState<{
     open: boolean;
@@ -112,8 +117,8 @@ export const DiscoveryRunner = () => {
   const isReconnecting = suiteId && running && !suite;
 
   useEffect(() => {
-    localStorage.setItem("b4_discovery_skipdns", String(skipDNS));
-  }, [skipDNS]);
+    void loadCaptures();
+  }, [loadCaptures]);
 
   const handleAddStrategy = (domain: string, result: DomainPresetResult) => {
     setAddDialog({
@@ -140,9 +145,9 @@ export const DiscoveryRunner = () => {
       if (e.key !== "Enter") return;
       if (!checkUrl.trim()) return;
       e.preventDefault();
-      void startDiscovery(checkUrl, skipDNS);
+      void startDiscovery(checkUrl, options.skipDNS, options.payloadFiles);
     },
-    [checkUrl, skipDNS, startDiscovery]
+    [checkUrl, options, startDiscovery]
   );
 
   const handleAddNew = async (name: string, domain: string) => {
@@ -190,7 +195,6 @@ export const DiscoveryRunner = () => {
     setExpandedDomains(new Set());
   }, [resetDiscovery]);
 
-  // Group results by phase for display
   const groupResultsByPhase = (results: Record<string, DomainPresetResult>) => {
     const grouped: Record<DiscoveryPhase, DomainPresetResult[]> = {
       baseline: [],
@@ -222,6 +226,7 @@ export const DiscoveryRunner = () => {
           for the domains you specify below. B4 will temporarily apply different
           configurations and measure their performance.
         </B4Alert>
+
         {/* Header with actions */}
         <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
           <B4TextField
@@ -235,20 +240,16 @@ export const DiscoveryRunner = () => {
             helperText="Enter a domain or full URL to discover optimal bypass configuration"
           />
           <Box sx={{ flexShrink: 0 }}>
-            <B4Switch
-              checked={skipDNS}
-              onChange={setSkipDNS}
-              disabled={running || !!isReconnecting}
-              label="Skip DNS"
-            />
-          </Box>
-          <Box sx={{ flexShrink: 0 }}>
             {!running && !suite && (
               <Button
                 startIcon={<StartIcon />}
                 variant="contained"
                 onClick={() => {
-                  void startDiscovery(checkUrl, skipDNS);
+                  void startDiscovery(
+                    checkUrl,
+                    options.skipDNS,
+                    options.payloadFiles
+                  );
                 }}
                 disabled={!checkUrl.trim()}
                 sx={{
@@ -287,6 +288,12 @@ export const DiscoveryRunner = () => {
             )}
           </Box>
         </Box>
+        <DiscoveryOptionsPanel
+          options={options}
+          onChange={setOptions}
+          captures={captures}
+          disabled={running || !!isReconnecting}
+        />
         {error && <B4Alert severity="error">{error}</B4Alert>}
 
         {isReconnecting && (

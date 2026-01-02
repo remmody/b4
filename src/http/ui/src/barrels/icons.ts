@@ -64,4 +64,5 @@ export {
   KeyboardArrowDown as ArrowDownIcon,
   DeviceUnknown as DeviceUnknowIcon,
   UploadFile as UploadIcon,
+  FilterAlt as FilterIcon,
 } from "@mui/icons-material";

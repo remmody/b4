@@ -87,7 +87,7 @@ func (api *API) handleStartDiscovery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	suite := discovery.NewDiscoverySuite(req.CheckURL, globalPool, req.SkipDNS)
+	suite := discovery.NewDiscoverySuite(req.CheckURL, globalPool, req.SkipDNS, req.PayloadFiles)
 
 	phase1Count := len(discovery.GetPhase1Presets())
 
@@ -100,7 +100,7 @@ func (api *API) handleStartDiscovery(w http.ResponseWriter, r *http.Request) {
 		Id:             suite.Id,
 		Domain:         suite.Domain,
 		CheckURL:       suite.CheckURL,
-		EstimatedTests: phase1Count + 15, // rough estimate
+		EstimatedTests: phase1Count + 15,
 		Message:        fmt.Sprintf("Discovery started for %s", suite.Domain),
 	}
 

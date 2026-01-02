@@ -26,10 +26,10 @@ const (
 	FailureUnknown      FailureMode = "unknown"
 )
 
-func NewDiscoverySuite(input string, pool *nfq.Pool, skipDNS bool) *DiscoverySuite {
-
+func NewDiscoverySuite(input string, pool *nfq.Pool, skipDNS bool, payloadFiles []string) *DiscoverySuite {
 	suite := NewCheckSuite(input)
-	return &DiscoverySuite{
+
+	ds := &DiscoverySuite{
 		CheckSuite: suite,
 		pool:       pool,
 		domainResult: &DomainDiscoveryResult{
@@ -37,9 +37,18 @@ func NewDiscoverySuite(input string, pool *nfq.Pool, skipDNS bool) *DiscoverySui
 			Results: make(map[string]*DomainPresetResult),
 		},
 		workingPayloads: []PayloadTestResult{},
-		bestPayload:     config.FakePayloadDefault1, // default
+		bestPayload:     config.FakePayloadDefault1,
 		skipDNS:         skipDNS,
 	}
+
+	if len(payloadFiles) > 0 {
+		cfg := pool.GetFirstWorkerConfig()
+		if cfg != nil {
+			ds.customPayloads = loadCustomPayloads(cfg, payloadFiles)
+		}
+	}
+
+	return ds
 }
 
 func parseDiscoveryInput(input string) (domain string, testURL string) {
@@ -246,93 +255,6 @@ func (ds *DiscoverySuite) runPhase1(presets []ConfigPreset) ([]StrategyFamily, f
 	return workingFamilies, baselineSpeed, false
 }
 
-func (ds *DiscoverySuite) detectWorkingPayloads(presets []ConfigPreset) {
-	log.DiscoveryLogf("  Testing payload variants...")
-
-	var payload1Preset, payload2Preset *ConfigPreset
-	for i := range presets {
-		if presets[i].Name == "proven-combo" {
-			payload1Preset = &presets[i]
-		}
-		if presets[i].Name == "proven-combo-alt" {
-			payload2Preset = &presets[i]
-		}
-	}
-
-	if payload1Preset != nil {
-		if _, exists := ds.domainResult.Results["proven-combo"]; !exists {
-			result1 := ds.testPreset(*payload1Preset)
-			ds.storeResult(*payload1Preset, result1)
-
-			ds.workingPayloads = append(ds.workingPayloads, PayloadTestResult{
-				Payload: config.FakePayloadDefault1,
-				Works:   result1.Status == CheckStatusComplete,
-				Speed:   result1.Speed,
-			})
-
-			if result1.Status == CheckStatusComplete {
-				log.DiscoveryLogf("    Payload 1 (google): SUCCESS (%.2f KB/s)", result1.Speed/1024)
-			} else {
-				log.DiscoveryLogf("    Payload 1 (google): FAILED")
-			}
-		}
-	}
-
-	if payload2Preset != nil {
-		if _, exists := ds.domainResult.Results["proven-combo-alt"]; !exists {
-			result2 := ds.testPreset(*payload2Preset)
-			ds.storeResult(*payload2Preset, result2)
-
-			ds.workingPayloads = append(ds.workingPayloads, PayloadTestResult{
-				Payload: config.FakePayloadDefault2,
-				Works:   result2.Status == CheckStatusComplete,
-				Speed:   result2.Speed,
-			})
-
-			if result2.Status == CheckStatusComplete {
-				log.DiscoveryLogf("    Payload 2 (duckduckgo): SUCCESS (%.2f KB/s)", result2.Speed/1024)
-			} else {
-				log.DiscoveryLogf("    Payload 2 (duckduckgo): FAILED")
-			}
-		}
-	}
-
-	ds.selectBestPayload()
-}
-
-func (ds *DiscoverySuite) selectBestPayload() {
-	var bestSpeed float64
-	ds.bestPayload = config.FakePayloadDefault1 // default fallback
-
-	workingCount := 0
-	for _, pr := range ds.workingPayloads {
-		if pr.Works {
-			workingCount++
-			if pr.Speed > bestSpeed {
-				bestSpeed = pr.Speed
-				ds.bestPayload = pr.Payload
-			}
-		}
-	}
-
-	switch workingCount {
-	case 0:
-		log.DiscoveryLogf("  Neither payload worked in baseline - will test both during discovery")
-	case 1:
-		payloadName := "google"
-		if ds.bestPayload == config.FakePayloadDefault2 {
-			payloadName = "duckduckgo"
-		}
-		log.DiscoveryLogf("  Selected payload: %s (only one works)", payloadName)
-	case 2:
-		payloadName := "google"
-		if ds.bestPayload == config.FakePayloadDefault2 {
-			payloadName = "duckduckgo"
-		}
-		log.DiscoveryLogf("  Selected payload: %s (faster of both working)", payloadName)
-	}
-}
-
 // filterTestedPresets removes presets we've already tested
 func (ds *DiscoverySuite) filterTestedPresets(presets []ConfigPreset) []ConfigPreset {
 	filtered := []ConfigPreset{}
@@ -343,67 +265,6 @@ func (ds *DiscoverySuite) filterTestedPresets(presets []ConfigPreset) []ConfigPr
 		filtered = append(filtered, p)
 	}
 	return filtered
-}
-
-// testPresetWithBestPayload tests a preset using the detected best payload
-func (ds *DiscoverySuite) testPresetWithBestPayload(preset ConfigPreset) CheckResult {
-	defer func() {
-		ds.CheckSuite.mu.Lock()
-		ds.CompletedChecks++
-		ds.CheckSuite.mu.Unlock()
-	}()
-
-	hasWorkingPayload := false
-	for _, pr := range ds.workingPayloads {
-		if pr.Works {
-			hasWorkingPayload = true
-			break
-		}
-	}
-
-	if hasWorkingPayload {
-		return ds.testPresetWithPayload(preset, ds.bestPayload)
-	}
-
-	result1 := ds.testPresetWithPayload(preset, config.FakePayloadDefault1)
-	if result1.Status == CheckStatusComplete {
-		ds.updatePayloadKnowledge(config.FakePayloadDefault1, result1.Speed)
-		return result1
-	}
-
-	result2 := ds.testPresetWithPayload(preset, config.FakePayloadDefault2)
-	if result2.Status == CheckStatusComplete {
-		ds.updatePayloadKnowledge(config.FakePayloadDefault2, result2.Speed)
-		return result2
-	}
-
-	return result1
-}
-
-func (ds *DiscoverySuite) testPresetWithPayload(preset ConfigPreset, payloadType int) CheckResult {
-	modifiedPreset := preset
-	modifiedPreset.Config.Faking.SNIType = payloadType
-	return ds.testPresetInternal(modifiedPreset)
-}
-
-func (ds *DiscoverySuite) updatePayloadKnowledge(payload int, speed float64) {
-	for i, pr := range ds.workingPayloads {
-		if pr.Payload == payload {
-			if !pr.Works || speed > pr.Speed {
-				ds.workingPayloads[i].Works = true
-				ds.workingPayloads[i].Speed = speed
-			}
-			ds.selectBestPayload()
-			return
-		}
-	}
-
-	ds.workingPayloads = append(ds.workingPayloads, PayloadTestResult{
-		Payload: payload,
-		Works:   true,
-		Speed:   speed,
-	})
-	ds.selectBestPayload()
 }
 
 func (ds *DiscoverySuite) runPhase2(families []StrategyFamily) map[StrategyFamily]ConfigPreset {

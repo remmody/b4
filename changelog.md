@@ -2,6 +2,7 @@
 
 ## [1.xx.x] - 2026-01-xx
 
+- ADDED: Custom payload support in `Discovery` - test bypass strategies using your own captured TLS payloads instead of built-in defaults.
 - FIXED: Crash during `Discovery` when checking status (e.g. clicking "Create Set" or refreshing page while discovery is running. Reported by `Andrew B.`).
 
 ## [1.29.1] - 2026-01-01
