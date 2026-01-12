@@ -283,16 +283,19 @@ fetch_stdout() {
     url="$1"
 
     # Try direct GitHub download first
+    result=""
     if command_exists wget; then
-        result=$(wget -qO- --timeout=10 "$url" 2>/dev/null) && [ -n "$result" ] && {
+        result=$(wget -qO- --timeout=10 "$url" 2>/dev/null)
+        if [ $? -eq 0 ] && [ -n "$result" ]; then
             echo "$result"
             return 0
-        }
+        fi
     elif command_exists curl; then
-        result=$(curl -sfL --max-time 10 "$url" 2>/dev/null) && [ -n "$result" ] && {
+        result=$(curl -sfL --max-time 10 "$url" 2>/dev/null)
+        if [ $? -eq 0 ] && [ -n "$result" ]; then
             echo "$result"
             return 0
-        }
+        fi
     else
         return 1
     fi
