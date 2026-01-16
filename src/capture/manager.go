@@ -452,10 +452,6 @@ func (m *Manager) LoadCaptureData(c *Capture) ([]byte, error) {
 
 	filename := filepath.Base(c.Filepath)
 
-	if strings.Contains(filename, "..") {
-		return nil, fmt.Errorf("invalid filename: %s", filename)
-	}
-
 	if !strings.HasSuffix(filename, ".bin") {
 		return nil, fmt.Errorf("invalid file extension: %s", filename)
 	}
