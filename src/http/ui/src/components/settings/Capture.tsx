@@ -20,13 +20,7 @@ import {
   UploadIcon,
 } from "@b4.icons";
 import { useSnackbar } from "@context/SnackbarProvider";
-import {
-  B4Dialog,
-  B4TextField,
-  B4Section,
-  B4Alert,
-  B4Badge,
-} from "@b4.elements";
+import { B4Dialog, B4TextField, B4Section, B4Alert } from "@b4.elements";
 import { useCaptures, Capture } from "@b4.capture";
 import { colors, radius } from "@design";
 
@@ -37,13 +31,12 @@ export const CaptureSettings = () => {
     domain: string;
     file: File | null;
   }>({ domain: "", file: null });
-  const [countdown, setCountdown] = useState<number | null>(null);
 
   const {
     captures,
     loading,
     loadCaptures,
-    probe,
+    generate, // NEW: instant generation
     deleteCapture,
     clearAll,
     upload,
@@ -60,40 +53,25 @@ export const CaptureSettings = () => {
     }
   }, [uploadForm]);
 
-  const probeCapture = async () => {
+  const generateCapture = async () => {
     if (!probeForm.domain) return;
 
     const capturedDomain = probeForm.domain.toLowerCase().trim();
 
-    setCountdown(30);
-    const countdownInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(countdownInterval);
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
     try {
-      const result = await probe(capturedDomain, "tls");
-      clearInterval(countdownInterval);
-      setCountdown(null);
+      const result = await generate(capturedDomain, "tls");
 
       if (result.already_captured) {
         showSuccess(`Already have payload for ${capturedDomain}`);
-      } else if (captures.some((c) => c.domain === capturedDomain)) {
-        showSuccess(`Captured payload for ${capturedDomain}`);
-        setProbeForm({ domain: "" });
       } else {
-        showError(`Capture timed out for ${capturedDomain}`);
+        showSuccess(
+          `Generated optimized payload for ${capturedDomain} (SNI-first for DPI bypass)`,
+        );
+        setProbeForm({ domain: "" });
       }
     } catch (error) {
-      clearInterval(countdownInterval);
-      setCountdown(null);
-      console.error("Failed to probe:", error);
-      showError("Failed to initiate capture");
+      console.error("Failed to generate:", error);
+      showError("Failed to generate payload");
     }
   };
 
@@ -143,10 +121,11 @@ export const CaptureSettings = () => {
       {/* Info */}
       <B4Alert icon={<CaptureIcon />}>
         <Typography variant="subtitle2" gutterBottom>
-          Capture real TLS ClientHello for custom payload generation
+          Generate optimized TLS ClientHello with SNI-first extension order
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          One capture per domain. Use in Faking → Captured Payload
+          Instant generation for DPI bypass. One payload per domain. Use in
+          Faking → Captured Payload
         </Typography>
       </B4Alert>
 
@@ -213,8 +192,8 @@ export const CaptureSettings = () => {
 
         <Grid size={{ xs: 12, md: 6 }}>
           <B4Section
-            title="Capture Payload"
-            description="Probe domain to capture its TLS ClientHello"
+            title="Generate Payload"
+            description="Instantly generate optimized TLS ClientHello"
             icon={<CaptureIcon />}
           >
             <Stack spacing={2}>
@@ -226,11 +205,11 @@ export const CaptureSettings = () => {
                 }
                 onKeyPress={(e) => {
                   if (e.key === "Enter" && !loading && probeForm.domain) {
-                    void probeCapture();
+                    void generateCapture();
                   }
                 }}
-                placeholder="youtube.com"
-                helperText="Enter domain to capture from"
+                placeholder="max.ru"
+                helperText="Enter domain to generate payload for"
                 disabled={loading}
               />
               <Stack direction="row" spacing={1}>
@@ -240,10 +219,10 @@ export const CaptureSettings = () => {
                   startIcon={
                     loading ? <CircularProgress size={16} /> : <CaptureIcon />
                   }
-                  onClick={() => void probeCapture()}
+                  onClick={() => void generateCapture()}
                   disabled={loading || !probeForm.domain}
                 >
-                  {loading ? "Capturing..." : "Capture"}
+                  {loading ? "Generating..." : "Generate"}
                 </Button>
                 <Tooltip title="Refresh list">
                   <IconButton
@@ -265,61 +244,18 @@ export const CaptureSettings = () => {
                   </Tooltip>
                 )}
               </Stack>
-              {loading && countdown !== null && (
-                <B4Alert>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Capture window is open for {probeForm.domain}
-                  </Typography>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="caption">
-                      Visit{" "}
-                      <a
-                        href={`https://${probeForm.domain}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: colors.secondary }}
-                      >
-                        https://{probeForm.domain}
-                      </a>
-                    </Typography>
-                    <B4Badge
-                      label={`${countdown}s`}
-                      size="small"
-                      sx={{
-                        bgcolor:
-                          countdown <= 10
-                            ? colors.accent.secondary
-                            : colors.accent.primary,
-                        fontWeight: 600,
-                        minWidth: 48,
-                      }}
-                    />
-                  </Stack>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ mt: 1, display: "block" }}
-                  >
-                    Or run:{" "}
-                    <code style={{ color: colors.secondary }}>
-                      curl -o /dev/null -s https://{probeForm.domain}
-                    </code>{" "}
-                    in your terminal
-                  </Typography>
-                </B4Alert>
-              )}
             </Stack>
           </B4Section>
         </Grid>
       </Grid>
 
-      {/* Captured Payloads - Flat grid like SetCards */}
+      {/* Generated Payloads - Flat grid like SetCards */}
       {captures.length > 0 && (
         <B4Section
-          title="Captured Payloads"
-          description={`${captures.length} payload${
+          title="Generated Payloads"
+          description={`${captures.length} optimized payload${
             captures.length !== 1 ? "s" : ""
-          } ready for use`}
+          } ready for use (SNI-first for DPI bypass)`}
           icon={<DownloadIcon />}
         >
           <Grid container spacing={3}>
@@ -355,10 +291,11 @@ export const CaptureSettings = () => {
             sx={{ fontSize: 48, color: colors.text.secondary, mb: 2 }}
           />
           <Typography variant="h6" color="text.secondary">
-            No captured payloads yet
+            No generated payloads yet
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Enter a domain above and click Capture to get started
+            Enter a domain above and click Generate to create an optimized
+            payload
           </Typography>
         </Paper>
       )}

@@ -167,10 +167,10 @@ export const FakingSettings = ({ config, onChange }: FakingSettingsProps) => {
               {captures.length > 0 && (
                 <Grid size={{ xs: 6 }}>
                   <B4Select
-                    label="Captured Payload"
+                    label="Generated Payload"
                     value={config.faking.payload_file}
                     options={[
-                      { value: "", label: "Select a capture..." },
+                      { value: "", label: "Select a payload..." },
                       ...captures.map((c) => ({
                         value: c.filepath,
                         label: `${c.domain} (${c.size} bytes)`,
@@ -181,8 +181,8 @@ export const FakingSettings = ({ config, onChange }: FakingSettingsProps) => {
                     }
                     helperText={
                       captures.length === 0
-                        ? "No TLS captures available. Use Capture feature first."
-                        : "Select a previously captured/uploaded TLS ClientHello"
+                        ? "No payloads available. Generate one in Settings first."
+                        : "Select a generated/uploaded TLS ClientHello (SNI-first)"
                     }
                     disabled={!config.faking.sni || captures.length === 0}
                   />
@@ -191,12 +191,12 @@ export const FakingSettings = ({ config, onChange }: FakingSettingsProps) => {
               <Grid size={{ xs: captures.length > 0 ? 6 : 12 }}>
                 <B4Alert>
                   {captures.length === 0 &&
-                    "No TLS captures available. You can use the Capture feature to record ClientHello payloads or  upload your own capture files."}
+                    "No TLS payloads available. Generate optimized payloads (SNI-first for DPI bypass) or upload your own."}
 
                   <Link to="/settings/capture">
                     {" "}
-                    Navigate to the Settings section to capture or upload your
-                    own TLS ClientHello payloads.
+                    Navigate to Settings to generate or upload TLS ClientHello
+                    payloads.
                   </Link>
                 </B4Alert>
               </Grid>

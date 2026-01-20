@@ -127,8 +127,8 @@ export const DiscoveryOptionsPanel = ({
                   color="text.secondary"
                   sx={{ mb: 1, display: "block" }}
                 >
-                  Test with captured TLS ClientHello instead of built-in
-                  payloads
+                  Test with generated TLS ClientHello (SNI-first) instead of
+                  built-in payloads
                 </Typography>
                 <Autocomplete
                   multiple
