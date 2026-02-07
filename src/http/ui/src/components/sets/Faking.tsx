@@ -21,7 +21,7 @@ interface FakingSettingsProps {
   config: B4SetConfig;
   onChange: (
     field: string,
-    value: string | boolean | number | string[]
+    value: string | boolean | number | string[],
   ) => void;
 }
 
@@ -31,6 +31,7 @@ const FAKE_STRATEGIES = [
   { value: "pastseq", label: "Past Sequence" },
   { value: "tcp_check", label: "TCP Check" },
   { value: "md5sum", label: "MD5 Sum" },
+  { value: "timestamp", label: "TCP Timestamp" },
 ];
 
 const FAKE_PAYLOAD_TYPES = [
@@ -100,7 +101,7 @@ export const FakingSettings = ({ config, onChange }: FakingSettingsProps) => {
     const current = mutation.fake_snis || [];
     onChange(
       "faking.sni_mutation.fake_snis",
-      current.filter((s) => s !== sni)
+      current.filter((s) => s !== sni),
     );
   };
 
@@ -226,6 +227,20 @@ export const FakingSettings = ({ config, onChange }: FakingSettingsProps) => {
               disabled={!config.faking.sni}
             />
           </Grid>
+          {config.faking.strategy === "timestamp" && (
+            <Grid size={{ xs: 12, md: 4 }}>
+              <B4TextField
+                label="Timestamp Decrease"
+                type="number"
+                value={config.faking.timestamp_decrease || 600000}
+                onChange={(e) =>
+                  onChange("faking.timestamp_decrease", Number(e.target.value))
+                }
+                helperText="Amount to decrease TCP timestamp option (default: 600000)"
+                disabled={!config.faking.sni}
+              />
+            </Grid>
+          )}
           <Grid size={{ xs: 12, md: 4 }}>
             <B4Slider
               label="Fake Packet Count"
@@ -251,7 +266,7 @@ export const FakingSettings = ({ config, onChange }: FakingSettingsProps) => {
                 color="text.secondary"
                 sx={{ display: "block", mb: 1 }}
               >
-                Modify fake TLS ClientHello to improve bypass (zapret-style)
+                Modify fake TLS ClientHello to improve bypass
               </Typography>
               <Stack direction="row" spacing={2}>
                 <B4Switch
