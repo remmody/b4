@@ -56,7 +56,7 @@ func (w *Worker) sendOOBFragments(cfg *config.SetConfig, packet []byte, dst net.
 	seq := binary.BigEndian.Uint32(packet[ipHdrLen+4 : ipHdrLen+8])
 	id := binary.BigEndian.Uint16(packet[4:6])
 	payload := packet[payloadStart:]
-	seg2delay := cfg.TCP.Seg2Delay
+	seg2delay := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)
 
 	log.Tracef("OOB: Injecting fake 0x%02x at pos %d of %d bytes", oobChar, oobPos, payloadLen)
 
@@ -197,7 +197,7 @@ func (w *Worker) sendOOBFragmentsV6(cfg *config.SetConfig, packet []byte, dst ne
 
 	seq := binary.BigEndian.Uint32(packet[ipv6HdrLen+4 : ipv6HdrLen+8])
 	payload := packet[payloadStart:]
-	seg2delay := cfg.TCP.Seg2Delay
+	seg2delay := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)
 
 	log.Tracef("OOB v6: Injecting fake 0x%02x at pos %d of %d bytes", oobChar, oobPos, payloadLen)
 

@@ -30,7 +30,7 @@ func (w *Worker) sendExtSplitFragmentsV6(cfg *config.SetConfig, packet []byte, d
 	// Segment 2: SNI extension onwards
 	seg2 := BuildSegmentV6(packet, pi, pi.Payload[splitPos:], uint32(splitPos))
 
-	delay := cfg.TCP.Seg2Delay
+	delay := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)
 
 	w.SendTwoSegmentsV6(seg1, seg2, dst, delay, cfg.Fragmentation.ReverseOrder)
 }

@@ -533,7 +533,7 @@ func (w *Worker) Start() error {
 
 func (w *Worker) dropAndInjectQUIC(cfg *config.SetConfig, raw []byte, dst net.IP) {
 	udpCfg := &cfg.UDP
-	seg2d := udpCfg.Seg2Delay
+	seg2d := config.ResolveSeg2Delay(udpCfg.Seg2Delay, udpCfg.Seg2DelayMax)
 	if udpCfg.Mode != "fake" {
 		return
 	}
@@ -598,7 +598,7 @@ func (w *Worker) dropAndInjectTCP(cfg *config.SetConfig, raw []byte, dst net.IP)
 
 	if cfg.TCP.Desync.Mode != config.ConfigOff {
 		w.ExecuteDesyncIPv4(cfg, raw, dst)
-		time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
+		time.Sleep(time.Duration(config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)) * time.Millisecond)
 	}
 
 	if cfg.TCP.Win.Mode != config.ConfigOff {
@@ -642,7 +642,7 @@ func (w *Worker) dropAndInjectTCP(cfg *config.SetConfig, raw []byte, dst net.IP)
 
 func (w *Worker) sendTCPFragments(cfg *config.SetConfig, packet []byte, dst net.IP) {
 
-	seg2d := cfg.TCP.Seg2Delay
+	seg2d := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)
 	ipHdrLen := int((packet[0] & 0x0F) * 4)
 	tcpHdrLen := int((packet[ipHdrLen+12] >> 4) * 4)
 	totalLen := len(packet)
@@ -772,7 +772,7 @@ func (w *Worker) sendTCPFragments(cfg *config.SetConfig, packet []byte, dst net.
 }
 
 func (w *Worker) sendIPFragments(cfg *config.SetConfig, packet []byte, dst net.IP) {
-	seg2d := cfg.TCP.Seg2Delay
+	seg2d := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)
 	ipHdrLen := int((packet[0] & 0x0F) * 4)
 	tcpHdrLen := int((packet[ipHdrLen+12] >> 4) * 4)
 	payloadStart := ipHdrLen + tcpHdrLen

@@ -62,7 +62,7 @@ done:
 }
 
 func (w *Worker) SendSegmentsV6(segs [][]byte, dst net.IP, cfg *config.SetConfig) {
-	delay := cfg.TCP.Seg2Delay
+	delay := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)
 	if cfg.Fragmentation.ReverseOrder {
 		for i := len(segs) - 1; i >= 0; i-- {
 			_ = w.sock.SendIPv6(segs[i], dst)

@@ -25,7 +25,7 @@ func (w *Worker) sendFirstByteDesyncV6(cfg *config.SetConfig, packet []byte, dst
 
 	_ = w.sock.SendIPv6(seg1, dst)
 
-	delay := cfg.TCP.Seg2Delay
+	delay := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)
 	if delay < 10 {
 		delay = 30
 	}

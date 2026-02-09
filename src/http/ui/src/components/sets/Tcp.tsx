@@ -8,6 +8,7 @@ import {
 } from "@models/config";
 import {
   B4Slider,
+  B4RangeSlider,
   B4Select,
   B4TextField,
   B4Section,
@@ -144,15 +145,18 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
-          <B4Slider
+          <B4RangeSlider
             label="Segment 2 Delay"
-            value={config.tcp.seg2delay}
-            onChange={(value: number) => onChange("tcp.seg2delay", value)}
+            value={[config.tcp.seg2delay, config.tcp.seg2delay_max || config.tcp.seg2delay]}
+            onChange={(value: [number, number]) => {
+              onChange("tcp.seg2delay", value[0]);
+              onChange("tcp.seg2delay_max", value[1]);
+            }}
             min={0}
             max={1000}
             step={10}
             valueSuffix=" ms"
-            helperText="Delay between TCP segments (helps with timing-based DPI)"
+            helperText="Delay between TCP segments. Use a range for random delay per packet."
           />
         </Grid>
 

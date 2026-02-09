@@ -1,6 +1,10 @@
 package config
 
-import "github.com/daniellavrushin/b4/log"
+import (
+	"math/rand"
+
+	"github.com/daniellavrushin/b4/log"
+)
 
 const (
 	ConfigOff  = "off"
@@ -36,8 +40,9 @@ type DevicesConfig struct {
 }
 
 type TCPConfig struct {
-	ConnBytesLimit int   `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
-	Seg2Delay      int   `json:"seg2delay" bson:"seg2delay"`
+	ConnBytesLimit int `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
+	Seg2Delay      int `json:"seg2delay" bson:"seg2delay"`
+	Seg2DelayMax   int `json:"seg2delay_max" bson:"seg2delay_max"`
 	SynFake        bool  `json:"syn_fake" bson:"syn_fake"`
 	SynFakeLen     int   `json:"syn_fake_len" bson:"syn_fake_len"`
 	SynTTL         uint8 `json:"syn_ttl" bson:"syn_ttl"`
@@ -79,6 +84,7 @@ type UDPConfig struct {
 	FilterSTUN     bool   `json:"filter_stun" bson:"filter_stun"`
 	ConnBytesLimit int    `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
 	Seg2Delay      int    `json:"seg2delay" bson:"seg2delay"`
+	Seg2DelayMax   int    `json:"seg2delay_max" bson:"seg2delay_max"`
 }
 
 type FragmentationConfig struct {
@@ -202,6 +208,15 @@ type DisorderFragConfig struct {
 	ShuffleMode string `json:"shuffle_mode" bson:"shuffle_mode"` // "full", "reverse"
 	MinJitterUs int    `json:"min_jitter_us" bson:"min_jitter_us"`
 	MaxJitterUs int    `json:"max_jitter_us" bson:"max_jitter_us"`
+}
+
+// ResolveSeg2Delay returns a delay value between min and max (inclusive).
+// If max <= min (or max is 0), returns min as a single fixed value.
+func ResolveSeg2Delay(min, max int) int {
+	if max <= min {
+		return min
+	}
+	return min + rand.Intn(max-min+1)
 }
 
 type DNSConfig struct {

@@ -12,7 +12,7 @@ import (
 
 // dropAndInjectQUIV6 handles QUIC (UDP) packet manipulation for IPv6
 func (w *Worker) dropAndInjectQUICV6(cfg *config.SetConfig, raw []byte, dst net.IP) {
-	seg2d := cfg.UDP.Seg2Delay
+	seg2d := config.ResolveSeg2Delay(cfg.UDP.Seg2Delay, cfg.UDP.Seg2DelayMax)
 	if cfg.UDP.Mode != "fake" {
 		return
 	}
@@ -79,7 +79,7 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.SetConfig, raw []byte, dst net.I
 
 	if cfg.TCP.Desync.Mode != config.ConfigOff {
 		w.ExecuteDesyncIPv6(cfg, raw, dst)
-		time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
+		time.Sleep(time.Duration(config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)) * time.Millisecond)
 	}
 
 	if cfg.TCP.Win.Mode != config.ConfigOff {
@@ -124,7 +124,7 @@ func (w *Worker) dropAndInjectTCPv6(cfg *config.SetConfig, raw []byte, dst net.I
 func (w *Worker) sendTCPSegmentsv6(cfg *config.SetConfig, packet []byte, dst net.IP) {
 	ipv6HdrLen := 40
 	tcpHdrLen := int((packet[ipv6HdrLen+12] >> 4) * 4)
-	seg2d := cfg.TCP.Seg2Delay
+	seg2d := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)
 
 	totalLen := len(packet)
 	payloadStart := ipv6HdrLen + tcpHdrLen
@@ -251,7 +251,7 @@ func (w *Worker) sendTCPSegmentsv6(cfg *config.SetConfig, packet []byte, dst net
 }
 
 func (w *Worker) sendIPFragmentsv6(cfg *config.SetConfig, packet []byte, dst net.IP) {
-	seg2d := cfg.TCP.Seg2Delay
+	seg2d := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)
 	ipv6HdrLen := 40
 
 	if len(packet) < ipv6HdrLen+20 {

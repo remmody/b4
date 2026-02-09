@@ -140,7 +140,7 @@ func (w *Worker) sendDecoyPacket(cfg *config.SetConfig, packet []byte, pi Packet
 	time.Sleep(50 * time.Microsecond)
 	_ = w.sock.SendIPv4(seg2, dst)
 
-	if cfg.TCP.Seg2Delay > 0 {
-		time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
+	if seg2d := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax); seg2d > 0 {
+		time.Sleep(time.Duration(seg2d) * time.Millisecond)
 	}
 }

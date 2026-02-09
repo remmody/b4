@@ -2,6 +2,7 @@
 
 ## [1.34.0] - 2026-02-09
 
+- ADDED: **Randomized Segment 2 Delay** - instead of a fixed delay between TCP/UDP segments, you can now set a min–max range. Each packet picks a random delay within your range, making your traffic look more natural and harder for DPI to fingerprint. If both values are the same, it works exactly like before.
 - ADDED: Redesigned `Dashboard` - the dashboard now shows what actually matters:
   - **Device Activity** - see which devices on your network are connecting to which domains (e.g., your PlayStation, iPhone, or laptop), with connection counts per domain.
   - **Domains Not In Any Set** - quickly spot domains that aren't covered by any bypass set yet, with one-click "Add to set" buttons.

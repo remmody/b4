@@ -30,7 +30,6 @@ func (w *Worker) processDnsPacket(ipVersion byte, sport uint16, dport uint16, pa
 				if ipVersion == IPv4 {
 					targetDNS := targetIP.To4()
 					if targetDNS == nil {
-						// Target is IPv6 but packet is IPv4 - can't redirect
 						if err := w.q.SetVerdict(id, nfqueue.NfAccept); err != nil {
 							log.Tracef("failed to set verdict on packet %d: %v", id, err)
 						}
@@ -56,7 +55,7 @@ func (w *Worker) processDnsPacket(ipVersion byte, sport uint16, dport uint16, pa
 					log.Infof("DNS redirect: %s -> %s (set: %s)", domain, set.DNS.TargetDNS, set.Name)
 					return 0
 
-				} else { // IPv6
+				} else {
 					cfg := w.getConfig()
 					if !cfg.Queue.IPv6Enabled {
 						if err := w.q.SetVerdict(id, nfqueue.NfAccept); err != nil {
@@ -73,7 +72,6 @@ func (w *Worker) processDnsPacket(ipVersion byte, sport uint16, dport uint16, pa
 						return 0
 					}
 
-					// For IPv6: src at [8:24], dst at [24:40]
 					originalDst := make(net.IP, 16)
 					copy(originalDst, raw[24:40])
 
@@ -109,7 +107,7 @@ func (w *Worker) processDnsPacket(ipVersion byte, sport uint16, dport uint16, pa
 				}
 				return 0
 			}
-		} else { // IPv6
+		} else {
 			cfg := w.getConfig()
 			if cfg.Queue.IPv6Enabled {
 				if originalDst, ok := dns.DnsNATGet(net.IP(raw[24:40]), dport); ok {
@@ -132,7 +130,6 @@ func (w *Worker) processDnsPacket(ipVersion byte, sport uint16, dport uint16, pa
 	return 0
 }
 
-// sendFragmentedDNSQuery fragments a DNS query to evade DPI
 func (w *Worker) sendFragmentedDNSQueryV4(cfg *config.SetConfig, raw []byte, ihl int, dst net.IP) {
 	udpOffset := ihl
 	if len(raw) < ihl+8 {
@@ -141,13 +138,13 @@ func (w *Worker) sendFragmentedDNSQueryV4(cfg *config.SetConfig, raw []byte, ihl
 	}
 	udpLen := int(binary.BigEndian.Uint16(raw[udpOffset+4 : udpOffset+6]))
 
-	if udpLen < 20 { // Too small to fragment meaningfully
+	if udpLen < 20 {
 		_ = w.sock.SendIPv4(raw, dst)
 		return
 	}
 
 	dnsPayload := raw[udpOffset+8:]
-	if len(dnsPayload) < 12 { // DNS header is 12 bytes minimum
+	if len(dnsPayload) < 12 {
 		_ = w.sock.SendIPv4(raw, dst)
 		return
 	}
@@ -164,7 +161,7 @@ func (w *Worker) sendFragmentedDNSQueryV4(cfg *config.SetConfig, raw []byte, ihl
 		return
 	}
 
-	seg2d := cfg.UDP.Seg2Delay
+	seg2d := config.ResolveSeg2Delay(cfg.UDP.Seg2Delay, cfg.UDP.Seg2DelayMax)
 
 	w.SendTwoSegmentsV4(frags[0], frags[1], dst, seg2d, cfg.Fragmentation.ReverseOrder)
 
@@ -202,16 +199,15 @@ func (w *Worker) sendFragmentedDNSQueryV6(cfg *config.SetConfig, raw []byte, dst
 		return
 	}
 
-	seg2d := cfg.UDP.Seg2Delay
+	seg2d := config.ResolveSeg2Delay(cfg.UDP.Seg2Delay, cfg.UDP.Seg2DelayMax)
 
 	w.SendTwoSegmentsV6(frags[0], frags[1], dst, seg2d, cfg.Fragmentation.ReverseOrder)
 
 	log.Tracef("DNS frag v6: sent %d fragments", len(frags))
 }
 
-// findDNSSplitPoint finds optimal split point in DNS query
 func findDNSSplitPoint(dnsPayload []byte) int {
-	if len(dnsPayload) < 13 { // 12 byte header + at least 1 byte QNAME
+	if len(dnsPayload) < 13 {
 		return -1
 	}
 
@@ -222,11 +218,10 @@ func findDNSSplitPoint(dnsPayload []byte) int {
 	for pos < len(dnsPayload) {
 		labelLen := int(dnsPayload[pos])
 		if labelLen == 0 {
-			qnameEnd = pos + 1 // Include the null terminator
+			qnameEnd = pos + 1
 			break
 		}
 		if labelLen > 63 || pos+1+labelLen > len(dnsPayload) {
-			// Invalid or compressed - fallback
 			return len(dnsPayload) / 2
 		}
 		pos += 1 + labelLen
@@ -236,7 +231,6 @@ func findDNSSplitPoint(dnsPayload []byte) int {
 		return len(dnsPayload) / 2
 	}
 
-	// Split in the middle of QNAME
 	qnameLen := qnameEnd - qnameStart
 	if qnameLen > 4 {
 		return qnameStart + qnameLen/2

@@ -47,7 +47,7 @@ func (w *Worker) sendDisorderFragmentsV6(cfg *config.SetConfig, packet []byte, d
 
 	minJitter, maxJitter := GetDisorderJitter(disorder)
 
-	seg2d := cfg.TCP.Seg2Delay
+	seg2d := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)
 	for i, seg := range segments {
 		if i == 0 && seqovlLen > 0 {
 			payloadLen := len(seg.Data) - pi.PayloadStart

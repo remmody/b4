@@ -2,6 +2,7 @@ import { Grid } from "@mui/material";
 import { DnsIcon, WarningIcon } from "@b4.icons";
 import {
   B4Slider,
+  B4RangeSlider,
   B4Switch,
   B4Select,
   B4TextField,
@@ -240,15 +241,18 @@ export const UdpSettings = ({ config, main, onChange }: UdpSettingsProps) => {
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <B4Slider
+              <B4RangeSlider
                 label="Segment 2 Delay"
-                value={config.udp.seg2delay}
-                onChange={(value) => onChange("udp.seg2delay", value)}
+                value={[config.udp.seg2delay, config.udp.seg2delay_max || config.udp.seg2delay]}
+                onChange={(value: [number, number]) => {
+                  onChange("udp.seg2delay", value[0]);
+                  onChange("udp.seg2delay_max", value[1]);
+                }}
                 min={0}
                 max={1000}
                 step={10}
                 valueSuffix=" ms"
-                helperText="Delay between segments"
+                helperText="Delay between segments. Use a range for random delay per packet."
               />
             </Grid>
           </>

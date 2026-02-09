@@ -80,7 +80,7 @@ func ShuffleSegments(segments []Segment, mode string, r *rand.Rand) {
 }
 
 func (w *Worker) SendSegmentsV4(segs [][]byte, dst net.IP, cfg *config.SetConfig) {
-	delay := cfg.TCP.Seg2Delay
+	delay := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)
 	if cfg.Fragmentation.ReverseOrder {
 		for i := len(segs) - 1; i >= 0; i-- {
 			_ = w.sock.SendIPv4(segs[i], dst)

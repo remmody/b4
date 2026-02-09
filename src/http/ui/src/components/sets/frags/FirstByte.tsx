@@ -63,7 +63,9 @@ export const FirstByteSettings = ({ config }: FirstByteSettingsProps) => {
               }}
             >
               <Typography variant="caption">
-                ⏱️ {config.tcp.seg2delay || 30}ms+
+                ⏱️ {config.tcp.seg2delay_max > config.tcp.seg2delay
+                  ? `${config.tcp.seg2delay || 30}–${config.tcp.seg2delay_max}ms`
+                  : `${config.tcp.seg2delay || 30}ms+`}
               </Typography>
               <Box
                 sx={{

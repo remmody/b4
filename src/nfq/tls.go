@@ -56,7 +56,7 @@ func (w *Worker) sendTLSFragments(cfg *config.SetConfig, packet []byte, dst net.
 	sock.FixIPv4Checksum(seg2[:ipHdrLen])
 	sock.FixTCPChecksum(seg2)
 
-	seg2d := cfg.TCP.Seg2Delay
+	seg2d := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)
 	w.SendTwoSegmentsV4(seg1, seg2, dst, seg2d, cfg.Fragmentation.ReverseOrder)
 }
 
@@ -104,6 +104,6 @@ func (w *Worker) sendTLSFragmentsV6(cfg *config.SetConfig, packet []byte, dst ne
 	binary.BigEndian.PutUint16(seg2[4:6], uint16(seg2Len-ipv6HdrLen))
 	sock.FixTCPChecksumV6(seg2)
 
-	seg2d := cfg.TCP.Seg2Delay
+	seg2d := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax)
 	w.SendTwoSegmentsV6(seg1, seg2, dst, seg2d, cfg.Fragmentation.ReverseOrder)
 }

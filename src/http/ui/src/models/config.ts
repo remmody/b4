@@ -121,6 +121,7 @@ export interface UdpConfig {
   conn_bytes_limit: number;
   filter_stun: boolean;
   seg2delay: number;
+  seg2delay_max: number;
 }
 export interface QueueConfig {
   start_num: number;
@@ -154,6 +155,7 @@ export type IncomingStrategy = "badsum" | "badseq" | "badack" | "rand" | "all";
 export interface TcpConfig {
   conn_bytes_limit: number;
   seg2delay: number;
+  seg2delay_max: number;
   syn_fake: boolean;
   syn_fake_len: number;
   syn_ttl: number;

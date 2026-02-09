@@ -24,6 +24,7 @@ function createDefaultSet(setCount: number): B4SetConfig {
     tcp: {
       conn_bytes_limit: 19,
       seg2delay: 0,
+      seg2delay_max: 0,
       syn_fake: false,
       syn_fake_len: 0,
       syn_ttl: 3,
@@ -49,6 +50,7 @@ function createDefaultSet(setCount: number): B4SetConfig {
       filter_stun: true,
       conn_bytes_limit: 8,
       seg2delay: 0,
+      seg2delay_max: 0,
     } as B4SetConfig["udp"],
     dns: {
       enabled: false,

@@ -114,14 +114,16 @@ export const SetEditorPage = ({
     field: string,
     value: string | number | boolean | string[] | number[] | null | undefined
   ) => {
-    if (!editedSet) return;
+    setEditedSet((prev) => {
+      if (!prev) return prev;
 
-    const keys = field.split(".");
+      const keys = field.split(".");
 
-    if (keys.length === 1) {
-      setEditedSet({ ...editedSet, [field]: value });
-    } else {
-      const newConfig = { ...editedSet };
+      if (keys.length === 1) {
+        return { ...prev, [field]: value };
+      }
+
+      const newConfig = { ...prev };
       let current: Record<string, unknown> = newConfig;
 
       for (let i = 0; i < keys.length - 1; i++) {
@@ -130,8 +132,8 @@ export const SetEditorPage = ({
       }
 
       current[keys.at(-1)!] = value;
-      setEditedSet(newConfig);
-    }
+      return newConfig;
+    });
   };
 
   const handleSave = () => {

@@ -123,7 +123,7 @@ func (w *Worker) sendDecoyPacketV6(cfg *config.SetConfig, packet []byte, pi Pack
 
 	_ = w.sock.SendIPv6(decoyPkt, dst)
 
-	if cfg.TCP.Seg2Delay > 0 {
-		time.Sleep(time.Duration(cfg.TCP.Seg2Delay) * time.Millisecond)
+	if seg2d := config.ResolveSeg2Delay(cfg.TCP.Seg2Delay, cfg.TCP.Seg2DelayMax); seg2d > 0 {
+		time.Sleep(time.Duration(seg2d) * time.Millisecond)
 	}
 }
