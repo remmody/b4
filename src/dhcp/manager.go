@@ -13,6 +13,7 @@ type Manager struct {
 	source    LeaseSource
 	ipToMAC   map[string]string
 	macToIP   map[string]string
+	hostnames map[string]string // MAC → hostname
 	mu        sync.RWMutex
 	callbacks []LeaseUpdateCallback
 	ctx       context.Context
@@ -48,6 +49,7 @@ func NewManager() *Manager {
 	m := &Manager{
 		ipToMAC:   make(map[string]string),
 		macToIP:   make(map[string]string),
+		hostnames: make(map[string]string),
 		ctx:       ctx,
 		cancel:    cancel,
 		refreshCh: make(chan struct{}, 1),
@@ -119,11 +121,15 @@ func (m *Manager) refresh() {
 	m.mu.Lock()
 	m.ipToMAC = make(map[string]string)
 	m.macToIP = make(map[string]string)
+	m.hostnames = make(map[string]string)
 
 	for _, lease := range leases {
 		mac := normalizeMAC(lease.MAC)
 		m.ipToMAC[lease.IP] = mac
 		m.macToIP[mac] = lease.IP
+		if lease.Hostname != "" {
+			m.hostnames[mac] = lease.Hostname
+		}
 		log.Tracef("DHCP: %s -> %s (%s)", lease.IP, mac, lease.Hostname)
 	}
 	count := len(m.ipToMAC)
@@ -188,6 +194,22 @@ func (m *Manager) SourceInfo() (name, path string) {
 		return "", ""
 	}
 	return m.source.Name(), m.source.Path()
+}
+
+func (m *Manager) GetHostnameForMAC(mac string) string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.hostnames[normalizeMAC(mac)]
+}
+
+func (m *Manager) GetAllHostnames() map[string]string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make(map[string]string, len(m.hostnames))
+	for k, v := range m.hostnames {
+		result[k] = v
+	}
+	return result
 }
 
 func normalizeMAC(mac string) string {

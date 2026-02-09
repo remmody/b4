@@ -12,4 +12,5 @@ export const setsApi = {
     apiPost<void>("/api/sets/reorder", { set_ids }),
   addDomainToSet: (setId: string, domain: string) =>
     apiPost<B4SetConfig>(`/api/sets/${setId}/add-domain`, { domain }),
+  getTargetedDomains: () => apiFetch<string[]>("/api/sets/targeted-domains"),
 };

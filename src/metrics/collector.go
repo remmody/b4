@@ -30,8 +30,9 @@ type MetricsCollector struct {
 	WorkerStatus      []WorkerHealth    `json:"worker_status"`
 	NFQueueStatus     string            `json:"nfqueue_status"`
 	TablesStatus      string            `json:"tables_status"`
-	RecentConnections []ConnectionLog   `json:"recent_connections"`
-	RecentEvents      []SystemEvent     `json:"recent_events"`
+	RecentConnections []ConnectionLog                    `json:"recent_connections"`
+	RecentEvents      []SystemEvent                      `json:"recent_events"`
+	DeviceDomains     map[string]map[string]uint64       `json:"device_domains"`
 
 	lastUpdate      time.Time    `json:"-"`
 	mu              sync.RWMutex `json:"-"`
@@ -67,6 +68,8 @@ type ConnectionLog struct {
 	Source      string    `json:"source"`
 	Destination string    `json:"destination"`
 	IsTarget    bool      `json:"is_target"`
+	SourceMAC   string    `json:"source_mac,omitempty"`
+	HostSet     string    `json:"host_set,omitempty"`
 }
 
 type SystemEvent struct {
@@ -92,6 +95,7 @@ func GetMetricsCollector() *MetricsCollector {
 			RecentConnections: make([]ConnectionLog, 0, 10),
 			RecentEvents:      make([]SystemEvent, 0, 20),
 			WorkerStatus:      make([]WorkerHealth, 0),
+			DeviceDomains:     make(map[string]map[string]uint64),
 			NFQueueStatus:     "active",
 			TablesStatus:      "active",
 			lastUpdate:        time.Now(),
@@ -173,7 +177,7 @@ func (m *MetricsCollector) updateSystemStats() {
 	m.CPUUsage = float64(runtime.NumGoroutine())
 }
 
-func (m *MetricsCollector) RecordConnection(protocol, domain, source, destination string, isTarget bool) {
+func (m *MetricsCollector) RecordConnection(protocol, domain, source, destination string, isTarget bool, sourceMac, hostSet string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -200,6 +204,42 @@ func (m *MetricsCollector) RecordConnection(protocol, domain, source, destinatio
 		}
 	}
 
+	// Track device-to-domain mapping
+	if sourceMac != "" && domain != "" {
+		if m.DeviceDomains[sourceMac] == nil {
+			if len(m.DeviceDomains) >= 50 {
+				// Prune oldest device (smallest total)
+				var minMac string
+				var minTotal uint64 = ^uint64(0)
+				for mac, domains := range m.DeviceDomains {
+					var total uint64
+					for _, c := range domains {
+						total += c
+					}
+					if total < minTotal {
+						minTotal = total
+						minMac = mac
+					}
+				}
+				delete(m.DeviceDomains, minMac)
+			}
+			m.DeviceDomains[sourceMac] = make(map[string]uint64)
+		}
+		m.DeviceDomains[sourceMac][domain]++
+		// Prune domains per device
+		if len(m.DeviceDomains[sourceMac]) > 100 {
+			var minDomain string
+			var minCount uint64 = ^uint64(0)
+			for d, c := range m.DeviceDomains[sourceMac] {
+				if c < minCount {
+					minCount = c
+					minDomain = d
+				}
+			}
+			delete(m.DeviceDomains[sourceMac], minDomain)
+		}
+	}
+
 	conn := ConnectionLog{
 		Timestamp:   time.Now(),
 		Protocol:    protocol,
@@ -207,6 +247,8 @@ func (m *MetricsCollector) RecordConnection(protocol, domain, source, destinatio
 		Source:      source,
 		Destination: destination,
 		IsTarget:    isTarget,
+		SourceMAC:   sourceMac,
+		HostSet:     hostSet,
 	}
 
 	m.RecentConnections = append([]ConnectionLog{conn}, m.RecentConnections...)
@@ -340,6 +382,14 @@ func (m *MetricsCollector) GetSnapshot() *MetricsCollector {
 		copy(snapshot.RecentEvents, m.RecentEvents)
 	} else {
 		snapshot.RecentEvents = make([]SystemEvent, 0)
+	}
+
+	snapshot.DeviceDomains = make(map[string]map[string]uint64, len(m.DeviceDomains))
+	for mac, domains := range m.DeviceDomains {
+		snapshot.DeviceDomains[mac] = make(map[string]uint64, len(domains))
+		for d, c := range domains {
+			snapshot.DeviceDomains[mac][d] = c
+		}
 	}
 
 	snapshot.ConnectionRate = smoothTimeSeriesData(m.ConnectionRate, 3)

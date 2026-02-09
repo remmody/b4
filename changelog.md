@@ -2,6 +2,12 @@
 
 ## [1.34.0] - 2026-02-09
 
+- ADDED: Redesigned `Dashboard` - the dashboard now shows what actually matters:
+  - **Device Activity** - see which devices on your network are connecting to which domains (e.g., your PlayStation, iPhone, or laptop), with connection counts per domain.
+  - **Domains Not In Any Set** - quickly spot domains that aren't covered by any bypass set yet, with one-click "Add to set" buttons.
+  - **Bypass stats** - at a glance, see total connections, how many are being bypassed, and current throughput.
+  - **Active Sets** overview with clickable chips to jump to set configuration.
+- ADDED: The dashboard now tracks all network traffic, not just bypassed connections. This means device activity and domain lists populate even before you configure any sets.
 - IMPROVED: `Set editor` now opens as a full page instead of a popup window, giving you much more space to work with when configuring your bypass sets.
 
 ## [1.33.2] - 2026-02-07

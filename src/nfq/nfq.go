@@ -221,7 +221,7 @@ func (w *Worker) Start() error {
 					log.Tracef("TCP SYN to %s:%d (set: %s)", dstStr, dport, set.Name)
 
 					metrics := metrics.GetMetricsCollector()
-					metrics.RecordConnection("TCP-SYN", "", srcStr, dstStr, true)
+					metrics.RecordConnection("TCP-SYN", "", srcStr, dstStr, true, srcMac, set.Name)
 
 					if v == IPv4 {
 						modsyn := raw
@@ -294,12 +294,18 @@ func (w *Worker) Start() error {
 					log.Infof(",TCP,%s,%s,%s:%d,%s,%s:%d,%s", sniTarget, host, srcStr, sport, ipTarget, dstStr, dport, srcMac)
 				}
 
-				if matched {
-					metrics := metrics.GetMetricsCollector()
-					metrics.RecordConnection("TCP", host, srcStr, dstStr, true)
-					metrics.RecordPacket(uint64(len(raw)))
+				{
+					m := metrics.GetMetricsCollector()
+					setName := ""
+					if matched {
+						setName = set.Name
+					}
+					m.RecordConnection("TCP", host, srcStr, dstStr, matched, srcMac, setName)
+					m.RecordPacket(uint64(len(raw)))
+				}
 
-					if matched && set.TCP.Incoming.Mode != config.ConfigOff {
+				if matched {
+					if set.TCP.Incoming.Mode != config.ConfigOff {
 						connKey := fmt.Sprintf("%s:%d->%s:%d", srcStr, sport, dstStr, dport)
 						connState.RegisterOutgoing(connKey, set)
 					}
@@ -432,6 +438,9 @@ func (w *Worker) Start() error {
 				}
 
 				if !shouldHandle {
+					m := metrics.GetMetricsCollector()
+					m.RecordConnection("UDP", host, srcStr, dstStr, false, srcMac, "")
+					m.RecordPacket(uint64(len(raw)))
 					if err := q.SetVerdict(id, nfqueue.NfAccept); err != nil {
 						log.Tracef("failed to set verdict on packet %d: %v", id, err)
 					}
@@ -439,7 +448,11 @@ func (w *Worker) Start() error {
 				}
 
 				metrics := metrics.GetMetricsCollector()
-				metrics.RecordConnection("UDP", host, srcStr, dstStr, matched)
+				setName := ""
+				if matched {
+					setName = set.Name
+				}
+				metrics.RecordConnection("UDP", host, srcStr, dstStr, matched, srcMac, setName)
 				metrics.RecordPacket(uint64(len(raw)))
 
 				switch set.UDP.Mode {

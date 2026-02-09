@@ -11,9 +11,35 @@ import (
 
 func (api *API) RegisterSetsApi() {
 	api.mux.HandleFunc("/api/sets", api.handleSets)
+	api.mux.HandleFunc("/api/sets/targeted-domains", api.handleTargetedDomains)
 	api.mux.HandleFunc("/api/sets/{id}", api.handleSetById)
 	api.mux.HandleFunc("/api/sets/reorder", api.handleReorderSets)
 	api.mux.HandleFunc("/api/sets/{id}/add-domain", api.handleSetDomains)
+}
+
+func (api *API) handleTargetedDomains(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	domains := make(map[string]bool)
+	for _, set := range api.cfg.Sets {
+		if !set.Enabled {
+			continue
+		}
+		for _, d := range set.Targets.DomainsToMatch {
+			domains[d] = true
+		}
+	}
+
+	result := make([]string, 0, len(domains))
+	for d := range domains {
+		result = append(result, d)
+	}
+
+	setJsonHeader(w)
+	json.NewEncoder(w).Encode(result)
 }
 
 func (api *API) handleSetDomains(w http.ResponseWriter, r *http.Request) {

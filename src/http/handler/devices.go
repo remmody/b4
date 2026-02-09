@@ -323,6 +323,7 @@ func (api *API) handleDevices(w http.ResponseWriter, r *http.Request) {
 
 	sourceName, _ := globalPool.Dhcp.SourceInfo()
 	mappings := globalPool.Dhcp.GetAllMappings()
+	hostnames := globalPool.Dhcp.GetAllHostnames()
 	devices := make([]DeviceInfo, 0, len(mappings))
 
 	for ip, macAddr := range mappings {
@@ -341,6 +342,7 @@ func (api *API) handleDevices(w http.ResponseWriter, r *http.Request) {
 		devices = append(devices, DeviceInfo{
 			MAC:       macAddr,
 			IP:        ip,
+			Hostname:  hostnames[macAddr],
 			Vendor:    vendor,
 			IsPrivate: isPrivate,
 			Alias:     alias,

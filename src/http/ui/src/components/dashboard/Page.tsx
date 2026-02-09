@@ -1,20 +1,11 @@
 import { useEffect, useState, useRef } from "react";
-import {
-  Box,
-  Container,
-  Typography,
-  Stack,
-  Chip,
-  LinearProgress,
-} from "@mui/material";
-import {
-  CheckCircle as CheckCircleIcon,
-  Error as ErrorIcon,
-} from "@mui/icons-material";
-import { DashboardMetricsGrid } from "./DashboardMetricsGrid";
-import { DashboardStatusBar } from "./DashboardStatusBar";
-import { DashboardCharts } from "./DashboardCharts";
-import { DashboardActivityPanels } from "./DashboardActivityPanels";
+import { Box, Container, Typography, LinearProgress, Paper } from "@mui/material";
+import { HealthBanner } from "./HealthBanner";
+import { MetricsCards } from "./MetricsCards";
+import { ActiveSets } from "./ActiveSets";
+import { DeviceActivity } from "./DeviceActivity";
+import { UnmatchedDomains } from "./UnmatchedDomains";
+import { SimpleLineChart } from "./SimpleLineChart";
 import { colors } from "@design";
 
 export interface Metrics {
@@ -56,12 +47,15 @@ export interface Metrics {
     source: string;
     destination: string;
     is_target: boolean;
+    source_mac?: string;
+    host_set?: string;
   }>;
   recent_events: Array<{
     timestamp: string;
     level: string;
     message: string;
   }>;
+  device_domains: Record<string, Record<string, number>>;
   current_cps: number;
   current_pps: number;
 }
@@ -107,6 +101,7 @@ const normalizeMetrics = (data: null | Metrics): Metrics => {
       tables_status: "unknown",
       recent_connections: [],
       recent_events: [],
+      device_domains: {},
       current_cps: 0,
       current_pps: 0,
     };
@@ -215,6 +210,22 @@ const normalizeMetrics = (data: null | Metrics): Metrics => {
           })
         )
       : [],
+    device_domains:
+      data.device_domains && typeof data.device_domains === "object"
+        ? Object.fromEntries(
+            Object.entries(data.device_domains).map(([mac, domains]) => [
+              String(mac),
+              domains && typeof domains === "object"
+                ? Object.fromEntries(
+                    Object.entries(domains).map(([d, c]) => [
+                      String(d),
+                      safeNumber(c),
+                    ])
+                  )
+                : {},
+            ])
+          )
+        : {},
     current_cps: safeNumber(data.current_cps),
     current_pps: safeNumber(data.current_pps),
   };
@@ -223,10 +234,19 @@ const normalizeMetrics = (data: null | Metrics): Metrics => {
 export function DashboardPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [connected, setConnected] = useState(false);
+  const [version, setVersion] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    // Connect to WebSocket for real-time metrics
+    fetch("/api/version")
+      .then((r) => r.json())
+      .then((data: { version?: string }) => {
+        if (data?.version) setVersion(data.version);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const connectWebSocket = () => {
       const ws = new WebSocket(
         (location.protocol === "https:" ? "wss://" : "ws://") +
@@ -236,7 +256,6 @@ export function DashboardPage() {
 
       ws.onopen = () => {
         setConnected(true);
-        console.log("Metrics WebSocket connected");
       };
 
       ws.onmessage = (event) => {
@@ -245,23 +264,18 @@ export function DashboardPage() {
             typeof event.data === "string"
               ? (JSON.parse(event.data) as Metrics)
               : normalizeMetrics(null);
-          const normalizedData = normalizeMetrics(data);
-          setMetrics(normalizedData);
-        } catch (error) {
-          console.error("Failed to parse metrics:", error);
-          console.error("Raw data:", event.data);
+          setMetrics(normalizeMetrics(data));
+        } catch {
           setMetrics(normalizeMetrics(null));
         }
       };
 
-      ws.onerror = (error) => {
-        console.error("Metrics WebSocket error:", error);
+      ws.onerror = () => {
         setConnected(false);
       };
 
       ws.onclose = () => {
         setConnected(false);
-        console.log("Metrics WebSocket disconnected, reconnecting...");
         setTimeout(connectWebSocket, 3000);
       };
 
@@ -270,7 +284,6 @@ export function DashboardPage() {
 
     connectWebSocket();
 
-    // Cleanup on unmount
     return () => {
       if (wsRef.current) {
         wsRef.current.close();
@@ -283,56 +296,55 @@ export function DashboardPage() {
       <Container maxWidth={false} sx={{ py: 3 }}>
         <Box sx={{ textAlign: "center", py: 8 }}>
           <LinearProgress sx={{ mb: 2 }} />
-          <Typography>Loading dashboard metrics...</Typography>
+          <Typography>Loading dashboard...</Typography>
         </Box>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth={false} sx={{ p: 3 }}>
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Chip
-            label={connected ? "Connected" : "Disconnected"}
-            color={connected ? "success" : "error"}
-            size="small"
-            icon={connected ? <CheckCircleIcon /> : <ErrorIcon />}
-          />
-          <Typography variant="caption" sx={{ color: colors.text.secondary }}>
-            Uptime: {metrics.uptime}
+    <Container maxWidth={false} sx={{ p: 2 }}>
+      <HealthBanner metrics={metrics} connected={connected} version={version} />
+
+      <Box sx={{ mb: 1.5 }}>
+        <MetricsCards metrics={metrics} />
+      </Box>
+
+      <ActiveSets />
+
+      <DeviceActivity deviceDomains={metrics.device_domains} />
+
+      <UnmatchedDomains topDomains={metrics.top_domains} />
+
+      {metrics.connection_rate.length > 0 && (
+        <Paper
+          sx={{
+            p: 2,
+            mt: 1.5,
+            bgcolor: colors.background.paper,
+            borderColor: colors.border.default,
+          }}
+          variant="outlined"
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              color: colors.text.secondary,
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+              mb: 1,
+              display: "block",
+            }}
+          >
+            Connection Rate
           </Typography>
-        </Stack>
-      </Box>
-
-      {/* Key Metrics Cards */}
-      <Box sx={{ mb: 3 }}>
-        <DashboardMetricsGrid metrics={metrics} />
-      </Box>
-
-      {/* Status Bar */}
-      <DashboardStatusBar metrics={metrics} />
-
-      {/* Charts Row */}
-      <Box sx={{ mb: 3 }}>
-        <DashboardCharts
-          connectionRate={metrics.connection_rate}
-          protocolDist={metrics.protocol_dist}
-        />
-      </Box>
-
-      {/* Activity Panels */}
-      <DashboardActivityPanels
-        topDomains={metrics.top_domains}
-        recentConnections={metrics.recent_connections}
-      />
+          <SimpleLineChart
+            data={metrics.connection_rate}
+            color={colors.primary}
+            height={120}
+          />
+        </Paper>
+      )}
     </Container>
   );
 }
