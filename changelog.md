@@ -1,5 +1,9 @@
 # B4 - Bye Bye Big Bro
 
+## [1.34.0] - 2026-02-09
+
+- IMPROVED: `Set editor` now opens as a full page instead of a popup window, giving you much more space to work with when configuring your bypass sets.
+
 ## [1.33.2] - 2026-02-07
 
 - ADDED: `TCP Timestamp` faking strategy - a new way to make fake packets look wrong to the real server (so it ignores them) while still fooling DPI. Instead of using a low TTL or wrong sequence number, B4 sends fake packets with an outdated timestamp. Inspired by the [youtubeUnblock](https://github.com/Waujito/youtubeUnblock) project. Select `TCP Timestamp` in the Faking strategy dropdown to use it.

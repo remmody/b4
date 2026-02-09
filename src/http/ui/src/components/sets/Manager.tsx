@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Grid,
@@ -39,12 +40,10 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { v4 as uuidv4 } from "uuid";
 
 import { B4Section, B4Dialog } from "@b4.elements";
 import { useSnackbar } from "@context/SnackbarProvider";
 
-import { SetEditor } from "./Editor";
 import { SetCard } from "./SetCard";
 import { SetCompare } from "./Compare";
 
@@ -109,25 +108,15 @@ const SortableCardWrapper = ({ id, children }: SortableCardWrapperProps) => {
 
 export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
   const { showSuccess, showError } = useSnackbar();
+  const navigate = useNavigate();
   const {
-    createSet,
-    updateSet,
     deleteSet,
     duplicateSet,
     reorderSets,
-    loading: saving,
+    updateSet,
   } = useSets();
 
   const [filterText, setFilterText] = useState("");
-  const [editDialog, setEditDialog] = useState<{
-    open: boolean;
-    set: B4SetConfig | null;
-    isNew: boolean;
-  }>({
-    open: false,
-    set: null,
-    isNew: false,
-  });
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     setId: string | null;
@@ -218,116 +207,11 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
   const activeSet = activeId ? sets.find((s) => s.id === activeId) : null;
 
   const handleAddSet = () => {
-    const newSet: B4SetConfig = {
-      id: uuidv4(),
-      name: `Set ${sets.length + 1}`,
-      enabled: true,
-      tcp: {
-        conn_bytes_limit: 19,
-        seg2delay: 0,
-        syn_fake: false,
-        syn_fake_len: 0,
-        syn_ttl: 3,
-        drop_sack: false,
-        win: { mode: "off", values: [0, 1460, 8192, 65535] },
-        desync: { mode: "off", ttl: 3, count: 3, post_desync: false },
-        incoming: {
-          mode: "off",
-          min: 14,
-          max: 14,
-          fake_ttl: 3,
-          fake_count: 3,
-          strategy: "badsum",
-        },
-      } as B4SetConfig["tcp"],
-      udp: {
-        mode: "fake",
-        fake_seq_length: 6,
-        fake_len: 64,
-        faking_strategy: "none",
-        dport_filter: "",
-        filter_quic: "disabled",
-        filter_stun: true,
-        conn_bytes_limit: 8,
-        seg2delay: 0,
-      } as B4SetConfig["udp"],
-      dns: {
-        enabled: false,
-        target_dns: "",
-        fragment_query: false,
-      } as B4SetConfig["dns"],
-      fragmentation: {
-        strategy: "tcp",
-        reverse_order: true,
-        middle_sni: true,
-        sni_position: 1,
-        oob_position: 0,
-        oob_char: 120,
-        tlsrec_pos: 0,
-        seq_overlap: 0,
-        seq_overlap_pattern: [],
-        combo: {
-          extension_split: true,
-          first_byte_split: true,
-          shuffle_mode: "middle",
-          first_delay_ms: 100,
-          jitter_max_us: 2000,
-          decoy_enabled: false,
-          decoy_snis: ["ya.ru", "vk.com", "mail.ru"],
-        },
-        disorder: {
-          shuffle_mode: "full",
-          min_jitter_us: 1000,
-          max_jitter_us: 3000,
-        },
-      } as B4SetConfig["fragmentation"],
-      faking: {
-        sni: true,
-        ttl: 8,
-        strategy: "pastseq",
-        seq_offset: 10000,
-        sni_seq_length: 1,
-        sni_type: 2,
-        custom_payload: "",
-        payload_file: "",
-        tls_mod: [] as string[],
-        sni_mutation: {
-          mode: "off",
-          grease_count: 3,
-          padding_size: 2048,
-          fake_ext_count: 5,
-          fake_snis: ["ya.ru", "vk.com", "max.ru"],
-        },
-      } as B4SetConfig["faking"],
-      targets: {
-        sni_domains: [],
-        ip: [],
-        geosite_categories: [],
-        geoip_categories: [],
-      } as B4SetConfig["targets"],
-    };
-
-    setEditDialog({ open: true, set: newSet, isNew: true });
+    navigate("/sets/new");
   };
 
   const handleEditSet = (set: B4SetConfig) => {
-    setEditDialog({ open: true, set, isNew: false });
-  };
-
-  const handleSaveSet = (set: B4SetConfig) => {
-    void (async () => {
-      const result = editDialog.isNew
-        ? await createSet(set)
-        : await updateSet(set);
-
-      if (result.success) {
-        showSuccess(editDialog.isNew ? "Set created" : "Set updated");
-        setEditDialog({ open: false, set: null, isNew: false });
-        onRefresh();
-      } else {
-        showError(result.error || "Failed");
-      }
-    })();
+    navigate(`/sets/${set.id}`);
   };
 
   const handleDeleteSet = () => {
@@ -539,22 +423,6 @@ export const SetsManager = ({ config, onRefresh }: SetsManagerProps) => {
           </Paper>
         )}
       </B4Section>
-
-      {/* Edit Dialog */}
-      <SetEditor
-        open={editDialog.open}
-        settings={config.system}
-        set={editDialog.set!}
-        config={config}
-        isNew={editDialog.isNew}
-        saving={saving}
-        stats={
-          setsStats[sets.findIndex((s) => s.id === editDialog.set?.id)] ||
-          undefined
-        }
-        onClose={() => setEditDialog({ open: false, set: null, isNew: false })}
-        onSave={handleSaveSet}
-      />
 
       {/* Delete Confirmation */}
       <B4Dialog

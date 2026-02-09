@@ -83,8 +83,8 @@ export default function App() {
   };
 
   const isNavItemSelected = (navPath: string) => {
-    if (navPath === "/settings") {
-      return location.pathname.startsWith("/settings");
+    if (navPath === "/settings" || navPath === "/sets") {
+      return location.pathname.startsWith(navPath);
     }
     return location.pathname === navPath;
   };
@@ -192,7 +192,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/sets" element={<SetsPage />} />
+              <Route path="/sets/*" element={<SetsPage />} />
               <Route path="/connections" element={<ConnectionsPage />} />
               <Route path="/discovery" element={<DiscoveryPage />} />
               <Route path="/logs" element={<LogsPage />} />
