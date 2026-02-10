@@ -9,7 +9,6 @@ Network packet processor that bypasses Deep Packet Inspection (DPI) using netfil
 
 <img width="1187" height="787" alt="image" src="https://github.com/user-attachments/assets/3e4c105d-5b28-4e93-ab54-6d92338b1293" />
 
-
 ## Requirements
 
 - Linux-system (desktop, server or router)
@@ -37,6 +36,7 @@ Or pass `--help` to get more information about the possible options.
 ```bash
 wget -O ~/b4install.sh https://raw.githubusercontent.com/DanielLavrushin/b4/main/install.sh && chmod +x ~/b4install.sh && ~/b4install.sh --help
 ```
+
 ### Installer options
 
 ```bash
@@ -88,6 +88,43 @@ make linux-arm64
 make linux-armv7
 ````
 
+## Docker
+
+### Quick Start
+
+```bash
+docker run --network host \
+  --cap-add NET_ADMIN --cap-add NET_RAW --cap-add SYS_MODULE \
+  -v /etc/b4:/etc/b4 \
+  lavrushin/b4:latest --web-port 7000
+```
+
+Web UI: <http://localhost:7000>
+
+### Docker Compose
+
+```yaml
+services:
+  b4:
+    image: lavrushin/b4:latest
+    container_name: b4
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_MODULE
+    volumes:
+      - ./config:/etc/b4
+    restart: unless-stopped
+```
+
+### Docker Requirements
+
+- **Linux host only** — b4 uses netfilter queue (NFQUEUE) which is a Linux kernel feature
+- `--network host` is mandatory — b4 must access the host network stack directly
+- Capabilities: `NET_ADMIN` (firewall rules), `NET_RAW` (raw sockets), `SYS_MODULE` (kernel module loading)
+- Host kernel must have `nfqueue` support (`xt_NFQUEUE`, `nf_conntrack` modules)
+
 ## Usage
 
 ### Starting B4
@@ -107,7 +144,7 @@ sudo systemctl enable b4 # Start on load
 
 ### Web UI
 
-```
+```text
 http://your-device-ip:7000
 ```
 
