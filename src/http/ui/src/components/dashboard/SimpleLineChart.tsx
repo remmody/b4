@@ -24,7 +24,7 @@ const createSmoothPath = (points: { x: number; y: number }[]): string => {
     path += ` Q ${current.x},${current.y} ${xMid},${yMid}`;
   }
 
-  const last = points[points.length - 1];
+  const last = points.at(-1)!;
   path += ` L ${last.x},${last.y}`;
 
   return path;
@@ -43,20 +43,16 @@ export const SimpleLineChart = ({
       const svg = svgRef.current;
       const scrollAmount = (1 / Math.max(data.length - 1, 1)) * 100;
 
-      // Apply smooth scroll animation
       svg.style.transform = `translateX(-${scrollAmount}%)`;
 
-      // Reset transform after animation
       setTimeout(() => {
-        if (svg) {
-          svg.style.transition = "none";
-          svg.style.transform = "translateX(0)";
-          setTimeout(() => {
-            if (svg) {
-              svg.style.transition = "transform 1s linear";
-            }
-          }, 10);
-        }
+        svg.style.transition = "none";
+        svg.style.transform = "translateX(0)";
+        setTimeout(() => {
+          if (svg) {
+            svg.style.transition = "transform 1s linear";
+          }
+        }, 10);
       }, 1000);
     }
     prevDataLengthRef.current = data.length;
@@ -126,7 +122,6 @@ export const SimpleLineChart = ({
           />
         ))}
 
-        {/* Area under curve with gradient */}
         <path
           d={areaPath}
           fill={`url(#${gradientId})`}

@@ -1,5 +1,11 @@
 import { useEffect, useState, useRef } from "react";
-import { Box, Container, Typography, LinearProgress, Paper } from "@mui/material";
+import {
+  Box,
+  Container,
+  Typography,
+  LinearProgress,
+  Paper,
+} from "@mui/material";
 import { HealthBanner } from "./HealthBanner";
 import { MetricsCards } from "./MetricsCards";
 import { ActiveSets } from "./ActiveSets";
@@ -121,7 +127,7 @@ const normalizeMetrics = (data: null | Metrics): Metrics => {
           (item: { timestamp: number; value: number }) => ({
             timestamp: safeNumber(item?.timestamp),
             value: safeNumber(item?.value),
-          })
+          }),
         )
       : [],
     packet_rate: Array.isArray(data.packet_rate)
@@ -136,7 +142,7 @@ const normalizeMetrics = (data: null | Metrics): Metrics => {
             Object.entries(data.top_domains).map(([k, v]) => [
               String(k),
               safeNumber(v),
-            ])
+            ]),
           )
         : {},
     protocol_dist:
@@ -145,7 +151,7 @@ const normalizeMetrics = (data: null | Metrics): Metrics => {
             Object.entries(data.protocol_dist).map(([k, v]) => [
               String(k),
               safeNumber(v),
-            ])
+            ]),
           )
         : {},
     geo_dist:
@@ -154,11 +160,11 @@ const normalizeMetrics = (data: null | Metrics): Metrics => {
             Object.entries(data.geo_dist).map(([k, v]) => [
               String(k),
               safeNumber(v),
-            ])
+            ]),
           )
         : {},
-    start_time: String(data.start_time || new Date().toISOString()),
-    uptime: String(data.uptime || "0s"),
+    start_time: String(data.start_time ?? new Date().toISOString()),
+    uptime: String(data.uptime ?? "0s"),
     cpu_usage: safeNumber(data.cpu_usage),
     memory_usage: {
       allocated: safeNumber(data?.memory_usage?.allocated),
@@ -172,14 +178,14 @@ const normalizeMetrics = (data: null | Metrics): Metrics => {
     worker_status: Array.isArray(data.worker_status)
       ? data.worker_status.map(
           (w: { id: number; status: string; processed: number }) => ({
-            id: safeNumber(w?.id),
-            status: String(w?.status || "unknown"),
-            processed: safeNumber(w?.processed),
-          })
+            id: safeNumber(w.id),
+            status: String(w.status ?? "unknown"),
+            processed: safeNumber(w.processed),
+          }),
         )
       : [],
-    nfqueue_status: String(data.nfqueue_status || "unknown"),
-    tables_status: String(data.tables_status || "unknown"),
+    nfqueue_status: String(data.nfqueue_status ?? "unknown"),
+    tables_status: String(data.tables_status ?? "unknown"),
     recent_connections: Array.isArray(data.recent_connections)
       ? data.recent_connections.map(
           (conn: {
@@ -190,25 +196,25 @@ const normalizeMetrics = (data: null | Metrics): Metrics => {
             destination?: string;
             is_target?: boolean;
           }) => ({
-            timestamp: String(conn?.timestamp || ""),
+            timestamp: String(conn?.timestamp ?? ""),
             protocol:
               conn?.protocol === "TCP" || conn?.protocol === "UDP"
                 ? conn.protocol
                 : ("TCP" as "TCP" | "UDP"),
-            domain: String(conn?.domain || ""),
-            source: String(conn?.source || ""),
-            destination: String(conn?.destination || ""),
+            domain: String(conn?.domain ?? ""),
+            source: String(conn?.source ?? ""),
+            destination: String(conn?.destination ?? ""),
             is_target: Boolean(conn?.is_target),
-          })
+          }),
         )
       : [],
     recent_events: Array.isArray(data.recent_events)
       ? data.recent_events.map(
           (evt: { timestamp?: string; level?: string; message?: string }) => ({
-            timestamp: String(evt?.timestamp || ""),
-            level: String(evt?.level || ""),
-            message: String(evt?.message || ""),
-          })
+            timestamp: String(evt?.timestamp ?? ""),
+            level: String(evt?.level ?? ""),
+            message: String(evt?.message ?? ""),
+          }),
         )
       : [],
     device_domains:
@@ -221,10 +227,10 @@ const normalizeMetrics = (data: null | Metrics): Metrics => {
                     Object.entries(domains).map(([d, c]) => [
                       String(d),
                       safeNumber(c),
-                    ])
+                    ]),
                   )
                 : {},
-            ])
+            ]),
           )
         : {},
     current_cps: safeNumber(data.current_cps),
@@ -253,7 +259,7 @@ export function DashboardPage() {
       const ws = new WebSocket(
         (location.protocol === "https:" ? "wss://" : "ws://") +
           location.host +
-          "/api/ws/metrics"
+          "/api/ws/metrics",
       );
 
       ws.onopen = () => {
