@@ -1,4 +1,5 @@
 {
+  "editor.showUnused": true,
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "MarkdownPaste.path": "${workspaceRoot}/docs/static/img/${fileBasenameNoExtension}",
