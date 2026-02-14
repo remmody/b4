@@ -27,10 +27,10 @@ export const geodatApi = {
   sources: () => apiGet<GeodatSource[]>("/api/geodat/sources"),
   info: (path: string) =>
     apiGet<GeoFileInfo>(`/api/geodat/info?path=${encodeURIComponent(path)}`),
-  download: (geositeUrl: string, geoipUrl: string, destPath: string) =>
+  download: (destPath: string, geositeUrl?: string, geoipUrl?: string) =>
     apiPost<GeodatDownloadResult>("/api/geodat/download", {
-      geosite_url: geositeUrl,
-      geoip_url: geoipUrl,
+      geosite_url: geositeUrl ?? "",
+      geoip_url: geoipUrl ?? "",
       destination_path: destPath,
     }),
 };
