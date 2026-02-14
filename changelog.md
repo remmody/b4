@@ -3,6 +3,7 @@
 ## [1.35.0] - 2026-02-xx
 
 - IMPROVED: **Geo Settings** - `GeoSite` and `GeoIP` databases can now be downloaded independently from different sources. You no longer need both files — pick only what you need. Added [b4geoip](https://github.com/DanielLavrushin/b4geoip) as a built-in source option.
+- FIXED: Some connections to matched domains intermittently showing as "not matched". This was caused by an internal cache issue and learned IP associations being lost when saving settings or updating geo databases.
 
 ## [1.34.0] - 2026-02-10
 

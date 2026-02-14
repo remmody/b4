@@ -146,6 +146,11 @@ func (p *Pool) UpdateConfig(newCfg *config.Config) error {
 
 	matcher := buildMatcher(newCfg)
 
+	if len(p.Workers) > 0 {
+		oldMatcher := p.Workers[0].getMatcher()
+		matcher.TransferLearnedIPs(oldMatcher)
+	}
+
 	for _, w := range p.Workers {
 		w.cfg.Store(newCfg)
 		w.matcher.Store(matcher)

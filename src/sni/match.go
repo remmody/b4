@@ -262,6 +262,11 @@ func (s *SuffixSet) cacheIPResult(ipStr string, matched bool, set *config.SetCon
 	s.ipCacheMu.Lock()
 	defer s.ipCacheMu.Unlock()
 
+	if existing, ok := s.ipCache[ipStr]; ok {
+		s.ipCacheLRU.MoveToFront(existing.element)
+		return
+	}
+
 	if len(s.ipCache) >= s.ipCacheLimit {
 		oldest := s.ipCacheLRU.Back()
 		if oldest != nil {
@@ -317,9 +322,14 @@ func (s *SuffixSet) matchDomain(host string) (bool, *config.SetConfig) {
 		}
 	}
 
-	// Update cache
+	// Update cache — check if another goroutine already cached this host
 	s.domainCacheMu.Lock()
 	defer s.domainCacheMu.Unlock()
+
+	if existing, ok := s.domainCache[host]; ok {
+		s.domainCacheLRU.MoveToFront(existing.element)
+		return existing.matched, existing.set
+	}
 
 	if len(s.domainCache) >= s.domainCacheLimit {
 		oldest := s.domainCacheLRU.Back()
@@ -432,6 +442,39 @@ func (s *SuffixSet) MatchLearnedIP(ip net.IP) (bool, *config.SetConfig, string) 
 	entry.learnedAt = time.Now()
 	s.learnedIPCacheLRU.MoveToFront(entry.element)
 	return true, entry.set, entry.domain
+}
+
+func (s *SuffixSet) TransferLearnedIPs(old *SuffixSet) {
+	if s == nil || old == nil {
+		return
+	}
+
+	old.learnedIPCacheMu.RLock()
+	entries := make([]struct {
+		ip     string
+		domain string
+		set    *config.SetConfig
+	}, 0, len(old.learnedIPCache))
+	now := time.Now()
+	for ipStr, entry := range old.learnedIPCache {
+		if now.Sub(entry.learnedAt) <= old.learnedIPTTL {
+			entries = append(entries, struct {
+				ip     string
+				domain string
+				set    *config.SetConfig
+			}{ip: ipStr, domain: entry.domain, set: entry.set})
+		}
+	}
+	old.learnedIPCacheMu.RUnlock()
+
+	for _, e := range entries {
+		if matched, newSet := s.MatchSNI(e.domain); matched {
+			ip := net.ParseIP(e.ip)
+			if ip != nil {
+				s.LearnIPToDomain(ip, e.domain, newSet)
+			}
+		}
+	}
 }
 
 func (s *SuffixSet) GetCacheStats() map[string]interface{} {
