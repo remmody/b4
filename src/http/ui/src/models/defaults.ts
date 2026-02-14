@@ -24,6 +24,10 @@ export function createDefaultSet(setCount: number): B4SetConfig {
         fake_count: 3,
         strategy: "badsum",
       },
+      duplicate: {
+        enabled: false,
+        count: 3,
+      },
     } as B4SetConfig["tcp"],
     udp: {
       mode: "fake",

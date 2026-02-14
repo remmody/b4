@@ -164,6 +164,7 @@ export interface TcpConfig {
   desync: DesyncConfig;
   win: WinConfig;
   incoming: IncomingConfig;
+  duplicate?: DuplicateConfig;
 }
 
 export interface IncomingConfig {
@@ -258,6 +259,11 @@ export interface DNSConfig {
   enabled: boolean;
   target_dns: string;
   fragment_query: boolean;
+}
+
+export interface DuplicateConfig {
+  enabled: boolean;
+  count: number;
 }
 
 export const MAIN_SET_ID = "11111111-1111-1111-1111-111111111111";

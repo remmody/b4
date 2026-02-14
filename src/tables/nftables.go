@@ -200,6 +200,35 @@ func (n *NFTablesManager) Apply() error {
 		return err
 	}
 
+	// Duplication rules: queue ALL TCP/443 packets to specific IPs (no connbytes limit).
+	// Must come before the generic connbytes-limited rules.
+	dupIPv4, dupIPv6 := cfg.CollectDuplicateIPs()
+	queueAction := strings.Fields(n.buildNFQueueAction())
+	if len(dupIPv4) > 0 && cfg.Queue.IPv4Enabled {
+		var ipExpr string
+		if len(dupIPv4) == 1 {
+			ipExpr = dupIPv4[0]
+		} else {
+			ipExpr = "{ " + strings.Join(dupIPv4, ", ") + " }"
+		}
+		args := append([]string{"meta", "nfproto", "ipv4", "ip", "daddr", ipExpr, "tcp", "dport", "443", "counter"}, queueAction...)
+		if err := n.addRule(nftChainName, args...); err != nil {
+			return err
+		}
+	}
+	if len(dupIPv6) > 0 && cfg.Queue.IPv6Enabled {
+		var ipExpr string
+		if len(dupIPv6) == 1 {
+			ipExpr = dupIPv6[0]
+		} else {
+			ipExpr = "{ " + strings.Join(dupIPv6, ", ") + " }"
+		}
+		args := append([]string{"meta", "nfproto", "ipv6", "ip6", "daddr", ipExpr, "tcp", "dport", "443", "counter"}, queueAction...)
+		if err := n.addRule(nftChainName, args...); err != nil {
+			return err
+		}
+	}
+
 	tcpLimit := fmt.Sprintf("%d", cfg.MainSet.TCP.ConnBytesLimit+1)
 	udpLimit := fmt.Sprintf("%d", cfg.MainSet.UDP.ConnBytesLimit+1)
 

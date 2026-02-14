@@ -211,6 +211,34 @@ func (w *Worker) Start() error {
 					return w.HandleIncoming(q, id, v, raw, ihl, src, dstStr, dport, srcStr, sport, payload)
 				}
 
+				// Packet duplication path: duplicate ALL outgoing TCP/443 packets
+				// without TLS/SNI parsing. Bypasses DPI evasion entirely.
+				if matched && dport == HTTPSPort && set.TCP.Duplicate.Enabled && set.TCP.Duplicate.Count > 0 {
+					log.Tracef("TCP duplicate to %s:%d (%d copies, set: %s)", dstStr, dport, set.TCP.Duplicate.Count, set.Name)
+
+					m := metrics.GetMetricsCollector()
+					m.RecordConnection("TCP-DUP", "", srcStr, dstStr, true, srcMac, set.Name)
+					m.RecordPacket(uint64(len(raw)))
+
+					if !log.IsDiscoveryActive() {
+						log.Infof(",TCP-DUP,,%s:%d,%s,%s:%d,%s", srcStr, sport, set.Name, dstStr, dport, srcMac)
+					}
+
+					if err := q.SetVerdict(id, nfqueue.NfDrop); err != nil {
+						log.Tracef("failed to set drop verdict on packet %d: %v", id, err)
+						return 0
+					}
+
+					for i := 0; i < set.TCP.Duplicate.Count; i++ {
+						if v == IPv4 {
+							_ = w.sock.SendIPv4(raw, dst)
+						} else {
+							_ = w.sock.SendIPv6(raw, dst)
+						}
+					}
+					return 0
+				}
+
 				tcpFlags := tcp[13]
 				isSyn := (tcpFlags & 0x02) != 0
 				isAck := (tcpFlags & 0x10) != 0
@@ -219,7 +247,7 @@ func (w *Worker) Start() error {
 					log.Tracef("RST received from %s:%d", dstStr, dport)
 				}
 
-				if isSyn && !isAck && dport == HTTPSPort && matched {
+				if isSyn && !isAck && dport == HTTPSPort && matched && !set.TCP.Duplicate.Enabled {
 					log.Tracef("TCP SYN to %s:%d (set: %s)", dstStr, dport, set.Name)
 
 					metrics := metrics.GetMetricsCollector()

@@ -120,6 +120,18 @@ func (c *Config) Validate() error {
 			}
 		}
 
+		if set.TCP.Duplicate.Enabled {
+			if set.TCP.Duplicate.Count < 1 {
+				set.TCP.Duplicate.Count = 1
+			}
+			if set.TCP.Duplicate.Count > 10 {
+				set.TCP.Duplicate.Count = 10
+			}
+			if len(set.Targets.IPs) == 0 && len(set.Targets.GeoIpCategories) == 0 {
+				log.Warnf("Set '%s' has duplication enabled but no IP targets configured", set.Name)
+			}
+		}
+
 		if set.Id == MAIN_SET_ID {
 			continue
 		}
@@ -371,6 +383,28 @@ func (cfg *Config) CollectUDPPorts() []string {
 	sort.Strings(ports)
 	ports = mergeAndNormalizePorts(ports)
 	return ports
+}
+
+// CollectDuplicateIPs returns IPv4 and IPv6 IPs/CIDRs from sets with duplication enabled.
+// Used for firewall rules that queue packets without connbytes limit.
+func (cfg *Config) CollectDuplicateIPs() (ipv4 []string, ipv6 []string) {
+	for _, set := range cfg.Sets {
+		if !set.Enabled || !set.TCP.Duplicate.Enabled {
+			continue
+		}
+		for _, ipStr := range set.Targets.IpsToMatch {
+			ipStr = strings.TrimSpace(ipStr)
+			if ipStr == "" {
+				continue
+			}
+			if strings.Contains(ipStr, ":") {
+				ipv6 = append(ipv6, ipStr)
+			} else {
+				ipv4 = append(ipv4, ipStr)
+			}
+		}
+	}
+	return
 }
 
 func (c *Config) Clone() *Config {

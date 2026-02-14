@@ -1,12 +1,15 @@
 package handler
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/daniellavrushin/b4/log"
@@ -39,32 +42,21 @@ func (api *API) RegisterGeodatApi() {
 	api.mux.HandleFunc("/api/geodat/info", api.handleFileInfo)
 }
 
-var geodatSources = []GeodatSource{
-	{
-		Name:       "Loyalsoldier",
-		GeositeURL: "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat",
-		GeoipURL:   "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat",
-	},
-	{
-		Name:       "RUNET Freedom",
-		GeositeURL: "https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geosite.dat",
-		GeoipURL:   "https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geoip.dat",
-	},
-	{
-		Name:       "Nidelon",
-		GeositeURL: "https://github.com/Nidelon/ru-block-v2ray-rules/releases/latest/download/geosite.dat",
-		GeoipURL:   "https://github.com/Nidelon/ru-block-v2ray-rules/releases/latest/download/geoip.dat",
-	},
-	{
-		Name:       "DustinWin",
-		GeositeURL: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo/geosite.dat",
-		GeoipURL:   "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo/geoip.dat",
-	},
-	{
-		Name:       "Chocolate4U",
-		GeositeURL: "https://raw.githubusercontent.com/Chocolate4U/Iran-v2ray-rules/release/geosite.dat",
-		GeoipURL:   "https://raw.githubusercontent.com/Chocolate4U/Iran-v2ray-rules/release/geoip.dat",
-	},
+//go:embed geodat.json
+var geodatJSON []byte
+
+var (
+	geodatSources []GeodatSource
+	geodatOnce    sync.Once
+)
+
+func loadGeodatSources() {
+	geodatOnce.Do(func() {
+		if err := json.Unmarshal(geodatJSON, &geodatSources); err != nil {
+			log.Errorf("Failed to parse embedded geodat.json: %v", err)
+			geodatSources = []GeodatSource{}
+		}
+	})
 }
 
 func (api *API) handleGeodatSources(w http.ResponseWriter, r *http.Request) {
@@ -73,6 +65,7 @@ func (api *API) handleGeodatSources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	loadGeodatSources()
 	setJsonHeader(w)
 	json.NewEncoder(w).Encode(geodatSources)
 }
@@ -89,42 +82,48 @@ func (api *API) handleGeodatDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.GeositeURL == "" || req.GeoipURL == "" || req.DestinationPath == "" {
-		http.Error(w, "Geosite URL, GeoIP URL, and destination path required", http.StatusBadRequest)
+	if req.DestinationPath == "" {
+		http.Error(w, "Destination path required", http.StatusBadRequest)
+		return
+	}
+	if req.GeositeURL == "" && req.GeoipURL == "" {
+		http.Error(w, "At least one of geosite_url or geoip_url is required", http.StatusBadRequest)
 		return
 	}
 
-	// Create destination directory
 	if err := os.MkdirAll(req.DestinationPath, 0755); err != nil {
 		log.Errorf("Failed to create directory: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to create directory: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	geositePath := filepath.Join(req.DestinationPath, "geosite.dat")
-	geoipPath := filepath.Join(req.DestinationPath, "geoip.dat")
+	var geositeSize, geoipSize int64
 
-	// Download geosite.dat
-	geositeSize, err := downloadFile(req.GeositeURL, geositePath)
-	if err != nil {
-		log.Errorf("Failed to download geosite.dat: %v", err)
-		http.Error(w, fmt.Sprintf("Failed to download geosite.dat: %v", err), http.StatusInternalServerError)
-		return
+	if req.GeositeURL != "" {
+		geositePath := filepath.Join(req.DestinationPath, "geosite.dat")
+		var err error
+		geositeSize, err = downloadFile(req.GeositeURL, geositePath)
+		if err != nil {
+			log.Errorf("Failed to download geosite.dat: %v", err)
+			http.Error(w, fmt.Sprintf("Failed to download geosite.dat: %v", err), http.StatusInternalServerError)
+			return
+		}
+		api.cfg.System.Geo.GeoSitePath = geositePath
+		api.cfg.System.Geo.GeoSiteURL = req.GeositeURL
 	}
 
-	// Download geoip.dat
-	geoipSize, err := downloadFile(req.GeoipURL, geoipPath)
-	if err != nil {
-		log.Errorf("Failed to download geoip.dat: %v", err)
-		http.Error(w, fmt.Sprintf("Failed to download geoip.dat: %v", err), http.StatusInternalServerError)
-		return
+	if req.GeoipURL != "" {
+		geoipPath := filepath.Join(req.DestinationPath, "geoip.dat")
+		var err error
+		geoipSize, err = downloadFile(req.GeoipURL, geoipPath)
+		if err != nil {
+			log.Errorf("Failed to download geoip.dat: %v", err)
+			http.Error(w, fmt.Sprintf("Failed to download geoip.dat: %v", err), http.StatusInternalServerError)
+			return
+		}
+		api.cfg.System.Geo.GeoIpPath = geoipPath
+		api.cfg.System.Geo.GeoIpURL = req.GeoipURL
 	}
-
-	// Update config
-	api.cfg.System.Geo.GeoSitePath = geositePath
-	api.cfg.System.Geo.GeoIpPath = geoipPath
-	api.cfg.System.Geo.GeoSiteURL = req.GeositeURL
-	api.cfg.System.Geo.GeoIpURL = req.GeoipURL
 
 	if err := api.saveAndPushConfig(api.cfg); err != nil {
 		log.Errorf("Failed to save config: %v", err)
@@ -132,7 +131,7 @@ func (api *API) handleGeodatDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	api.geodataManager.UpdatePaths(geositePath, geoipPath)
+	api.geodataManager.UpdatePaths(api.cfg.System.Geo.GeoSitePath, api.cfg.System.Geo.GeoIpPath)
 	api.geodataManager.ClearCache()
 
 	for _, set := range api.cfg.Sets {
@@ -140,13 +139,20 @@ func (api *API) handleGeodatDownload(w http.ResponseWriter, r *http.Request) {
 		api.loadTargetsForSetCached(set)
 	}
 
-	log.Infof("Downloaded geodat files: geosite.dat (%d bytes), geoip.dat (%d bytes)", geositeSize, geoipSize)
+	parts := []string{}
+	if req.GeositeURL != "" {
+		parts = append(parts, fmt.Sprintf("geosite.dat (%d bytes)", geositeSize))
+	}
+	if req.GeoipURL != "" {
+		parts = append(parts, fmt.Sprintf("geoip.dat (%d bytes)", geoipSize))
+	}
+	log.Infof("Downloaded geodat files: %s", strings.Join(parts, ", "))
 
 	response := GeodatDownloadResponse{
 		Success:     true,
-		Message:     "Geodat files downloaded successfully",
-		GeositePath: geositePath,
-		GeoipPath:   geoipPath,
+		Message:     "Downloaded: " + strings.Join(parts, ", "),
+		GeositePath: api.cfg.System.Geo.GeoSitePath,
+		GeoipPath:   api.cfg.System.Geo.GeoIpPath,
 		GeositeSize: geositeSize,
 		GeoipSize:   geoipSize,
 	}

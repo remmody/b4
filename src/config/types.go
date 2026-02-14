@@ -48,9 +48,10 @@ type TCPConfig struct {
 	SynTTL         uint8 `json:"syn_ttl" bson:"syn_ttl"`
 	DropSACK       bool  `json:"drop_sack" bson:"drop_sack"`
 
-	Incoming IncomingConfig `json:"incoming" bson:"incoming"`
-	Desync   DesyncConfig   `json:"desync" bson:"desync"`
-	Win      WinConfig      `json:"win" bson:"win"`
+	Incoming  IncomingConfig  `json:"incoming" bson:"incoming"`
+	Desync    DesyncConfig    `json:"desync" bson:"desync"`
+	Win       WinConfig       `json:"win" bson:"win"`
+	Duplicate DuplicateConfig `json:"duplicate" bson:"duplicate"`
 }
 
 type WinConfig struct {
@@ -223,4 +224,9 @@ type DNSConfig struct {
 	Enabled       bool   `json:"enabled" bson:"enabled"`
 	TargetDNS     string `json:"target_dns" bson:"target_dns"`
 	FragmentQuery bool   `json:"fragment_query" bson:"fragment_query"`
+}
+
+type DuplicateConfig struct {
+	Enabled bool `json:"enabled" bson:"enabled"`
+	Count   int  `json:"count" bson:"count"` // Number of packet copies to send (original is dropped)
 }

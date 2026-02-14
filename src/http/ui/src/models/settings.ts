@@ -15,6 +15,8 @@ export interface GeodatDownloadResult {
   message: string;
   geosite_path: string;
   geoip_path: string;
+  geosite_size: number;
+  geoip_size: number;
 }
 
 export interface SystemInfo {

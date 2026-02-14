@@ -429,7 +429,6 @@ export function SettingsPage() {
         <TabPanel value={validTab} index={TABS.DOMAINS}>
           <GeoSettings
             config={config}
-            onChange={handleChange}
             loadConfig={() => {
               loadConfig().catch(() => {});
             }}

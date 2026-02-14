@@ -276,7 +276,28 @@ func (manager *IPTablesManager) buildManifest() (Manifest, error) {
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "PREROUTING", Action: "I", Spec: dnsResponseSpec},
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "PREROUTING", Action: "I", Spec: tcpResponseSpec},
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "PREROUTING", Action: "I", Spec: synackSpec},
+		)
 
+		// Duplication rules: queue ALL TCP/443 to specific IPs (no connbytes limit).
+		// Must come before the generic connbytes-limited TCP rule.
+		dupIPv4, dupIPv6 := cfg.CollectDuplicateIPs()
+		var dupIPs []string
+		if ipt == "iptables" {
+			dupIPs = dupIPv4
+		} else {
+			dupIPs = dupIPv6
+		}
+		for _, cidr := range dupIPs {
+			dupSpec := append(
+				[]string{"-p", "tcp", "-d", cidr, "--dport", "443"},
+				manager.buildNFQSpec(queueNum, threads)...,
+			)
+			rules = append(rules,
+				Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: dupSpec},
+			)
+		}
+
+		rules = append(rules,
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: tcpSpec},
 			Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: chainName, Action: "A", Spec: dnsSpec},
 		)

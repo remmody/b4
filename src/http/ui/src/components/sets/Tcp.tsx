@@ -124,6 +124,8 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
     );
   };
 
+  const dup = config.tcp.duplicate ?? { enabled: false, count: 3 };
+
   return (
     <B4Section
       title="TCP Configuration"
@@ -131,6 +133,7 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
       icon={<DnsIcon />}
     >
       {/* Basic TCP Settings */}
+      <B4FormHeader label="Basic TCP Settings" />
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 6 }}>
           <B4Slider
@@ -268,6 +271,52 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
         )}
       </Grid>
 
+      {/* Packet Duplication */}
+      <B4FormHeader label="Packet Duplication" />
+      <Grid container spacing={3}>
+        <B4Alert>
+          Some ISPs throttle by randomly dropping outgoing packets to specific
+          IP ranges (e.g. Telegram subnets). Duplication sends multiple copies
+          of each packet. When enabled, all other DPI evasion is bypassed for
+          this set. Only applies to TCP port 443.
+        </B4Alert>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={dup.enabled}
+                onChange={(e) =>
+                  onChange("tcp.duplicate.enabled", e.target.checked)
+                }
+                color="primary"
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="body1" fontWeight={500}>
+                  Enable Packet Duplication
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Drop original packet and send multiple copies via raw socket
+                </Typography>
+              </Box>
+            }
+          />
+        </Grid>
+        {dup.enabled && (
+          <Grid size={{ xs: 12, md: 6 }}>
+            <B4Slider
+              label="Copy Count"
+              value={dup.count}
+              onChange={(value: number) => onChange("tcp.duplicate.count", value)}
+              min={1}
+              max={10}
+              step={1}
+              helperText="Number of packet copies to send (original is dropped)"
+            />
+          </Grid>
+        )}
+      </Grid>
       {/* TCP Window Configuration */}
       <B4FormHeader label="TCP Window Manipulation" />
       <Grid container spacing={3}>

@@ -65,6 +65,11 @@ var DefaultSetConfig = SetConfig{
 			FakeCount: 3,
 			Strategy:  "badsum",
 		},
+
+		Duplicate: DuplicateConfig{
+			Enabled: false,
+			Count:   3,
+		},
 	},
 
 	DNS: DNSConfig{
