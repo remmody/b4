@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Container, Paper } from "@mui/material";
+import { Box, Container, Fab, Paper, Tooltip } from "@mui/material";
+import { StartIcon, StopIcon } from "@b4.icons";
 import { DomainsControlBar } from "./ControlBar";
 import { AddSniModal } from "./AddSniModal";
 import { DomainsTable, SortColumn } from "./Table";
@@ -245,23 +246,42 @@ export function ConnectionsPage() {
           totalCount={enrichedLogs.length}
           filteredCount={filteredLogs.length}
           sortColumn={sortColumn}
-          paused={pauseDomains}
           showAll={showAll}
           onShowAllChange={setShowAll}
-          onPauseChange={setPauseDomains}
           onClearSort={handleClearSort}
           onReset={clearDomains}
         />
 
-        <DomainsTable
-          data={sortedData}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          onSort={handleSort}
-          onDomainClick={handleDomainClick}
-          onIpClick={handleIpClick}
-          onScrollStateChange={handleScrollStateChange}
-        />
+        <Box sx={{ position: "relative", flex: 1, overflow: "hidden", display: "flex" }}>
+          <DomainsTable
+            data={sortedData}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            onDomainClick={handleDomainClick}
+            onIpClick={handleIpClick}
+            onScrollStateChange={handleScrollStateChange}
+          />
+
+          <Tooltip title={pauseDomains ? "Resume streaming" : "Pause streaming"} placement="left">
+            <Fab
+              size="small"
+              onClick={() => setPauseDomains(!pauseDomains)}
+              sx={{
+                position: "absolute",
+                bottom: 16,
+                right: 16,
+                bgcolor: pauseDomains ? colors.secondary : colors.border.strong,
+                color: colors.background.default,
+                "&:hover": {
+                  bgcolor: pauseDomains ? colors.secondary : colors.border.default,
+                },
+              }}
+            >
+              {pauseDomains ? <StartIcon /> : <StopIcon />}
+            </Fab>
+          </Tooltip>
+        </Box>
       </Paper>
 
       <AddSniModal

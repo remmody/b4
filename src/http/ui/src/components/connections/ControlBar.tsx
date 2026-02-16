@@ -9,8 +9,6 @@ interface DomainsControlBarProps {
   totalCount: number;
   filteredCount: number;
   sortColumn: string | null;
-  paused: boolean;
-  onPauseChange: (paused: boolean) => void;
   showAll: boolean;
   onShowAllChange: (showAll: boolean) => void;
   onClearSort: () => void;
@@ -23,10 +21,8 @@ export const DomainsControlBar = ({
   totalCount,
   filteredCount,
   sortColumn,
-  paused,
   showAll,
   onShowAllChange,
-  onPauseChange,
   onClearSort,
   onReset,
 }: DomainsControlBarProps) => {
@@ -76,11 +72,6 @@ export const DomainsControlBar = ({
           label={showAll ? "All packets" : "Domains only"}
           checked={showAll}
           onChange={(checked: boolean) => onShowAllChange(checked)}
-        />
-        <B4Switch
-          label={paused ? "Paused" : "Streaming"}
-          checked={paused}
-          onChange={(checked: boolean) => onPauseChange(checked)}
         />
         <B4TooltipButton
           title={"Clear Connections"}
