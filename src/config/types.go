@@ -40,9 +40,9 @@ type DevicesConfig struct {
 }
 
 type TCPConfig struct {
-	ConnBytesLimit int `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
-	Seg2Delay      int `json:"seg2delay" bson:"seg2delay"`
-	Seg2DelayMax   int `json:"seg2delay_max" bson:"seg2delay_max"`
+	ConnBytesLimit int   `json:"conn_bytes_limit" bson:"conn_bytes_limit"`
+	Seg2Delay      int   `json:"seg2delay" bson:"seg2delay"`
+	Seg2DelayMax   int   `json:"seg2delay_max" bson:"seg2delay_max"`
 	SynFake        bool  `json:"syn_fake" bson:"syn_fake"`
 	SynFakeLen     int   `json:"syn_fake_len" bson:"syn_fake_len"`
 	SynTTL         uint8 `json:"syn_ttl" bson:"syn_ttl"`

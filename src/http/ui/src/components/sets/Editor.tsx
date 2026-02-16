@@ -13,8 +13,6 @@ import { useNavigate } from "react-router";
 import {
   DnsIcon,
   DomainIcon,
-  FakingIcon,
-  FragIcon,
   ImportExportIcon,
   SaveIcon,
   TcpIcon,
@@ -33,12 +31,10 @@ import {
 } from "@models/config";
 
 import { DnsSettings } from "./Dns";
-import { FakingSettings } from "./Faking";
-import { FragmentationSettings } from "./Fragmentation";
 import { ImportExportSettings } from "./ImportExport";
 import { SetStats } from "./Manager";
 import { TargetSettings } from "./Target";
-import { TcpSettings } from "./Tcp";
+import { TcpTabContainer } from "./tcp/TcpTabContainer";
 import { UdpSettings } from "./Udp";
 
 interface TabPanelProps {
@@ -94,8 +90,6 @@ export const SetEditorPage = ({
     TCP,
     UDP,
     DNS,
-    FRAGMENTATION,
-    FAKING,
     IMPORT_EXPORT,
   }
 
@@ -247,8 +241,6 @@ export const SetEditorPage = ({
             <B4Tab icon={<TcpIcon />} label="TCP" inline />
             <B4Tab icon={<UdpIcon />} label="UDP" inline />
             <B4Tab icon={<DnsIcon />} label="DNS" inline />
-            <B4Tab icon={<FragIcon />} label="Fragmentation" inline />
-            <B4Tab icon={<FakingIcon />} label="Faking" inline />
             <B4Tab icon={<ImportExportIcon />} label="Import/Export" inline />
           </B4Tabs>
         </Box>
@@ -266,7 +258,7 @@ export const SetEditorPage = ({
         </TabPanel>
 
         <TabPanel value={activeTab} index={TABS.TCP}>
-          <TcpSettings
+          <TcpTabContainer
             config={editedSet}
             main={mainSet}
             onChange={handleChange}
@@ -287,14 +279,6 @@ export const SetEditorPage = ({
             onChange={handleChange}
             ipv6={config.queue.ipv6}
           />
-        </TabPanel>
-
-        <TabPanel value={activeTab} index={TABS.FRAGMENTATION}>
-          <FragmentationSettings config={editedSet} onChange={handleChange} />
-        </TabPanel>
-
-        <TabPanel value={activeTab} index={TABS.FAKING}>
-          <FakingSettings config={editedSet} onChange={handleChange} />
         </TabPanel>
 
         <TabPanel value={activeTab} index={TABS.IMPORT_EXPORT}>

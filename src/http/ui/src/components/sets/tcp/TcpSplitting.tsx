@@ -1,7 +1,5 @@
 import { Grid, Typography, Box } from "@mui/material";
-import { FragIcon } from "@b4.icons";
 import {
-  B4Section,
   B4Switch,
   B4Select,
   B4Slider,
@@ -9,17 +7,17 @@ import {
   B4FormHeader,
 } from "@b4.elements";
 import { B4SetConfig, FragmentationStrategy } from "@models/config";
-import { ComboSettings } from "./frags/Combo";
-import { DisorderSettings } from "./frags/Disorder";
-import { ExtSplitSettings } from "./frags/ExtSplit";
-import { FirstByteSettings } from "./frags/FirstByte";
-import { TcpIpSettings } from "./frags/TcpIp";
+import { ComboSettings } from "../frags/Combo";
+import { DisorderSettings } from "../frags/Disorder";
+import { ExtSplitSettings } from "../frags/ExtSplit";
+import { FirstByteSettings } from "../frags/FirstByte";
+import { TcpIpSettings } from "../frags/TcpIp";
 
-interface FragmentationSettingsProps {
+interface TcpSplittingProps {
   config: B4SetConfig;
   onChange: (
     field: string,
-    value: string | boolean | number | string[]
+    value: string | boolean | number | string[],
   ) => void;
 }
 
@@ -37,10 +35,7 @@ const fragmentationOptions: { label: string; value: FragmentationStrategy }[] =
     { label: "Disabled", value: "none" },
   ];
 
-export const FragmentationSettings = ({
-  config,
-  onChange,
-}: FragmentationSettingsProps) => {
+export const TcpSplitting = ({ config, onChange }: TcpSplittingProps) => {
   const strategy = config.fragmentation.strategy;
   const isTcpOrIp = strategy === "tcp" || strategy === "ip";
   const isOob = strategy === "oob";
@@ -48,11 +43,8 @@ export const FragmentationSettings = ({
   const isActive = strategy !== "none";
 
   return (
-    <B4Section
-      title="Fragmentation Strategy"
-      description="Split packets to evade DPI pattern matching"
-      icon={<FragIcon />}
-    >
+    <>
+      <B4FormHeader label="Splitting Strategy" />
       <Grid container spacing={3}>
         {/* Strategy Selection */}
         <Grid size={{ xs: 12, md: 6 }}>
@@ -164,6 +156,6 @@ export const FragmentationSettings = ({
           </B4Alert>
         )}
       </Grid>
-    </B4Section>
+    </>
   );
 };
