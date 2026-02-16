@@ -1,8 +1,10 @@
 # B4 - Bye Bye Big Bro
 
-## [1.35.1] - 2026-02-16
+## [1.35.2] - 2026-02-16
 
-- FIXED: **Packet Duplication** connections showing incorrect data in the connections table.
+- FIXED: All changes being lost and tabs resetting when creating a new `set`. Any edit (switching tabs, adding categories, changing settings) could be randomly undone.
+- FIXED: Custom TCP window values (add/remove) not being saved when using `Oscillate` or `Random` window modes.
+- FIXED: `Packet Duplication` connections showing incorrect data in the connections table.
 
 ## [1.35.0] - 2026-02-15
 

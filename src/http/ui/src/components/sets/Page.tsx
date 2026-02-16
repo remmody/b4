@@ -11,7 +11,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes, useNavigate, useParams } from "react-router";
 import { SetEditorPage } from "./Editor";
 import { SetStats, SetWithStats, SetsManager } from "./Manager";
@@ -35,7 +35,8 @@ function SetEditorRoute({ config, onRefresh }: Readonly<SetEditorRouteProps>) {
   ) as (SetStats | null)[];
 
   const existingSet = isNew ? null : sets.find((s) => s.id === id);
-  const set = isNew ? createDefaultSet(sets.length) : existingSet;
+  const defaultSet = useMemo(() => createDefaultSet(sets.length), [sets.length]);
+  const set = isNew ? defaultSet : existingSet;
 
   const stats = existingSet
     ? (setsStats[sets.findIndex((s) => s.id === existingSet.id)] ?? undefined)
