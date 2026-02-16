@@ -110,7 +110,7 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
       !winValues.includes(val)
     ) {
       onChange(
-        "tcp.win_values",
+        "tcp.win.values",
         [...winValues, val].sort((a, b) => a - b),
       );
       setNewWinValue("");
@@ -119,7 +119,7 @@ export const TcpSettings = ({ config, main, onChange }: TcpSettingsProps) => {
 
   const handleRemoveWinValue = (val: number) => {
     onChange(
-      "tcp.win_values",
+      "tcp.win.values",
       winValues.filter((v) => v !== val),
     );
   };
