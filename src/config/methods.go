@@ -107,6 +107,7 @@ func (c *Config) Validate() error {
 	if c.MainSet == nil {
 		defaultCopy := NewSetConfig()
 		c.MainSet = &defaultCopy
+		c.Sets = append(c.Sets, c.MainSet)
 	}
 
 	for _, set := range c.Sets {
