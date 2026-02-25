@@ -178,22 +178,29 @@ convert_to_proxy_url() {
     esac
 }
 
+# Check if wget supports HTTPS
+wget_supports_https() {
+    # Try a simple HTTPS HEAD request
+    wget --spider -q --timeout=5 "https://github.com" 2>/dev/null
+    return $?
+}
+
 # Download file from URL with GitHub fallback
 fetch_file() {
     url="$1"
     output="$2"
 
-    # Try direct GitHub download first
-    if command_exists wget; then
-        if wget -q --timeout=10 -O "$output" "$url" 2>/dev/null; then
-            return 0
-        fi
-    elif command_exists curl; then
+    # Try direct download (prefer curl - more likely to have SSL on routers)
+    if command_exists curl; then
         if curl -sfL --max-time 10 -o "$output" "$url" 2>/dev/null; then
             return 0
         fi
+    elif command_exists wget; then
+        if wget -q --timeout=10 -O "$output" "$url" 2>/dev/null; then
+            return 0
+        fi
     else
-        print_error "Neither wget nor curl found"
+        print_error "Neither curl nor wget found"
         return 1
     fi
 
@@ -201,12 +208,14 @@ fetch_file() {
     proxy_url=$(convert_to_proxy_url "$url")
     if [ "$proxy_url" != "$url" ]; then
         print_warning "Direct download failed, trying proxy (proxy.lavrush.in)..."
-        if command_exists wget; then
-            wget -q --timeout=15 -O "$output" "$proxy_url" 2>/dev/null
-            return $?
-        elif command_exists curl; then
-            curl -sfL --max-time 15 -o "$output" "$proxy_url" 2>/dev/null
-            return $?
+        if command_exists curl; then
+            if curl -sfL --max-time 15 -o "$output" "$proxy_url" 2>/dev/null; then
+                return 0
+            fi
+        elif command_exists wget; then
+            if wget -q --timeout=15 -O "$output" "$proxy_url" 2>/dev/null; then
+                return 0
+            fi
         fi
     fi
 
@@ -218,17 +227,16 @@ fetch_file() {
 fetch_stdout() {
     url="$1"
 
-    # Try direct GitHub download first
     result=""
-    if command_exists wget; then
-        result=$(wget -qO- --timeout=10 "$url" 2>/dev/null)
-        if [ $? -eq 0 ] && [ -n "$result" ]; then
+    if command_exists curl; then
+        result=$(curl -sfL --max-time 10 "$url" 2>/dev/null) || true
+        if [ -n "$result" ]; then
             echo "$result"
             return 0
         fi
-    elif command_exists curl; then
-        result=$(curl -sfL --max-time 10 "$url" 2>/dev/null)
-        if [ $? -eq 0 ] && [ -n "$result" ]; then
+    elif command_exists wget; then
+        result=$(wget -qO- --timeout=10 "$url" 2>/dev/null) || true
+        if [ -n "$result" ]; then
             echo "$result"
             return 0
         fi
@@ -239,12 +247,17 @@ fetch_stdout() {
     # If direct download failed, try proxy fallback
     proxy_url=$(convert_to_proxy_url "$url")
     if [ "$proxy_url" != "$url" ]; then
-        if command_exists wget; then
-            wget -qO- --timeout=15 "$proxy_url" 2>/dev/null
-        elif command_exists curl; then
-            curl -sfL --max-time 15 "$proxy_url" 2>/dev/null
+        print_warning "Direct download failed, trying proxy (proxy.lavrush.in)..."
+        result=""
+        if command_exists curl; then
+            result=$(curl -sfL --max-time 15 "$proxy_url" 2>/dev/null) || true
+        elif command_exists wget; then
+            result=$(wget -qO- --timeout=15 "$proxy_url" 2>/dev/null) || true
         fi
-        return $?
+        if [ -n "$result" ]; then
+            echo "$result"
+            return 0
+        fi
     fi
 
     return 1
@@ -298,7 +311,7 @@ check_dependencies() {
 
     missing_required=""
 
-    if ! command_exists wget && ! command_exists curl; then
+    if ! command_exists curl && ! command_exists wget; then
         missing_required="${missing_required} wget"
     fi
 
@@ -324,7 +337,67 @@ check_dependencies() {
         fi
     fi
 
+    # Check HTTPS support - critical for downloading from GitHub
+    ensure_https_support
+
     check_recommended_packages
+}
+
+# Ensure wget/curl can handle HTTPS (critical for GitHub downloads)
+ensure_https_support() {
+    # If curl exists with SSL, we're fine
+    if command_exists curl; then
+        if curl -sI --max-time 5 "https://github.com" >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+
+    # Check if wget supports HTTPS
+    if command_exists wget; then
+        if wget_supports_https; then
+            return 0
+        fi
+    fi
+
+    # Neither wget nor curl can do HTTPS
+    print_warning "HTTPS support not available (required for GitHub downloads)"
+
+    # Try to install wget-ssl on Entware/OpenWrt
+    if command_exists opkg; then
+        print_info "Attempting to install wget-ssl for HTTPS support..."
+        if [ "$QUIET_MODE" = "1" ]; then
+            opkg update >/dev/null 2>&1 || true
+            opkg install wget-ssl >/dev/null 2>&1 || true
+        else
+            printf "${CYAN}Install wget-ssl for HTTPS support? (Y/n): ${NC}"
+            read answer </dev/tty || answer="y"
+            case "$answer" in
+            [nN] | [nN][oO]) ;;
+            *)
+                opkg update >/dev/null 2>&1 || true
+                if opkg install wget-ssl >/dev/null 2>&1; then
+                    print_success "wget-ssl installed"
+                    # Rehash PATH to pick up new binary
+                    hash -r 2>/dev/null || true
+                else
+                    print_warning "Failed to install wget-ssl"
+                fi
+                ;;
+            esac
+        fi
+
+        # Verify HTTPS now works
+        if command_exists wget && wget_supports_https; then
+            return 0
+        fi
+        if command_exists curl && curl -sI --max-time 5 "https://github.com" >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+
+    print_warning "HTTPS may not work - downloads from GitHub might fail"
+    print_info "On Entware/Keenetic: opkg install wget-ssl"
+    print_info "On OpenWrt: opkg install wget-ssl ca-certificates"
 }
 
 check_recommended_packages() {
@@ -334,7 +407,7 @@ check_recommended_packages() {
         pkg_cmd="opkg"
         ;;
     entware | merlin)
-        recommended="jq coreutils-nohup iptables"
+        recommended="wget-ssl jq coreutils-nohup iptables"
         pkg_cmd="opkg"
         ;;
     systemd-linux | sysv-linux | generic-linux)

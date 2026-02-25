@@ -97,7 +97,7 @@ export const SetEditorPage = ({
   const [activeTab, setActiveTab] = useState<TABS>(TABS.TARGETS);
   const [editedSet, setEditedSet] = useState<B4SetConfig | null>(initialSet);
 
-  const mainSet = config.sets.find((s) => s.id === MAIN_SET_ID)!;
+  const mainSet = config.sets.find((s) => s.id === MAIN_SET_ID) ?? initialSet;
 
   useEffect(() => {
     setEditedSet(initialSet);
