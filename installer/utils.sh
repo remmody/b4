@@ -80,10 +80,45 @@ setup_directories() {
 
     # Create install directory if it doesn't exist
     if [ ! -d "$INSTALL_DIR" ]; then
-        mkdir -p "$INSTALL_DIR" || {
-            print_error "Failed to create install directory: $INSTALL_DIR"
+        if ! mkdir -p "$INSTALL_DIR" 2>/dev/null; then
+            # Install dir creation failed - likely read-only filesystem
+            print_warning "Cannot create $INSTALL_DIR (read-only filesystem?)"
+
+            # Try Entware fallback
+            if [ -d "/opt/sbin" ] && [ -w "/opt/sbin" ]; then
+                print_warning "Falling back to /opt/sbin (Entware)"
+                INSTALL_DIR="/opt/sbin"
+                CONFIG_DIR="/opt/etc/b4"
+                CONFIG_FILE="${CONFIG_DIR}/b4.json"
+                SERVICE_DIR="/opt/etc/init.d"
+                SERVICE_NAME="S99b4"
+            # Try /tmp fallback (non-persistent but always writable)
+            elif mkdir -p "/tmp/b4" 2>/dev/null; then
+                print_warning "Falling back to /tmp/b4 (non-persistent, will not survive reboot)"
+                INSTALL_DIR="/tmp/b4"
+            else
+                print_error "Failed to create install directory: $INSTALL_DIR"
+                print_error "Filesystem is read-only. Try installing Entware first."
+                exit 1
+            fi
+        fi
+    elif [ ! -w "$INSTALL_DIR" ]; then
+        # Directory exists but is not writable
+        print_warning "$INSTALL_DIR exists but is not writable"
+        if [ -d "/opt/sbin" ] && [ -w "/opt/sbin" ]; then
+            print_warning "Falling back to /opt/sbin (Entware)"
+            INSTALL_DIR="/opt/sbin"
+            CONFIG_DIR="/opt/etc/b4"
+            CONFIG_FILE="${CONFIG_DIR}/b4.json"
+            SERVICE_DIR="/opt/etc/init.d"
+            SERVICE_NAME="S99b4"
+        elif mkdir -p "/tmp/b4" 2>/dev/null; then
+            print_warning "Falling back to /tmp/b4 (non-persistent, will not survive reboot)"
+            INSTALL_DIR="/tmp/b4"
+        else
+            print_error "Failed to find writable install directory"
             exit 1
-        }
+        fi
     fi
 
     # Create config directory
@@ -403,12 +438,28 @@ ensure_https_support() {
 check_recommended_packages() {
     case "$SYSTEM_TYPE" in
     openwrt)
-        recommended="kmod-nft-queue kmod-nf-conntrack-netlink iptables-mod-nfqueue jq wget-ssl coreutils-nohup"
+        recommended="kmod-nfnetlink-queue kmod-ipt-nfqueue kmod-ipt-raw kmod-ipt-ipset kmod-nft-core kmod-nft-queue kmod-nf-conntrack-netlink iptables-mod-nfqueue jq wget-ssl coreutils-nohup"
         pkg_cmd="opkg"
         ;;
     entware | merlin)
         recommended="wget-ssl jq coreutils-nohup iptables"
         pkg_cmd="opkg"
+        ;;
+    padavan)
+        # If Entware is available, use opkg
+        if command_exists opkg; then
+            recommended="wget-ssl jq coreutils-nohup iptables"
+            pkg_cmd="opkg"
+        else
+            missing=""
+            for cmd in jq nohup; do
+                command_exists "$cmd" || missing="${missing} $cmd"
+            done
+            [ -z "$missing" ] && return 0
+            print_warning "Recommended but missing:$missing"
+            print_warning "Install Entware to get a package manager: https://github.com/Entware/Entware/wiki"
+            return 0
+        fi
         ;;
     systemd-linux | sysv-linux | generic-linux)
         missing=""

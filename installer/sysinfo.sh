@@ -95,11 +95,11 @@ check_multiport_support() {
 
     # Try to add a test rule using multiport
     # Try with -w first (lock wait), fall back without it for older iptables
-    if iptables -w -t filter -A INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT 2>/dev/null || \
-       iptables -t filter -A INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT 2>/dev/null; then
+    if iptables -w -t filter -A INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT 2>/dev/null ||
+        iptables -t filter -A INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT 2>/dev/null; then
         # Success - remove it immediately (try both variants)
-        iptables -w -t filter -D INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT 2>/dev/null || \
-        iptables -t filter -D INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT 2>/dev/null
+        iptables -w -t filter -D INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT 2>/dev/null ||
+            iptables -t filter -D INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT 2>/dev/null
         # Check if loaded as module or built-in
         if lsmod 2>/dev/null | grep -q "^xt_multiport"; then
             echo "works_module"
@@ -125,23 +125,36 @@ show_system_info() {
 
     print_header "System Information"
 
-    # OS Detection
-    os_type="Unknown"
-    if [ -f /etc/openwrt_release ]; then
+    # Map SYSTEM_TYPE (from detect_system_type) to display name
+    os_version=""
+    case "$SYSTEM_TYPE" in
+    openwrt)
         os_type="OpenWRT"
-        os_version=$(grep 'DISTRIB_RELEASE' /etc/openwrt_release | cut -d'=' -f2 | tr -d "'\"" || true)
-    elif [ -f /etc/merlinwrt_release ]; then
+        os_version=$(grep 'DISTRIB_RELEASE' /etc/openwrt_release 2>/dev/null | cut -d'=' -f2 | tr -d "'\"" || true)
+        ;;
+    merlin)
         os_type="MerlinWRT"
         os_version=$(cat /etc/merlinwrt_release 2>/dev/null || true)
-    elif [ -f /etc/entware_release ]; then
+        ;;
+    entware)
         os_type="Entware"
-        os_version=$(cat /etc/entware_release 2>/dev/null || true)
-    elif [ -f /etc/os-release ]; then
-        os_type=$(grep '^NAME=' /etc/os-release | cut -d'=' -f2 | tr -d '"' || echo "Linux")
-        os_version=$(grep '^VERSION=' /etc/os-release | cut -d'=' -f2 | tr -d '"' || true)
-    else
+        os_version=$(cat /opt/etc/entware_release 2>/dev/null || true)
+        ;;
+    padavan)
+        os_type="Padavan"
+        ;;
+    systemd-linux | sysv-linux | generic-linux)
+        if [ -f /etc/os-release ]; then
+            os_type=$(grep '^NAME=' /etc/os-release | cut -d'=' -f2 | tr -d '"' || echo "Linux")
+            os_version=$(grep '^VERSION=' /etc/os-release | cut -d'=' -f2 | tr -d '"' || true)
+        else
+            os_type="Linux"
+        fi
+        ;;
+    *)
         os_type="Linux"
-    fi
+        ;;
+    esac
 
     print_detail "Operating System" "$os_type ${os_version}"
     print_detail "Kernel Version" "$(uname -r)"
