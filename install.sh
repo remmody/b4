@@ -1469,6 +1469,8 @@ install_b4() {
         exit 1
     }
 
+    rm -f "$archive_path"
+
     # Check if binary exists
     if [ ! -f "${BINARY_NAME}" ]; then
         print_error "Binary not found in archive"
@@ -1488,9 +1490,8 @@ install_b4() {
         mv "${INSTALL_DIR}/${BINARY_NAME}" "$BACKUP_FILE"
     fi
 
-    # Install the new binary
     print_info "Installing b4 to ${INSTALL_DIR}..."
-    cp "${BINARY_NAME}" "${INSTALL_DIR}/" || {
+    mv "${BINARY_NAME}" "${INSTALL_DIR}/" 2>/dev/null || cp "${BINARY_NAME}" "${INSTALL_DIR}/" || {
         print_error "Failed to copy binary to install directory"
         exit 1
     }
