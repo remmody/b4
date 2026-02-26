@@ -1,5 +1,9 @@
 # B4 - Bye Bye Big Bro
 
+## [1.37.0] - 2026-02-26
+
+- ADDED: **HTTPS/TLS support** for the web interface. Configure in Web UI (`Settings > Network > Web Server`) or in the config JSON. The installer auto-detects router certificates on **OpenWrt** and **Asus Merlin** and offers to enable HTTPS during installation.
+
 ## [1.36.0] - 2026-02-16
 
 - IMPROVED: **Connections Table** — moved the streaming/paused control from the top control bar to a floating play/stop button in the bottom-right corner of the table for a cleaner UI.

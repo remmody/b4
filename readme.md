@@ -96,7 +96,7 @@ make linux-armv7
 docker run --network host \
   --cap-add NET_ADMIN --cap-add NET_RAW --cap-add SYS_MODULE \
   -v /etc/b4:/etc/b4 \
-  lavrushin/b4:latest --web-port 7000
+  lavrushin/b4:latest --config /opt/etc/b4/b4.json
 ```
 
 Web UI: <http://localhost:7000>
@@ -177,6 +177,23 @@ The web interface is available at `http://your-ip:7000` (default port, can be ch
 - Quick domain tests and domain-specific bypass strat discovery
 - ipinfo.io api integration for ASN scanning
 - Custom payload capturing for faking
+
+## HTTPS / TLS Support
+
+You can enable HTTPS for the web interface in the Web UI under **Settings > Network Configuration > Web Server** (TLS Certificate / TLS Key fields), or by setting `tls_cert` and `tls_key` in the config JSON:
+
+```json
+{
+  "system": {
+    "web_server": {
+      "tls_cert": "/path/to/server.crt",
+      "tls_key": "/path/to/server.key"
+    }
+  }
+}
+```
+
+The installer automatically detects router certificates on **OpenWrt** (uhttpd) and **Asus Merlin** and enables HTTPS in the config if they are found.
 
 ## Geosite Integration
 

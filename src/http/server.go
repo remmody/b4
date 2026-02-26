@@ -1,6 +1,7 @@
 package http
 
 import (
+	"crypto/tls"
 	"embed"
 	"fmt"
 	"io"
@@ -48,10 +49,23 @@ func StartServer(cfg *config.Config, pool *nfq.Pool) (*stdhttp.Server, error) {
 		addr = fmt.Sprintf("%s:%d", bindAddr, cfg.System.WebServer.Port)
 	}
 
-	log.Infof("Starting web server on %s", addr)
+	tlsEnabled := cfg.System.WebServer.TLSCert != "" && cfg.System.WebServer.TLSKey != ""
+
+	// Pre-validate TLS certificate/key pair before starting the server
+	if tlsEnabled {
+		if _, err := tls.LoadX509KeyPair(cfg.System.WebServer.TLSCert, cfg.System.WebServer.TLSKey); err != nil {
+			return nil, fmt.Errorf("invalid TLS certificate/key pair: %w", err)
+		}
+	}
+
+	protocol := "http"
+	if tlsEnabled {
+		protocol = "https"
+	}
+	log.Infof("Starting web server on %s://%s", protocol, addr)
 
 	metrics := handler.GetMetricsCollector()
-	metrics.RecordEvent("info", fmt.Sprintf("Web server started on port %d", cfg.System.WebServer.Port))
+	metrics.RecordEvent("info", fmt.Sprintf("Web server started on %s://%s", protocol, addr))
 
 	srv := &stdhttp.Server{
 		Addr:              addr,
@@ -60,7 +74,14 @@ func StartServer(cfg *config.Config, pool *nfq.Pool) (*stdhttp.Server, error) {
 	}
 
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != stdhttp.ErrServerClosed {
+		var err error
+		if tlsEnabled {
+			err = srv.ListenAndServeTLS(cfg.System.WebServer.TLSCert, cfg.System.WebServer.TLSKey)
+		} else {
+			err = srv.ListenAndServe()
+		}
+
+		if err != nil && err != stdhttp.ErrServerClosed {
 			log.Errorf("Web server error: %v", err)
 			metrics := handler.GetMetricsCollector()
 			metrics.RecordEvent("error", fmt.Sprintf("Web server error: %v", err))

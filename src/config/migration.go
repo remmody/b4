@@ -34,6 +34,13 @@ var migrationRegistry = map[int]MigrationFunc{
 	15: migrateV15to16, // Add TCP Incoming config
 	16: migrateV16to17,
 	17: migrateV17to18, // Add TCP packet duplication config
+	18: migrateV18to19, // Add TLS certificate/key to web server config
+}
+
+func migrateV18to19(c *Config, _ map[string]interface{}) error {
+	log.Tracef("Migration v18->v19: Adding TLS certificate/key fields to web server config")
+	// TLS fields default to empty strings (TLS disabled), no action needed
+	return nil
 }
 
 func migrateV17to18(c *Config, _ map[string]interface{}) error {

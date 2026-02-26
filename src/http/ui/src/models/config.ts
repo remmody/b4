@@ -191,6 +191,8 @@ export interface DesyncConfig {
 export interface WebServerConfig {
   port: number;
   bind_address: string;
+  tls_cert: string;
+  tls_key: string;
 }
 export interface TableConfig {
   monitor_interval: number;

@@ -72,12 +72,32 @@ install_b4() {
     fi
 }
 
+detect_tls_certs() {
+    if [ -f "/etc/uhttpd.crt" ] && [ -f "/etc/uhttpd.key" ]; then
+        TLS_CERT="/etc/uhttpd.crt"
+        TLS_KEY="/etc/uhttpd.key"
+        return 0
+    fi
+
+    if [ -f "/etc/cert.pem" ] && [ -f "/etc/key.pem" ]; then
+        TLS_CERT="/etc/cert.pem"
+        TLS_KEY="/etc/key.pem"
+        return 0
+    fi
+    return 1
+}
+
 # Print web interface access information
 print_web_interface_info() {
+    local web_port="7000"
+    local protocol="http"
 
-    local web_port
     if [ -f "$CONFIG_FILE" ] && command_exists jq; then
-        web_port=$(jq -r '.web_server.port // 7000' "$CONFIG_FILE" 2>/dev/null)
+        web_port=$(jq -r '.system.web_server.port // 7000' "$CONFIG_FILE" 2>/dev/null)
+    fi
+
+    if detect_tls_certs >/dev/null 2>&1; then
+        protocol="https"
     fi
 
     echo ""
@@ -88,18 +108,12 @@ print_web_interface_info() {
 
     # Get LAN IP (br0 interface on routers)
     lan_ip=""
-
-    # Try to get IP from br0 specifically (most common on routers)
     if command_exists ip; then
         lan_ip=$(ip -4 addr show br0 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d'/' -f1)
     fi
-
-    # Fallback to ifconfig
     if [ -z "$lan_ip" ] && command_exists ifconfig; then
         lan_ip=$(ifconfig br0 2>/dev/null | grep 'inet addr:' | awk '{print $2}' | cut -d':' -f2)
     fi
-
-    # If br0 didn't work, look for any 192.168.x.x address
     if [ -z "$lan_ip" ]; then
         if command_exists ip; then
             lan_ip=$(ip -4 addr show 2>/dev/null | grep 'inet 192.168' | head -n1 | awk '{print $2}' | cut -d'/' -f1)
@@ -108,29 +122,12 @@ print_web_interface_info() {
         fi
     fi
 
-    # Print local/LAN access
     if [ -n "$lan_ip" ]; then
         print_info "Local network access (LAN):"
-        printf "        ${GREEN}http://%s:%s${NC}\n" "$lan_ip" "$web_port"
+        # Print URL with detected protocol (http/https)
+        printf "        ${GREEN}%s://%s:%s${NC}\n" "$protocol" "$lan_ip" "$web_port"
         printf "        (remember to start the service first)\n"
     fi
-
-    # # Get external IP
-    # print_info "Checking external IP address..."
-    # external_ip=""
-
-    # if command_exists curl; then
-    #     external_ip=$(curl -s --max-time 3 ifconfig.me 2>/dev/null || true)
-    # elif command_exists wget; then
-    #     external_ip=$(wget -qO- --timeout=3 ifconfig.me 2>/dev/null || true)
-    # fi
-
-    # # Print external access if different from LAN
-    # if [ -n "$external_ip" ] && [ "$external_ip" != "$lan_ip" ]; then
-    #     print_info "External access (WAN, if port ${web_port} is forwarded):"
-    #     printf "        ${GREEN}http://%s:%s${NC}\n" "$external_ip" "$web_port"
-    #     print_warning "Note: Ensure port ${web_port} is open in your firewall"
-    # fi
 
     echo ""
 }
@@ -197,6 +194,31 @@ main_install() {
     create_systemd_service
     if [ "$SYSTEMCTL_CREATED" != "1" ]; then
         create_sysv_service
+
+        # Offer HTTPS setup if router certificates are detected
+        if detect_tls_certs && [ "$QUIET_MODE" = "0" ] && [ -f "$CONFIG_FILE" ] && command_exists jq; then
+            current_cert=$(jq -r '.system.web_server.tls_cert // ""' "$CONFIG_FILE" 2>/dev/null)
+            if [ -z "$current_cert" ]; then
+                echo ""
+                print_info "Router SSL certificates detected: $TLS_CERT"
+                printf "${CYAN}Enable HTTPS for the B4 web interface? (Y/n): ${NC}"
+                read tls_answer </dev/tty || tls_answer="y"
+                if [ -z "$tls_answer" ]; then
+                    tls_answer="y"
+                fi
+                case "$tls_answer" in
+                [nN] | [nN][oO])
+                    print_info "HTTPS not enabled. You can enable it later in Settings > Web Server."
+                    ;;
+                *)
+                    jq --arg cert "$TLS_CERT" --arg key "$TLS_KEY" \
+                        '.system.web_server.tls_cert = $cert | .system.web_server.tls_key = $key' \
+                        "$CONFIG_FILE" >"${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
+                    print_success "HTTPS enabled with $TLS_CERT"
+                    ;;
+                esac
+            fi
+        fi
     fi
 
     if [ "$QUIET_MODE" = "0" ]; then

@@ -60,6 +60,24 @@ export const NetworkSettings = ({ config, onChange }: NetworkSettingsProps) => (
         }
         helperText="Web UI port (default: 7000)"
       />
+      <B4TextField
+        label="TLS Certificate"
+        value={config.system.web_server.tls_cert || ""}
+        onChange={(e) =>
+          onChange("system.web_server.tls_cert", e.target.value)
+        }
+        placeholder="/path/to/server.crt"
+        helperText="Path to TLS certificate file (empty = HTTP mode)"
+      />
+      <B4TextField
+        label="TLS Key"
+        value={config.system.web_server.tls_key || ""}
+        onChange={(e) =>
+          onChange("system.web_server.tls_key", e.target.value)
+        }
+        placeholder="/path/to/server.key"
+        helperText="Path to TLS private key file (empty = HTTP mode)"
+      />
     </B4FormGroup>
   </B4Section>
 );

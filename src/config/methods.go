@@ -96,6 +96,20 @@ func (cfg *Config) ApplyLogLevel(level string) {
 func (c *Config) Validate() error {
 	c.System.WebServer.IsEnabled = c.System.WebServer.Port > 0 && c.System.WebServer.Port <= 65535
 
+	hasCert := c.System.WebServer.TLSCert != ""
+	hasKey := c.System.WebServer.TLSKey != ""
+	if hasCert != hasKey {
+		return fmt.Errorf("both tls_cert and tls_key must be specified together")
+	}
+	if hasCert {
+		if _, err := os.Stat(c.System.WebServer.TLSCert); err != nil {
+			return fmt.Errorf("TLS certificate file not found: %s", c.System.WebServer.TLSCert)
+		}
+		if _, err := os.Stat(c.System.WebServer.TLSKey); err != nil {
+			return fmt.Errorf("TLS key file not found: %s", c.System.WebServer.TLSKey)
+		}
+	}
+
 	c.MainSet = nil
 	for _, set := range c.Sets {
 		if set.Id == MAIN_SET_ID {
