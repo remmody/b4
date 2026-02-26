@@ -24,8 +24,18 @@ export class ApiError extends Error {
     public statusText: string,
     public body?: unknown,
   ) {
-    super(`${status} ${statusText}`);
+    const detail = ApiError.extractDetail(body);
+    super(detail ? `${status}: ${detail}` : `${status} ${statusText}`);
     this.name = "B4ApiError";
+  }
+
+  private static extractDetail(body: unknown): string | undefined {
+    if (typeof body === "string" && body.length > 0) return body.trim();
+    if (body && typeof body === "object" && "error" in body) {
+      const msg = (body as { error: unknown }).error;
+      if (typeof msg === "string" && msg.length > 0) return msg;
+    }
+    return undefined;
   }
 
   get isNotFound() {

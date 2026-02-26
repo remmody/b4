@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/daniellavrushin/b4/log"
+	"golang.org/x/sys/unix"
 )
 
 type GeodatDownloadRequest struct {
@@ -92,8 +93,9 @@ func (api *API) handleGeodatDownload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := os.MkdirAll(req.DestinationPath, 0755); err != nil {
-		log.Errorf("Failed to create directory: %v", err)
-		http.Error(w, fmt.Sprintf("Failed to create directory: %v", err), http.StatusInternalServerError)
+		msg := fmt.Sprintf("Failed to create directory %s: %v", req.DestinationPath, err)
+		log.Errorf("geodat download: %s", msg)
+		writeJsonError(w, http.StatusInternalServerError, msg)
 		return
 	}
 
@@ -104,8 +106,9 @@ func (api *API) handleGeodatDownload(w http.ResponseWriter, r *http.Request) {
 		var err error
 		geositeSize, err = downloadFile(req.GeositeURL, geositePath)
 		if err != nil {
-			log.Errorf("Failed to download geosite.dat: %v", err)
-			http.Error(w, fmt.Sprintf("Failed to download geosite.dat: %v", err), http.StatusInternalServerError)
+			msg := fmt.Sprintf("Failed to download geosite.dat: %v", err)
+			log.Errorf("geodat download: %s", msg)
+			writeJsonError(w, http.StatusInternalServerError, msg)
 			return
 		}
 		api.cfg.System.Geo.GeoSitePath = geositePath
@@ -117,8 +120,9 @@ func (api *API) handleGeodatDownload(w http.ResponseWriter, r *http.Request) {
 		var err error
 		geoipSize, err = downloadFile(req.GeoipURL, geoipPath)
 		if err != nil {
-			log.Errorf("Failed to download geoip.dat: %v", err)
-			http.Error(w, fmt.Sprintf("Failed to download geoip.dat: %v", err), http.StatusInternalServerError)
+			msg := fmt.Sprintf("Failed to download geoip.dat: %v", err)
+			log.Errorf("geodat download: %s", msg)
+			writeJsonError(w, http.StatusInternalServerError, msg)
 			return
 		}
 		api.cfg.System.Geo.GeoIpPath = geoipPath
@@ -126,8 +130,9 @@ func (api *API) handleGeodatDownload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := api.saveAndPushConfig(api.cfg); err != nil {
-		log.Errorf("Failed to save config: %v", err)
-		http.Error(w, "Failed to save configuration", http.StatusInternalServerError)
+		msg := fmt.Sprintf("Failed to save configuration: %v", err)
+		log.Errorf("geodat download: %s", msg)
+		writeJsonError(w, http.StatusInternalServerError, msg)
 		return
 	}
 
@@ -161,25 +166,72 @@ func (api *API) handleGeodatDownload(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func downloadFile(url, filepath string) (int64, error) {
+func checkDiskSpace(dir string, needed int64) error {
+	var stat unix.Statfs_t
+	if err := unix.Statfs(dir, &stat); err != nil {
+		return fmt.Errorf("failed to check disk space on %s: %v", dir, err)
+	}
+	available := int64(stat.Bavail) * int64(stat.Bsize)
+	if available < needed {
+		availMB := float64(available) / (1024 * 1024)
+		neededMB := float64(needed) / (1024 * 1024)
+		return fmt.Errorf("not enough disk space in %s: %.1f MB available, need %.1f MB", dir, availMB, neededMB)
+	}
+	return nil
+}
+
+func downloadFile(url, destPath string) (int64, error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to fetch %s: %v", url, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("bad status: %s", resp.Status)
+		return 0, fmt.Errorf("remote server returned %s for %s", resp.Status, url)
 	}
 
-	out, err := os.Create(filepath)
+	dir := filepath.Dir(destPath)
+
+	if resp.ContentLength > 0 {
+		if err := checkDiskSpace(dir, resp.ContentLength); err != nil {
+			return 0, err
+		}
+	}
+
+	tmpFile, err := os.CreateTemp(dir, ".geodat-download-*.tmp")
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to create temp file in %s: %v", dir, err)
 	}
-	defer out.Close()
+	tmpPath := tmpFile.Name()
 
-	size, err := io.Copy(out, resp.Body)
-	return size, err
+	cleanup := func() {
+		tmpFile.Close()
+		os.Remove(tmpPath)
+	}
+
+	size, err := io.Copy(tmpFile, resp.Body)
+	if err != nil {
+		cleanup()
+		return 0, fmt.Errorf("failed to write data to disk (%d bytes written): %v", size, err)
+	}
+
+	if err := tmpFile.Sync(); err != nil {
+		cleanup()
+		return 0, fmt.Errorf("failed to flush data to disk: %v", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		os.Remove(tmpPath)
+		return 0, fmt.Errorf("failed to finalize file write: %v", err)
+	}
+
+	if err := os.Rename(tmpPath, destPath); err != nil {
+		os.Remove(tmpPath)
+		return 0, fmt.Errorf("failed to move downloaded file to %s: %v", destPath, err)
+	}
+
+	return size, nil
 }
 
 func (api *API) handleFileInfo(w http.ResponseWriter, r *http.Request) {

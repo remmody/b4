@@ -27,6 +27,12 @@ func setJsonHeader(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 }
 
+func writeJsonError(w http.ResponseWriter, status int, message string) {
+	setJsonHeader(w)
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
 func SetNFQPool(pool *nfq.Pool) {
 	globalPool = pool
 }
