@@ -35,6 +35,12 @@ detect_system_type() {
         return
     fi
 
+    # Check for Padavan firmware (has /etc/storage for persistent writable area and /etc_ro)
+    if [ -d "/etc/storage" ] && [ -d "/etc_ro" ]; then
+        echo "padavan"
+        return
+    fi
+
     # Check for standard systemd-based Linux
     if [ -d "/etc/systemd/system" ] && command_exists systemctl; then
         echo "systemd-linux"
@@ -61,6 +67,26 @@ set_system_paths() {
         CONFIG_DIR="/opt/etc/b4"
         SERVICE_DIR="/opt/etc/init.d"
         SERVICE_NAME="S99b4"
+        ;;
+    padavan)
+        # Padavan: root filesystem is read-only (squashfs)
+        # /etc/storage is the persistent writable JFFS partition
+        if [ -d "/opt/sbin" ] && [ -w "/opt/sbin" ]; then
+            # Entware is installed - use Entware paths
+            INSTALL_DIR="/opt/sbin"
+            CONFIG_DIR="/opt/etc/b4"
+            SERVICE_DIR="/opt/etc/init.d"
+            SERVICE_NAME="S99b4"
+        else
+            # No Entware - use /etc/storage (persistent) for config,
+            # /tmp for binary (non-persistent, re-download on boot via startup script)
+            INSTALL_DIR="/tmp/b4"
+            CONFIG_DIR="/etc/storage/b4"
+            SERVICE_DIR="/etc/storage"
+            SERVICE_NAME="b4"
+            print_warning "No Entware detected. Binary will be in /tmp (non-persistent)."
+            print_warning "Consider installing Entware for persistent installation."
+        fi
         ;;
     openwrt)
         # OpenWRT typically uses /usr/sbin or /usr/bin
