@@ -36,6 +36,13 @@ var migrationRegistry = map[int]MigrationFunc{
 	17: migrateV17to18, // Add TCP packet duplication config
 	18: migrateV18to19, // Add TLS certificate/key to web server config
 	19: migrateV19to20, // Add vendor lookup option to devices config
+	20: migrateV20to21, // Add SOCKS5 proxy server config
+}
+
+func migrateV20to21(c *Config, _ map[string]interface{}) error {
+	log.Tracef("Migration v20->v21: Adding SOCKS5 proxy server config")
+	c.System.Socks5 = DefaultConfig.System.Socks5
+	return nil
 }
 
 func migrateV19to20(c *Config, _ map[string]interface{}) error {
