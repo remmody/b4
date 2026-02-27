@@ -195,6 +195,44 @@ You can enable HTTPS for the web interface in the Web UI under **Settings > Netw
 
 The installer automatically detects router certificates on **OpenWrt** (uhttpd) and **Asus Merlin** and enables HTTPS in the config if they are found.
 
+## SOCKS5 Proxy
+
+B4 includes a built-in SOCKS5 proxy server. Applications that support SOCKS5 (browsers, curl, torrent clients, etc.) can route traffic through B4 without any system-wide configuration.
+
+Enable it in the Web UI under **Settings > Network Configuration > SOCKS5 Server**, or in the config JSON:
+
+```json
+{
+  "system": {
+    "socks5": {
+      "enabled": true,
+      "port": 1080,
+      "bind_address": "0.0.0.0",
+      "username": "",
+      "password": ""
+    }
+  }
+}
+```
+
+Leave `username` and `password` empty for no authentication.
+
+**Examples:**
+
+```bash
+# curl
+curl --socks5 127.0.0.1:1080 https://example.com
+
+# Firefox: Preferences > Network Settings > Manual proxy
+# SOCKS Host: 127.0.0.1, Port: 1080, SOCKS v5
+
+# Git
+git config --global http.proxy socks5://127.0.0.1:1080
+```
+
+> [!NOTE]
+> Restart B4 after changing SOCKS5 settings.
+
 ## Geosite Integration
 
 B4 supports [v2ray/xray `geosite.dat`](https://github.com/v2fly/domain-list-community) files from various sources:

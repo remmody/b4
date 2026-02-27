@@ -298,6 +298,44 @@ sudo b4 --config /home/username/b4custom.json
 ```
 Установщик автоматически обнаруживает сертификаты на **OpenWrt** (uhttpd) и **Asus Merlin** и включает HTTPS в конфиге.
 
+## SOCKS5 прокси
+
+B4 включает встроенный SOCKS5 прокси-сервер. Приложения с поддержкой SOCKS5 (браузеры, curl, торрент-клиенты и т.д.) могут направлять трафик через B4 без системной настройки.
+
+Включите в Web UI: **Settings > Network Configuration > SOCKS5 Server**, или через конфиг:
+
+```json
+{
+  "system": {
+    "socks5": {
+      "enabled": true,
+      "port": 1080,
+      "bind_address": "0.0.0.0",
+      "username": "",
+      "password": ""
+    }
+  }
+}
+```
+
+Оставьте `username` и `password` пустыми для работы без аутентификации.
+
+**Примеры:**
+
+```bash
+# curl
+curl --socks5 127.0.0.1:1080 https://example.com
+
+# Firefox: Настройки > Параметры сети > Ручная настройка прокси
+# Узел SOCKS: 127.0.0.1, Порт: 1080, SOCKS v5
+
+# Git
+git config --global http.proxy socks5://127.0.0.1:1080
+```
+
+> [!NOTE]
+> Перезапустите B4 после изменения настроек SOCKS5.
+
 ## Интеграция Geosite
 
 B4 поддерживает файлы [`geosite.dat` от v2ray/xray](https://github.com/v2fly/domain-list-community) из различных источников:
