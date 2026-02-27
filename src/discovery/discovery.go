@@ -28,12 +28,16 @@ const (
 	validationRetryDelay = 100 * time.Millisecond
 )
 
-func NewDiscoverySuite(input string, pool *nfq.Pool, skipDNS bool, payloadFiles []string, validationTries int) *DiscoverySuite {
+func NewDiscoverySuite(input string, pool *nfq.Pool, skipDNS bool, payloadFiles []string, validationTries int, tlsVersion string) *DiscoverySuite {
 	suite := NewCheckSuite(input)
 
 	// Ensure validationTries is at least 1
 	if validationTries < 1 {
 		validationTries = 1
+	}
+
+	if tlsVersion == "" {
+		tlsVersion = "auto"
 	}
 
 	ds := &DiscoverySuite{
@@ -47,6 +51,7 @@ func NewDiscoverySuite(input string, pool *nfq.Pool, skipDNS bool, payloadFiles 
 		bestPayload:     config.FakePayloadDefault1,
 		skipDNS:         skipDNS,
 		validationTries: validationTries,
+		tlsVersion:      tlsVersion,
 	}
 
 	if len(payloadFiles) > 0 {
@@ -76,7 +81,11 @@ func (ds *DiscoverySuite) RunDiscovery() {
 	log.SetDiscoveryActive(true)
 
 	log.DiscoveryLogf("═══════════════════════════════════════")
-	log.DiscoveryLogf("Starting discovery for domain: %s", ds.Domain)
+	if ds.tlsVersion != "" && ds.tlsVersion != "auto" {
+		log.DiscoveryLogf("Starting discovery for domain: %s (TLS: %s)", ds.Domain, ds.tlsVersion)
+	} else {
+		log.DiscoveryLogf("Starting discovery for domain: %s", ds.Domain)
+	}
 	log.DiscoveryLogf("═══════════════════════════════════════")
 
 	suitesMu.Lock()
@@ -659,6 +668,19 @@ func (ds *DiscoverySuite) fetchWithTimeout(timeout time.Duration) CheckResult {
 	return ds.fetchWithTimeoutUsingIP(timeout, "")
 }
 
+func (ds *DiscoverySuite) tlsConfig() *tls.Config {
+	cfg := &tls.Config{InsecureSkipVerify: true}
+	switch ds.tlsVersion {
+	case "tls12":
+		cfg.MinVersion = tls.VersionTLS12
+		cfg.MaxVersion = tls.VersionTLS12
+	case "tls13":
+		cfg.MinVersion = tls.VersionTLS13
+		cfg.MaxVersion = tls.VersionTLS13
+	}
+	return cfg
+}
+
 func (ds *DiscoverySuite) fetchWithTimeoutUsingIP(timeout time.Duration, ip string) CheckResult {
 	result := CheckResult{
 		Domain:    ds.Domain,
@@ -670,7 +692,7 @@ func (ds *DiscoverySuite) fetchWithTimeoutUsingIP(timeout time.Duration, ip stri
 	defer cancel()
 
 	transport := &http.Transport{
-		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig:       ds.tlsConfig(),
 		ResponseHeaderTimeout: timeout,
 		IdleConnTimeout:       timeout,
 	}
@@ -1186,7 +1208,7 @@ func (ds *DiscoverySuite) measureNetworkBaseline() float64 {
 	client := &http.Client{
 		Timeout: timeout,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: ds.tlsConfig(),
 			DialContext: (&net.Dialer{
 				Timeout: timeout / 2,
 			}).DialContext,

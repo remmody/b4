@@ -92,6 +92,7 @@ export const DiscoveryRunner = () => {
     skipDNS: localStorage.getItem("b4_discovery_skipdns") === "true",
     payloadFiles: [],
     validationTries: parseInt(localStorage.getItem("b4_discovery_validation_tries") || "1") || 1,
+    tlsVersion: (localStorage.getItem("b4_discovery_tls_version") as DiscoveryOptions["tlsVersion"]) || "auto",
   }));
 
   useEffect(() => {
@@ -105,6 +106,11 @@ export const DiscoveryRunner = () => {
   useEffect(() => {
     localStorage.setItem("b4_discovery_validation_tries", String(options.validationTries));
   }, [options.validationTries]);
+
+  useEffect(() => {
+    localStorage.setItem("b4_discovery_tls_version", options.tlsVersion);
+  }, [options.tlsVersion]);
+
   const [checkUrl, setCheckUrl] = useState("");
 
   const [addingPreset, setAddingPreset] = useState(false);
@@ -126,10 +132,14 @@ export const DiscoveryRunner = () => {
   }, [loadCaptures]);
 
   const handleAddStrategy = (domain: string, result: DomainPresetResult) => {
+    let presetName = result.preset_name;
+    if (options.tlsVersion === "tls12") presetName += "-tls12";
+    else if (options.tlsVersion === "tls13") presetName += "-tls13";
+
     setAddDialog({
       open: true,
       domain,
-      presetName: result.preset_name,
+      presetName,
       setConfig: result.set || null,
     });
   };
@@ -150,7 +160,7 @@ export const DiscoveryRunner = () => {
       if (e.key !== "Enter") return;
       if (!checkUrl.trim()) return;
       e.preventDefault();
-      void startDiscovery(checkUrl, options.skipDNS, options.payloadFiles, options.validationTries);
+      void startDiscovery(checkUrl, options.skipDNS, options.payloadFiles, options.validationTries, options.tlsVersion);
     },
     [checkUrl, options, startDiscovery]
   );
@@ -254,7 +264,8 @@ export const DiscoveryRunner = () => {
                     checkUrl,
                     options.skipDNS,
                     options.payloadFiles,
-                    options.validationTries
+                    options.validationTries,
+                    options.tlsVersion
                   );
                 }}
                 disabled={!checkUrl.trim()}
