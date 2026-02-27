@@ -137,11 +137,16 @@ main_install() {
 
     #  get args
     VERSION=""
+    FORCE_ARCH=""
     for arg in "$@"; do
         case "$arg" in
         v* | V*)
             VERSION="$arg"
             print_info "Using specified version: $VERSION"
+            ;;
+        --arch=*)
+            FORCE_ARCH="${arg#*=}"
+            print_info "Using specified architecture: $FORCE_ARCH"
             ;;
         --quiet | -q)
             QUIET_MODE=1
@@ -173,10 +178,16 @@ main_install() {
     check_dependencies
 
     # Detect architecture
-    print_info "Detecting system architecture..."
-    ARCH=$(detect_architecture)
-    print_info "Raw architecture: $(uname -m)"
-    print_success "Architecture detected: $ARCH"
+    if [ -n "$FORCE_ARCH" ]; then
+        ARCH="$FORCE_ARCH"
+        print_info "Raw architecture: $(uname -m)"
+        print_success "Using forced architecture: $ARCH"
+    else
+        print_info "Detecting system architecture..."
+        ARCH=$(detect_architecture)
+        print_info "Raw architecture: $(uname -m)"
+        print_success "Architecture detected: $ARCH"
+    fi
 
     if [ -z "$VERSION" ]; then
         print_info "Fetching latest release information..."

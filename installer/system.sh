@@ -193,7 +193,16 @@ detect_architecture() {
         ;;
     mips64)
         # Check MIPS endianness
+        mips_le=false
         if uname -m | grep -qi "el"; then
+            mips_le=true
+        elif [ -f /proc/cpuinfo ] && grep -qi "little.endian\|byteorder.*little" /proc/cpuinfo 2>/dev/null; then
+            mips_le=true
+        elif printf '\1' | od -An -tx1 2>/dev/null | grep -q "01"; then
+            mips_le=true
+        fi
+
+        if [ "$mips_le" = true ]; then
             arch_variant="mips64le"
         else
             arch_variant="mips64"
@@ -208,7 +217,19 @@ detect_architecture() {
         ;;
     mips*)
         # 32-bit MIPS - determine endianness
+        # Some devices (e.g. Keenetic routers) report just "mips" in uname -m
+        # even though the CPU is little-endian, so we use multiple detection methods
+        mips_le=false
         if uname -m | grep -qi "el"; then
+            mips_le=true
+        elif [ -f /proc/cpuinfo ] && grep -qi "little.endian\|byteorder.*little" /proc/cpuinfo 2>/dev/null; then
+            mips_le=true
+        elif printf '\1' | od -An -tx1 2>/dev/null | grep -q "01"; then
+            # System byte order test: on little-endian, first byte is 01
+            mips_le=true
+        fi
+
+        if [ "$mips_le" = true ]; then
             arch_variant="mipsle"
         else
             arch_variant="mips"

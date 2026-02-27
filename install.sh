@@ -781,7 +781,16 @@ detect_architecture() {
         ;;
     mips64)
         # Check MIPS endianness
+        mips_le=false
         if uname -m | grep -qi "el"; then
+            mips_le=true
+        elif [ -f /proc/cpuinfo ] && grep -qi "little.endian\|byteorder.*little" /proc/cpuinfo 2>/dev/null; then
+            mips_le=true
+        elif printf '\1' | od -An -tx1 2>/dev/null | grep -q "01"; then
+            mips_le=true
+        fi
+
+        if [ "$mips_le" = true ]; then
             arch_variant="mips64le"
         else
             arch_variant="mips64"
@@ -796,7 +805,19 @@ detect_architecture() {
         ;;
     mips*)
         # 32-bit MIPS - determine endianness
+        # Some devices (e.g. Keenetic routers) report just "mips" in uname -m
+        # even though the CPU is little-endian, so we use multiple detection methods
+        mips_le=false
         if uname -m | grep -qi "el"; then
+            mips_le=true
+        elif [ -f /proc/cpuinfo ] && grep -qi "little.endian\|byteorder.*little" /proc/cpuinfo 2>/dev/null; then
+            mips_le=true
+        elif printf '\1' | od -An -tx1 2>/dev/null | grep -q "01"; then
+            # System byte order test: on little-endian, first byte is 01
+            mips_le=true
+        fi
+
+        if [ "$mips_le" = true ]; then
             arch_variant="mipsle"
         else
             arch_variant="mips"
@@ -1578,11 +1599,16 @@ main_install() {
 
     #  get args
     VERSION=""
+    FORCE_ARCH=""
     for arg in "$@"; do
         case "$arg" in
         v* | V*)
             VERSION="$arg"
             print_info "Using specified version: $VERSION"
+            ;;
+        --arch=*)
+            FORCE_ARCH="${arg#*=}"
+            print_info "Using specified architecture: $FORCE_ARCH"
             ;;
         --quiet | -q)
             QUIET_MODE=1
@@ -1614,10 +1640,16 @@ main_install() {
     check_dependencies
 
     # Detect architecture
-    print_info "Detecting system architecture..."
-    ARCH=$(detect_architecture)
-    print_info "Raw architecture: $(uname -m)"
-    print_success "Architecture detected: $ARCH"
+    if [ -n "$FORCE_ARCH" ]; then
+        ARCH="$FORCE_ARCH"
+        print_info "Raw architecture: $(uname -m)"
+        print_success "Using forced architecture: $ARCH"
+    else
+        print_info "Detecting system architecture..."
+        ARCH=$(detect_architecture)
+        print_info "Raw architecture: $(uname -m)"
+        print_success "Architecture detected: $ARCH"
+    fi
 
     if [ -z "$VERSION" ]; then
         print_info "Fetching latest release information..."
@@ -2524,21 +2556,28 @@ main() {
             echo "Usage: $0 [OPTIONS] [VERSION]"
             echo ""
             echo "Options:"
-            echo "  --sysinfo, -i     Show system information and b4 status"
-            echo "  --remove, -r      Uninstall b4 from the system"
-            echo "  --update, -u      Update b4 to latest version"
-            echo "  --help, -h        Show this help message"
-            echo "  --quiet, -q       Suppress output except for errors"
-            echo "  --geosite-src URL Specify geosite.dat source URL"
-            echo "  --geosite-dst DIR Specify directory to save geosite.dat"
-            echo "  VERSION           Install specific version (e.g., v1.4.0)"
+            echo "  --sysinfo, -i       Show system information and b4 status"
+            echo "  --remove, -r        Uninstall b4 from the system"
+            echo "  --update, -u        Update b4 to latest version"
+            echo "  --arch=ARCH         Force architecture (skip auto-detection)"
+            echo "  --help, -h          Show this help message"
+            echo "  --quiet, -q         Suppress output except for errors"
+            echo "  --geosite-src URL   Specify geosite.dat source URL"
+            echo "  --geosite-dst DIR   Specify directory to save geosite.dat"
+            echo "  VERSION             Install specific version (e.g., v1.4.0)"
+            echo ""
+            echo "Architectures:"
+            echo "  amd64, 386, arm64, armv5, armv6, armv7,"
+            echo "  mips, mipsle, mips_softfloat, mipsle_softfloat,"
+            echo "  mips64, mips64le, loong64, ppc64, ppc64le, riscv64, s390x"
             echo ""
             echo "Examples:"
-            echo "  $0                Install latest version"
-            echo "  $0 v1.4.0         Install version 1.4.0"
-            echo "  $0 --sysinfo      Show system diagnostics"
-            echo "  $0 --update       Update to latest version"
-            echo "  $0 --remove       Uninstall b4"
+            echo "  $0                          Install latest version"
+            echo "  $0 v1.4.0                   Install version 1.4.0"
+            echo "  $0 --arch=mipsle_softfloat  Force architecture"
+            echo "  $0 --sysinfo                Show system diagnostics"
+            echo "  $0 --update                 Update to latest version"
+            echo "  $0 --remove                 Uninstall b4"
             exit 0
             ;;
         esac
