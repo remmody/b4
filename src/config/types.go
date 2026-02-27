@@ -35,6 +35,7 @@ type QueueConfig struct {
 
 type DevicesConfig struct {
 	Enabled      bool     `json:"enabled" bson:"enabled"`
+	VendorLookup bool     `json:"vendor_lookup" bson:"vendor_lookup"`
 	WhiteIsBlack bool     `json:"wisb" bson:"wisb"`
 	Mac          []string `json:"mac" bson:"mac"`
 }

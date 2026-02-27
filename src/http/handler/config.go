@@ -332,6 +332,14 @@ func (a *API) saveAndPushConfig(newCfg *config.Config) error {
 		return fmt.Errorf("failed to save config to file: %v", err)
 	}
 
+	if ouiDB != nil {
+		if a.cfg.Queue.Devices.VendorLookup && !newCfg.Queue.Devices.VendorLookup {
+			go ouiDB.Cleanup()
+		} else if !a.cfg.Queue.Devices.VendorLookup && newCfg.Queue.Devices.VendorLookup {
+			go ouiDB.ensureLoaded()
+		}
+	}
+
 	*a.cfg = *newCfg
 
 	return nil

@@ -151,6 +151,7 @@ var DefaultConfig = Config{
 		Interfaces:  []string{},
 		Devices: DevicesConfig{
 			Enabled:      false,
+			VendorLookup: false,
 			WhiteIsBlack: false,
 			Mac:          []string{},
 		},

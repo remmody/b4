@@ -52,7 +52,6 @@ var (
 )
 
 func initOUIDatabase(configPath string) *OUIDatabase {
-	log.Infof("Initializing OUI database: %s", configPath)
 	ouiOnce.Do(func() {
 		cachePath := "/tmp/b4_oui.txt" // fallback
 		if configPath != "" {
@@ -63,9 +62,24 @@ func initOUIDatabase(configPath string) *OUIDatabase {
 			data:      make(map[string]string),
 			cachePath: cachePath,
 		}
-		go ouiDB.ensureLoaded()
 	})
 	return ouiDB
+}
+
+func (db *OUIDatabase) Cleanup() {
+	db.mu.Lock()
+	db.data = make(map[string]string)
+	db.mu.Unlock()
+
+	if db.cachePath == "" || filepath.Base(db.cachePath) != "oui.txt" {
+		return
+	}
+
+	if err := os.Remove(db.cachePath); err != nil && !os.IsNotExist(err) {
+		log.Errorf("Failed to remove OUI cache file: %v", err)
+	} else if err == nil {
+		log.Infof("OUI cache file removed: %s", db.cachePath)
+	}
 }
 
 func (db *OUIDatabase) ensureLoaded() {
@@ -207,6 +221,15 @@ func (db *OUIDatabase) Lookup(mac string) string {
 		return ""
 	}
 
+	// Trigger lazy load on first use
+	db.mu.RLock()
+	empty := len(db.data) == 0
+	db.mu.RUnlock()
+	if empty {
+		go db.ensureLoaded()
+		return ""
+	}
+
 	db.mu.RLock()
 	company := db.data[normalized[:6]]
 	db.mu.RUnlock()
@@ -299,7 +322,10 @@ func (api *API) handleDeviceVendor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	company := ouiDB.Lookup(mac)
+	var company string
+	if api.cfg.Queue.Devices.VendorLookup {
+		company = ouiDB.Lookup(mac)
+	}
 
 	setJsonHeader(w)
 	json.NewEncoder(w).Encode(VendorInfo{Company: company})
@@ -333,7 +359,7 @@ func (api *API) handleDevices(w http.ResponseWriter, r *http.Request) {
 		if isPrivateMAC(macAddr) {
 			vendor = "Private"
 			isPrivate = true
-		} else {
+		} else if api.cfg.Queue.Devices.VendorLookup {
 			vendor = ouiDB.Lookup(macAddr)
 		}
 
