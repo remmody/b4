@@ -781,7 +781,7 @@ detect_architecture() {
         ;;
     mips64)
         # Check MIPS endianness
-        if grep -qi "mips.*el\|el.*mips" /proc/cpuinfo 2>/dev/null || uname -m | grep -qi "el"; then
+        if uname -m | grep -qi "el"; then
             arch_variant="mips64le"
         else
             arch_variant="mips64"
@@ -796,7 +796,7 @@ detect_architecture() {
         ;;
     mips*)
         # 32-bit MIPS - determine endianness
-        if grep -qi "mips.*el\|el.*mips" /proc/cpuinfo 2>/dev/null || uname -m | grep -qi "el"; then
+        if uname -m | grep -qi "el"; then
             arch_variant="mipsle"
         else
             arch_variant="mips"
