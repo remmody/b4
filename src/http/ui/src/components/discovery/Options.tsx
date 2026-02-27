@@ -6,6 +6,8 @@ import {
   Collapse,
   Autocomplete,
   Paper,
+  ToggleButtonGroup,
+  ToggleButton,
 } from "@mui/material";
 import { FilterIcon, ExpandIcon, CollapseIcon } from "@b4.icons";
 import {
@@ -18,10 +20,13 @@ import {
 import { colors } from "@design";
 import { Capture } from "@b4.capture";
 
+export type TLSVersion = "auto" | "tls12" | "tls13";
+
 export interface DiscoveryOptions {
   skipDNS: boolean;
   payloadFiles: string[];
   validationTries: number;
+  tlsVersion: TLSVersion;
 }
 
 interface DiscoveryOptionsPanelProps {
@@ -49,7 +54,8 @@ export const DiscoveryOptionsPanel = ({
   const hasOptions =
     options.skipDNS ||
     options.payloadFiles.length > 0 ||
-    options.validationTries > 1;
+    options.validationTries > 1 ||
+    options.tlsVersion !== "auto";
 
   return (
     <Box
@@ -115,6 +121,50 @@ export const DiscoveryOptionsPanel = ({
               onChange={(checked) => onChange({ ...options, skipDNS: checked })}
               disabled={disabled}
             />
+
+            {/* TLS Version */}
+            <Box>
+              <Typography variant="body1" sx={{ mb: 1 }}>
+                TLS Version
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mb: 1, display: "block" }}
+              >
+                TLS version used for discovery probes. Some DPI systems handle
+                TLS 1.2 and 1.3 differently.
+              </Typography>
+              <ToggleButtonGroup
+                value={options.tlsVersion}
+                exclusive
+                onChange={(_, value) => {
+                  if (value !== null) {
+                    onChange({ ...options, tlsVersion: value as TLSVersion });
+                  }
+                }}
+                disabled={disabled}
+                size="small"
+                sx={{
+                  "& .MuiToggleButton-root": {
+                    color: colors.text.secondary,
+                    borderColor: colors.border.default,
+                    textTransform: "none",
+                    px: 2,
+                    "&.Mui-selected": {
+                      bgcolor: colors.accent.secondary,
+                      color: colors.secondary,
+                      borderColor: colors.secondary,
+                      "&:hover": { bgcolor: colors.accent.secondary },
+                    },
+                  },
+                }}
+              >
+                <ToggleButton value="auto">Auto</ToggleButton>
+                <ToggleButton value="tls12">TLS 1.2</ToggleButton>
+                <ToggleButton value="tls13">TLS 1.3</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
 
             {/* Custom Payloads */}
             {tlsCaptures.length > 0 && (
@@ -201,6 +251,8 @@ export const DiscoveryOptionsPanel = ({
 function getOptionsSummary(options: DiscoveryOptions): string {
   const parts: string[] = [];
   if (options.skipDNS) parts.push("Skip DNS");
+  if (options.tlsVersion === "tls12") parts.push("TLS 1.2");
+  if (options.tlsVersion === "tls13") parts.push("TLS 1.3");
   if (options.validationTries > 1)
     parts.push(`${options.validationTries} tries`);
   if (options.payloadFiles.length > 0) {

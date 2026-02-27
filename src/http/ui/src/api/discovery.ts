@@ -3,12 +3,13 @@ import { B4SetConfig } from "@b4.sets";
 import { DiscoveryResponse, DiscoverySuite } from "@b4.discovery";
 
 export const discoveryApi = {
-  start: (check_url: string, skip_dns: boolean, payload_files?: string[], validation_tries?: number) =>
+  start: (check_url: string, skip_dns: boolean, payload_files?: string[], validation_tries?: number, tls_version?: string) =>
     apiPost<DiscoveryResponse>("/api/discovery/start", {
       check_url,
       skip_dns,
       payload_files: payload_files ?? [],
       validation_tries: validation_tries ?? 1,
+      tls_version: tls_version ?? "auto",
     }),
   status: (id: string) => apiGet<DiscoverySuite>(`/api/discovery/status/${id}`),
   cancel: (id: string) => apiDelete(`/api/discovery/cancel/${id}`),

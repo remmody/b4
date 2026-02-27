@@ -93,7 +93,7 @@ func (api *API) handleStartDiscovery(w http.ResponseWriter, r *http.Request) {
 		validationTries = 1
 	}
 
-	suite := discovery.NewDiscoverySuite(req.CheckURL, globalPool, req.SkipDNS, req.PayloadFiles, validationTries)
+	suite := discovery.NewDiscoverySuite(req.CheckURL, globalPool, req.SkipDNS, req.PayloadFiles, validationTries, req.TLSVersion)
 
 	phase1Count := len(discovery.GetPhase1Presets())
 

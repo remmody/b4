@@ -159,6 +159,7 @@ type DiscoverySuite struct {
 	dnsResult       *DNSDiscoveryResult
 	skipDNS         bool
 	validationTries int
+	tlsVersion      string // "auto", "tls12", "tls13"
 }
 
 type CustomPayload struct {
