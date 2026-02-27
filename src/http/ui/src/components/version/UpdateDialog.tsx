@@ -22,10 +22,12 @@ import {
   CheckCircleIcon,
   CloseIcon,
   CloudDownloadIcon,
+  InfoIcon,
 } from "@b4.icons";
 import { B4Alert } from "@b4.elements";
 import ReactMarkdown from "react-markdown";
 import { useSystemUpdate } from "@hooks/useSystemUpdate";
+import { systemApi } from "@api/settings";
 import { colors } from "@design";
 import { B4Dialog } from "@common/B4Dialog";
 import { GitHubRelease, compareVersions } from "@hooks/useGitHubRelease";
@@ -70,6 +72,16 @@ export const UpdateModal = ({
   >("idle");
   const [updateMessage, setUpdateMessage] = useState("");
   const [selectedVersion, setSelectedVersion] = useState<string>("");
+  const [isDocker, setIsDocker] = useState(false);
+
+  useEffect(() => {
+    systemApi
+      .info()
+      .then((info) => {
+        if (info) setIsDocker(info.is_docker);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (releases.length > 0 && !selectedVersion) {
@@ -294,6 +306,30 @@ export const UpdateModal = ({
         </Box>
       )}
 
+      {isDocker && (
+        <B4Alert severity="info" icon={<InfoIcon />} sx={{ mt: 2 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+            Running inside a container
+          </Typography>
+          <Typography variant="body2">
+            To update, pull the latest image and recreate your container:
+          </Typography>
+          <Box
+            component="code"
+            sx={{
+              display: "block",
+              mt: 1,
+              p: 1,
+              bgcolor: colors.background.default,
+              borderRadius: 1,
+              fontSize: "0.85em",
+            }}
+          >
+            docker pull lavrushin/b4:latest
+          </Box>
+        </B4Alert>
+      )}
+
       <Divider sx={{ my: 2, borderColor: colors.border.default }} />
 
       <Stack direction="row" spacing={2} justifyContent="center">
@@ -336,15 +372,17 @@ export const UpdateModal = ({
           <Button onClick={onClose} variant="outlined" disabled={isUpdating}>
             Close
           </Button>
-          <Button
-            onClick={() => void handleUpdate()}
-            variant="contained"
-            startIcon={<CloudDownloadIcon />}
-            disabled={isUpdating || isCurrent}
-            color={isDowngrade ? "warning" : "primary"}
-          >
-            {isDowngrade ? "Downgrade" : "Update"}
-          </Button>
+          {!isDocker && (
+            <Button
+              onClick={() => void handleUpdate()}
+              variant="contained"
+              startIcon={<CloudDownloadIcon />}
+              disabled={isUpdating || isCurrent}
+              color={isDowngrade ? "warning" : "primary"}
+            >
+              {isDowngrade ? "Downgrade" : "Update"}
+            </Button>
+          )}
         </>
       )}
       {updateStatus === "success" && (

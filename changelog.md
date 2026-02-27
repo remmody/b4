@@ -1,5 +1,9 @@
 # B4 - Bye Bye Big Bro
 
+## [1.38.0] - 2026-02-27
+
+- IMPROVED: **Docker support** — detects Docker environment and shows `docker pull` instructions instead of the update button.
+
 ## [1.37.0] - 2026-02-26
 
 - ADDED: **HTTPS/TLS support** for the web interface ([#40](https://github.com/DanielLavrushin/b4/pull/40), thanks [@Shiperoid](https://github.com/Shiperoid)). Configure in Web UI (`Settings > Network > Web Server`) or in the config JSON. The installer auto-detects router certificates on **OpenWrt** and **Asus Merlin** and offers to enable HTTPS during installation.

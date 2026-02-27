@@ -39,8 +39,21 @@ func detectServiceManager() string {
 		return "init"
 	}
 
+	// Check if running inside Docker
+	if isDockerEnvironment() {
+		return "docker"
+	}
+
 	// Check if running as a standalone process (no service manager)
 	return "standalone"
+}
+
+// isDockerEnvironment checks if the process is running inside a Docker container
+func isDockerEnvironment() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+	return false
 }
 
 func (api *API) handleSystemInfo(w http.ResponseWriter, r *http.Request) {
@@ -50,13 +63,15 @@ func (api *API) handleSystemInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	serviceManager := detectServiceManager()
-	canRestart := serviceManager != "standalone"
+	isDocker := serviceManager == "docker"
+	canRestart := serviceManager != "standalone" && !isDocker
 
 	info := SystemInfo{
 		ServiceManager: serviceManager,
 		OS:             runtime.GOOS,
 		Arch:           runtime.GOARCH,
 		CanRestart:     canRestart,
+		IsDocker:       isDocker,
 	}
 
 	setJsonHeader(w)
@@ -183,6 +198,18 @@ func (api *API) handleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	serviceManager := detectServiceManager()
 	log.Infof("Update requested via web UI (service manager: %s, version: %s)", serviceManager, req.Version)
+
+	if serviceManager == "docker" {
+		response := UpdateResponse{
+			Success:        false,
+			Message:        "Cannot update: B4 is running inside Docker. Pull the latest image and recreate your container to update.",
+			ServiceManager: serviceManager,
+		}
+		setJsonHeader(w)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
 
 	if serviceManager == "standalone" {
 		response := UpdateResponse{
