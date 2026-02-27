@@ -141,6 +141,16 @@ build-installer:
 	@echo "Building installer script..."
 	@./installer/_build.sh
 
+.PHONY: build-docker
+build-docker:
+	@echo "Building Docker image..."
+	@docker build -t b4:test .
+
+.PHONY: run-docker
+run-docker:
+	@echo "Running Docker container..."
+	@docker run --rm -it --cap-add=NET_ADMIN --cap-add=NET_RAW -p 7000:7000 -v ./out/linux-amd64:/etc/b4 b4:test --config /etc/b4/b4.json
+
 .PHONY: watch-installer
 watch-installer:
 	@./installer/_watch.sh

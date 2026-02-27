@@ -24,6 +24,7 @@ export interface SystemInfo {
   os: string;
   arch: string;
   can_restart: boolean;
+  is_docker: boolean;
 }
 
 export interface RestartResponse {

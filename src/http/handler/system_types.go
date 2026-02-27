@@ -18,6 +18,7 @@ type SystemInfo struct {
 	OS             string `json:"os"`
 	Arch           string `json:"arch"`
 	CanRestart     bool   `json:"can_restart"`
+	IsDocker       bool   `json:"is_docker"`
 }
 
 type UpdateRequest struct {
