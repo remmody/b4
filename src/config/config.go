@@ -180,6 +180,14 @@ var DefaultConfig = Config{
 			IsEnabled:   true,
 		},
 
+		Socks5: Socks5Config{
+			Enabled:        false,
+			Port:           1080,
+			BindAddress:    "0.0.0.0",
+			UDPTimeout:     300,
+			UDPReadTimeout: 5,
+		},
+
 		Logging: Logging{
 			Level:      log.LevelInfo,
 			Instaflush: true,

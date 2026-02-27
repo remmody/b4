@@ -146,9 +146,20 @@ type SystemConfig struct {
 	Tables    TablesConfig    `json:"tables" bson:"tables"`
 	Logging   Logging         `json:"logging" bson:"logging"`
 	WebServer WebServerConfig `json:"web_server" bson:"web_server"`
+	Socks5    Socks5Config    `json:"socks5" bson:"socks5"`
 	Checker   DiscoveryConfig `json:"checker" bson:"checker"`
 	Geo       GeoDatConfig    `json:"geo" bson:"geo"`
 	API       ApiConfig       `json:"api" bson:"api"`
+}
+
+type Socks5Config struct {
+	Enabled        bool   `json:"enabled" bson:"enabled"`
+	Port           int    `json:"port" bson:"port"`
+	BindAddress    string `json:"bind_address" bson:"bind_address"`
+	Username       string `json:"username" bson:"username"`
+	Password       string `json:"password" bson:"password"`
+	UDPTimeout     int    `json:"udp_timeout" bson:"udp_timeout"`
+	UDPReadTimeout int    `json:"udp_read_timeout" bson:"udp_read_timeout"`
 }
 
 type TablesConfig struct {

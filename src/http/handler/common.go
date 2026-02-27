@@ -101,6 +101,7 @@ func (api *API) RegisterEndpoints(mux *http.ServeMux, cfg *config.Config) {
 	api.RegisterSetsApi()
 	api.RegisterDnsApi()
 	api.RegisterDevicesApi()
+	api.RegisterSocks5Api()
 }
 
 func sendResponse(w http.ResponseWriter, response interface{}) {

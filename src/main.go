@@ -19,6 +19,7 @@ import (
 	"github.com/daniellavrushin/b4/log"
 	"github.com/daniellavrushin/b4/nfq"
 	"github.com/daniellavrushin/b4/quic"
+	"github.com/daniellavrushin/b4/socks5"
 	"github.com/daniellavrushin/b4/tables"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -157,6 +158,13 @@ func runB4(cmd *cobra.Command, args []string) error {
 		return log.Errorf("failed to start web server: %w", err)
 	}
 
+	// Start SOCKS5 server if configured
+	socks5Server := socks5.NewServer(&cfg.System.Socks5)
+	if err := socks5Server.Start(); err != nil {
+		metrics.RecordEvent("error", fmt.Sprintf("Failed to start SOCKS5 server: %v", err))
+		return log.Errorf("failed to start SOCKS5 server: %w", err)
+	}
+
 	log.Infof("B4 is running. Press Ctrl+C to stop")
 	metrics.RecordEvent("info", "B4 is fully operational")
 
@@ -169,17 +177,17 @@ func runB4(cmd *cobra.Command, args []string) error {
 	metrics.RecordEvent("info", fmt.Sprintf("Shutdown initiated by signal: %v", sig))
 
 	// Perform graceful shutdown with timeout
-	return gracefulShutdown(&cfg, pool, httpServer, metrics)
+	return gracefulShutdown(&cfg, pool, httpServer, socks5Server, metrics)
 }
 
-func gracefulShutdown(cfg *config.Config, pool *nfq.Pool, httpServer *http.Server, metrics *handler.MetricsCollector) error {
+func gracefulShutdown(cfg *config.Config, pool *nfq.Pool, httpServer *http.Server, socks5Server *socks5.Server, metrics *handler.MetricsCollector) error {
 	// Create shutdown context with timeout
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	// Create wait group for parallel shutdown
 	var wg sync.WaitGroup
-	shutdownErrors := make(chan error, 3)
+	shutdownErrors := make(chan error, 4)
 
 	// Shutdown HTTP server
 	if httpServer != nil {
@@ -192,6 +200,20 @@ func gracefulShutdown(cfg *config.Config, pool *nfq.Pool, httpServer *http.Serve
 				shutdownErrors <- fmt.Errorf("HTTP shutdown: %w", err)
 			} else {
 				log.Infof("HTTP server stopped")
+			}
+		}()
+	}
+
+	// Shutdown SOCKS5 server
+	if socks5Server != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := socks5Server.Stop(); err != nil {
+				log.Errorf("SOCKS5 server shutdown error: %v", err)
+				shutdownErrors <- fmt.Errorf("SOCKS5 shutdown: %w", err)
+			} else {
+				log.Infof("SOCKS5 server stopped")
 			}
 		}()
 	}
