@@ -211,9 +211,20 @@ export interface ApiConfig {
   ipinfo_token: string;
 }
 
+export interface Socks5Config {
+  enabled: boolean;
+  port: number;
+  bind_address: string;
+  username: string;
+  password: string;
+  udp_timeout: number;
+  udp_read_timeout: number;
+}
+
 export interface SystemConfig {
   logging: LoggingConfig;
   web_server: WebServerConfig;
+  socks5: Socks5Config;
   tables: TableConfig;
   checker: DiscoveryConfig;
   geo: GeoConfig;

@@ -176,6 +176,8 @@ export function SettingsPage() {
         JSON.stringify(config.queue) !== JSON.stringify(originalConfig.queue) ||
         JSON.stringify(config.system.web_server) !==
           JSON.stringify(originalConfig.system.web_server) ||
+        JSON.stringify(config.system.socks5) !==
+          JSON.stringify(originalConfig.system.socks5) ||
         JSON.stringify(config.system.tables) !==
           JSON.stringify(originalConfig.system.tables) ||
         JSON.stringify(config.queue.devices) !==
