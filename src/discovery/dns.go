@@ -132,8 +132,23 @@ func (p *DNSProber) Probe(ctx context.Context) *DNSDiscoveryResult {
 		ProbeResults: []DNSProbeResult{},
 	}
 
-	expectedIPs := p.getExpectedIPs(ctx)
-	systemIPs := p.getSystemResolverIPs(ctx)
+	// Run DoH and system resolver in parallel with independent timeouts.
+	var expectedIPs, systemIPs []string
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		dohCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		expectedIPs = p.getExpectedIPs(dohCtx)
+	}()
+	go func() {
+		defer wg.Done()
+		sysCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		systemIPs = p.getSystemResolverIPs(sysCtx)
+	}()
+	wg.Wait()
 
 	if len(expectedIPs) == 0 {
 		log.DiscoveryLogf("DNS Discovery: couldn't get reference IP for %s", p.domain)
@@ -154,6 +169,19 @@ func (p *DNSProber) Probe(ctx context.Context) *DNSDiscoveryResult {
 			isPoisoned = false
 			matchedIP = sysIP
 			break
+		}
+	}
+
+	if isPoisoned && len(systemIPs) > 0 {
+		valCtx, valCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer valCancel()
+		for _, sysIP := range systemIPs {
+			if p.testIPServesDomain(valCtx, sysIP) {
+				log.Tracef("DNS: system IP %s serves %s (CDN variance, not poisoned)", sysIP, p.domain)
+				isPoisoned = false
+				matchedIP = sysIP
+				break
+			}
 		}
 	}
 
@@ -237,6 +265,10 @@ func (p *DNSProber) getSystemResolverIPs(ctx context.Context) []string {
 	var result []string
 
 	for i := 0; i < 3; i++ {
+		if ctx.Err() != nil {
+			log.DiscoveryLogf("  DNS: context expired, stopping system resolver retries")
+			break
+		}
 		if i > 0 {
 			log.DiscoveryLogf("  DNS: retrying system resolver for %s (attempt %d)", p.domain, i+1)
 			time.Sleep(500 * time.Millisecond)
