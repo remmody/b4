@@ -95,8 +95,9 @@ func (a *API) getConfig(w http.ResponseWriter) {
 	ifaces, err := getSystemInterfaces()
 	if err != nil {
 		log.Errorf("Failed to get system interfaces: %v", err)
-		http.Error(w, "Failed to get system interfaces", http.StatusInternalServerError)
-		return
+		ifaces = []string{}
+	} else if ifaces == nil {
+		ifaces = []string{}
 	}
 	sort.Strings(ifaces)
 
@@ -117,26 +118,28 @@ func getSystemInterfaces() ([]string, error) {
 		return nil, err
 	}
 
+	inDocker := isDockerEnvironment()
+
 	// Known virtual/internal interface prefixes to exclude
 	excludePrefixes := []string{
 		"lo", "dummy", "gre", "erspan", "ifb", "imq",
 		"ip6_vti", "ip6gre", "ip6tnl", "ip_vti", "sit",
-		"spu_", "bcmsw", "blog", "veth", "docker", "virbr",
+		"spu_", "bcmsw", "blog",
+	}
+	// Only exclude container-related interfaces when running on bare metal
+	if !inDocker {
+		excludePrefixes = append(excludePrefixes, "veth", "docker", "virbr")
 	}
 
 	var ifaceNames []string
 	for _, iface := range ifaces {
-		// Skip loopback
 		if iface.Flags&net.FlagLoopback != 0 {
 			continue
 		}
-
-		// Skip interfaces that are down
 		if iface.Flags&net.FlagUp == 0 {
 			continue
 		}
 
-		// Skip known virtual prefixes
 		skip := false
 		for _, prefix := range excludePrefixes {
 			if strings.HasPrefix(iface.Name, prefix) {
@@ -148,15 +151,20 @@ func getSystemInterfaces() ([]string, error) {
 			continue
 		}
 
-		// Keep if it has addresses OR is a bridge/wireless (br*, wl*, tun*, tap*)
-		addrs, _ := iface.Addrs()
-		isBridgeOrWireless := strings.HasPrefix(iface.Name, "br") ||
-			strings.HasPrefix(iface.Name, "wl") ||
-			strings.HasPrefix(iface.Name, "tun") ||
-			strings.HasPrefix(iface.Name, "tap")
-
-		if len(addrs) > 0 || isBridgeOrWireless {
+		if inDocker {
+			// In container mode, keep all UP interfaces (no IP requirement)
 			ifaceNames = append(ifaceNames, iface.Name)
+		} else {
+			// On host, require IP or known useful prefix
+			addrs, _ := iface.Addrs()
+			isBridgeOrWireless := strings.HasPrefix(iface.Name, "br") ||
+				strings.HasPrefix(iface.Name, "wl") ||
+				strings.HasPrefix(iface.Name, "tun") ||
+				strings.HasPrefix(iface.Name, "tap")
+
+			if len(addrs) > 0 || isBridgeOrWireless {
+				ifaceNames = append(ifaceNames, iface.Name)
+			}
 		}
 	}
 
