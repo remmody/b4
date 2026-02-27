@@ -81,7 +81,7 @@ export const FeatureSettings = ({ config, onChange }: FeatureSettingsProps) => {
               Select interfaces to monitor (empty = all interfaces)
             </Typography>
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-              {config.available_ifaces.map((iface) => {
+              {(config.available_ifaces ?? []).map((iface) => {
                 const isSelected = (config.queue.interfaces || []).includes(
                   iface
                 );
@@ -96,7 +96,7 @@ export const FeatureSettings = ({ config, onChange }: FeatureSettingsProps) => {
                 );
               })}
             </Box>
-            {config.available_ifaces.length === 0 && (
+            {(config.available_ifaces ?? []).length === 0 && (
               <B4Alert severity="warning" sx={{ mt: 2 }}>
                 No interfaces detected
               </B4Alert>
