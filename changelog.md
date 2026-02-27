@@ -3,6 +3,7 @@
 ## [1.38.0] - 2026-02-27
 
 - IMPROVED: **Docker support** — detects Docker environment and shows `docker pull` instructions instead of the update button.
+- FIXED: **Settings page crash (white screen) in container environments** — network interface filtering is now container-aware, showing `veth` and other container interfaces when running inside Docker/MikroTik. ([#44](https://github.com/DanielLavrushin/b4/issues/44), thanks [@kakosmakos](https://github.com/kakosmakos))
 
 ## [1.37.0] - 2026-02-26
 
