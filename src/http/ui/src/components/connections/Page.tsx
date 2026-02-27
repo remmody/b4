@@ -117,7 +117,7 @@ export function ConnectionsPage() {
         if (data.system?.api?.ipinfo_token) {
           setIpInfoToken(data.system.api.ipinfo_token);
         }
-        setDevicesEnabled(data.queue?.devices?.enabled || false);
+        setDevicesEnabled(data.queue?.devices?.enabled || data.queue?.devices?.vendor_lookup || false);
       }
     } catch (error) {
       if ((error as Error).name !== "AbortError") {

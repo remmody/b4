@@ -35,6 +35,13 @@ var migrationRegistry = map[int]MigrationFunc{
 	16: migrateV16to17,
 	17: migrateV17to18, // Add TCP packet duplication config
 	18: migrateV18to19, // Add TLS certificate/key to web server config
+	19: migrateV19to20, // Add vendor lookup option to devices config
+}
+
+func migrateV19to20(c *Config, _ map[string]interface{}) error {
+	log.Tracef("Migration v19->v20: Adding vendor lookup option to devices config")
+	c.Queue.Devices.VendorLookup = false
+	return nil
 }
 
 func migrateV18to19(c *Config, _ map[string]interface{}) error {

@@ -136,6 +136,7 @@ export interface QueueConfig {
 export interface DevicesConfig {
   mac: string[];
   enabled: boolean;
+  vendor_lookup: boolean;
   wisb: boolean;
 }
 

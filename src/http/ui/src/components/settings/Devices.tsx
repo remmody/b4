@@ -101,6 +101,7 @@ export const DevicesSettings = ({ config, onChange }: DevicesSettingsProps) => {
 
   const selectedMacs = config.queue.devices?.mac || [];
   const enabled = config.queue.devices?.enabled || false;
+  const vendorLookup = config.queue.devices?.vendor_lookup || false;
   const wisb = config.queue.devices?.wisb || false;
   const {
     devices,
@@ -141,12 +142,18 @@ export const DevicesSettings = ({ config, onChange }: DevicesSettingsProps) => {
     >
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
-          <Box sx={{ display: "flex", gap: 3, alignItems: "center" }}>
+          <Box sx={{ display: "flex", gap: 3, alignItems: "center", flexWrap: "wrap" }}>
             <B4Switch
               label="Enable Device Filtering"
               checked={enabled}
               onChange={(checked) => onChange("queue.devices.enabled", checked)}
               description="Only process traffic from selected devices"
+            />
+            <B4Switch
+              label="Vendor Lookup"
+              checked={vendorLookup}
+              onChange={(checked) => onChange("queue.devices.vendor_lookup", checked)}
+              description="Download vendor database to identify device manufacturers (~6MB)"
             />
             <B4Switch
               label="Invert Selection (Blacklist)"
