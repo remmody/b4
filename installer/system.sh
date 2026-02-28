@@ -196,9 +196,14 @@ detect_architecture() {
         mips_le=false
         if uname -m | grep -qi "el"; then
             mips_le=true
+        elif [ -f /sys/kernel/cpu_byteorder ] && grep -qi "little" /sys/kernel/cpu_byteorder 2>/dev/null; then
+            mips_le=true
         elif [ -f /proc/cpuinfo ] && grep -qi "little.endian\|byteorder.*little" /proc/cpuinfo 2>/dev/null; then
             mips_le=true
-        elif printf '\1' | od -An -tx1 2>/dev/null | grep -q "01"; then
+        elif command -v opkg >/dev/null 2>&1 && opkg print-architecture 2>/dev/null | grep -qi "mipsel\|mips64el"; then
+            mips_le=true
+        elif [ "$(dd if=/bin/sh bs=1 skip=5 count=1 2>/dev/null)" = "$(printf '\1')" ]; then
+            # ELF header byte 6 (index 5): 1=little-endian, 2=big-endian
             mips_le=true
         fi
 
@@ -217,15 +222,16 @@ detect_architecture() {
         ;;
     mips*)
         # 32-bit MIPS - determine endianness
-        # Some devices (e.g. Keenetic routers) report just "mips" in uname -m
-        # even though the CPU is little-endian, so we use multiple detection methods
         mips_le=false
         if uname -m | grep -qi "el"; then
             mips_le=true
+        elif [ -f /sys/kernel/cpu_byteorder ] && grep -qi "little" /sys/kernel/cpu_byteorder 2>/dev/null; then
+            mips_le=true
         elif [ -f /proc/cpuinfo ] && grep -qi "little.endian\|byteorder.*little" /proc/cpuinfo 2>/dev/null; then
             mips_le=true
-        elif printf '\1' | od -An -tx1 2>/dev/null | grep -q "01"; then
-            # System byte order test: on little-endian, first byte is 01
+        elif command -v opkg >/dev/null 2>&1 && opkg print-architecture 2>/dev/null | grep -qi "mipsel"; then
+            mips_le=true
+        elif [ "$(dd if=/bin/sh bs=1 skip=5 count=1 2>/dev/null)" = "$(printf '\1')" ]; then
             mips_le=true
         fi
 
