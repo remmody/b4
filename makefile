@@ -144,7 +144,7 @@ build-installer:
 .PHONY: build-docker
 build-docker:
 	@echo "Building Docker image..."
-	@docker build -t b4:test .
+	@DOCKER_BUILDKIT=1 docker build -t b4:test .
 
 .PHONY: run-docker
 run-docker:
