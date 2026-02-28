@@ -1,5 +1,5 @@
 # Stage 1: Build the web UI
-FROM node:22-alpine AS ui-builder
+FROM --platform=$BUILDPLATFORM node:22-alpine AS ui-builder
 
 RUN corepack enable && corepack prepare pnpm@10.18.2 --activate
 
@@ -13,7 +13,7 @@ ENV VITE_APP_VERSION=${VERSION}
 RUN pnpm build
 
 # Stage 2: Build the Go binary
-FROM golang:1.25-alpine AS go-builder
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS go-builder
 
 WORKDIR /app
 
@@ -30,7 +30,8 @@ ARG TARGETVARIANT
 
 RUN COMMIT=$(echo "docker" ) && \
     DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
-    CGO_ENABLED=0 GOOS=linux go -C src build \
+    GOARM=${TARGETVARIANT#v} \
+    CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go -C src build \
     -trimpath \
     -ldflags "-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.Date=${DATE}" \
     -o /b4
