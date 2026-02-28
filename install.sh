@@ -1932,9 +1932,15 @@ remove_b4() {
         ;;
     esac
 
-    # Remove log files
+    # Remove log files and directories
     rm -f /var/log/b4.log 2>/dev/null || true
+    rm -rf /var/log/b4 2>/dev/null || true
     rm -f /var/run/b4.pid 2>/dev/null || true
+
+    # Remove temporary files created by b4
+    rm -rf /tmp/b4_* 2>/dev/null || true
+    rm -f /tmp/b4install_update.sh 2>/dev/null || true
+    rm -rf /tmp/b4 2>/dev/null || true
 
     echo ""
     print_success "B4 has been uninstalled successfully!"
