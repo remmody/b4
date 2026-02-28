@@ -115,6 +115,7 @@ services:
       - SYS_MODULE
     volumes:
       - ./config:/etc/b4
+    command: ["--config", "/etc/b4/b4.json"]
     restart: unless-stopped
 ```
 
