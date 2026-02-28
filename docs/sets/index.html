@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="ru-RU" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-sets/index" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.9.2">
+<title data-rh="true">Сеты конфигураций | B4 - Bye Bye Big Bro</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://daniellavrushin.github.io/b4/docs/sets/"><meta data-rh="true" property="og:locale" content="ru_RU"><meta data-rh="true" property="og:locale:alternate" content="en_US"><meta data-rh="true" name="docusaurus_locale" content="ru"><meta data-rh="true" name="docsearch:language" content="ru"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Сеты конфигураций | B4 - Bye Bye Big Bro"><meta data-rh="true" name="description" content="Создание и управление наборами настроек для разных сценариев обхода DPI"><meta data-rh="true" property="og:description" content="Создание и управление наборами настроек для разных сценариев обхода DPI"><link data-rh="true" rel="icon" href="/b4/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://daniellavrushin.github.io/b4/docs/sets/"><link data-rh="true" rel="alternate" href="https://daniellavrushin.github.io/b4/docs/sets/" hreflang="ru-RU"><link data-rh="true" rel="alternate" href="https://daniellavrushin.github.io/b4/en/docs/sets/" hreflang="en-US"><link data-rh="true" rel="alternate" href="https://daniellavrushin.github.io/b4/docs/sets/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Сеты конфигураций","item":"https://daniellavrushin.github.io/b4/docs/sets/"}]}</script><link rel="stylesheet" href="/b4/assets/css/styles.54020b6c.css">
+<script src="/b4/assets/js/runtime~main.9e4d82a7.js" defer="defer"></script>
+<script src="/b4/assets/js/main.e7b51a82.js" defer="defer"></script>
+</head>
+<body class="navigation-with-keyboard">
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"light"),document.documentElement.setAttribute("data-theme-choice",t||"light")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/b4/img/favicon.svg"><div role="region" aria-label="Перейти к основному содержимому"><a class="skipToContent_db63" href="#__docusaurus_skipToContent_fallback">Перейти к основному содержимому</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Переключить навигационную панель" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/b4/"><div class="navbar__logo"><img src="/b4/img/favicon.svg" alt="B4 Logo" class="themedComponent_jTcO themedComponent--light_nFNV"><img src="/b4/img/favicon.svg" alt="B4 Logo" class="themedComponent_jTcO themedComponent--dark_McRE"></div><b class="navbar__title text--truncate"></b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/b4/docs/intro">Документация</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><div class="navbar__item dropdown dropdown--hoverable dropdown--right"><a href="#" aria-haspopup="true" aria-expanded="false" role="button" class="navbar__link"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" class="iconLanguage_T8L_"><path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path></svg>Русский</a><ul class="dropdown__menu"><li><a href="/b4/docs/sets/" target="_self" rel="noopener noreferrer" class="dropdown__link dropdown__link--active" lang="ru-RU">Русский</a></li><li><a href="/b4/en/docs/sets/" target="_self" rel="noopener noreferrer" class="dropdown__link" lang="en-US">English</a></li></ul></div><a href="https://github.com/DanielLavrushin/b4" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_c8lg"><use href="#theme-svg-external-link"></use></svg></a><div class="toggle_e78C colorModeToggle_JRhw"><button class="clean-btn toggleButton_jaTG toggleButtonDisabled_Bzt3" type="button" disabled="" title="system mode" aria-label="Переключение между темным и светлым режимом (сейчас используется system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_NHIS lightToggleIcon_cV2k"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_NHIS darkToggleIcon_Xmqk"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_NHIS systemToggleIcon_Q0Jw"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_cQc8"></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_dZTL"><div class="docsWrapper_CMoq"><button aria-label="Прокрутка к началу" class="clean-btn theme-back-to-top-button backToTopButton_lQ6J" type="button"></button><div class="docRoot_tSSZ"><aside class="theme-doc-sidebar-container docSidebarContainer_ds5n"><div class="sidebarViewport_jPS2"><div class="sidebar_OeBc"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_Cas_"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/b4/docs/intro"><span title="Установка B4" class="linkLabel_Grs0">Установка B4</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/b4/docs/orientation"><span title="Быстрый старт" class="linkLabel_Grs0">Быстрый старт</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/b4/docs/settings"><span title="Общие настройки" class="linkLabel_Grs0">Общие настройки</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible menu__list-item-collapsible--active"><a class="categoryLink_tA5m menu__link menu__link--sublist menu__link--active" aria-current="page" href="/b4/docs/sets/"><span title="Сеты конфигураций" class="categoryLinkLabel_sTtl">Сеты конфигураций</span></a><button aria-label="Collapse sidebar category &#x27;Сеты конфигураций&#x27;" aria-expanded="true" type="button" class="clean-btn menu__caret"></button></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/b4/docs/sets/dpi"><span title="Зачем нужны разные наборы" class="linkLabel_Grs0">Зачем нужны разные наборы</span></a></li></ul></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/b4/docs/domains"><span title="Мониторинг соединений" class="linkLabel_Grs0">Мониторинг соединений</span></a></li></ul></nav></div></div></aside><main class="docMainContainer_QKg6"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_gcse"><div class="docItemContainer_CtD3"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_T6to" aria-label="Навигационная цепочка текущей страницы"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Главная страница" class="breadcrumbs__link" href="/b4/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_Eqkm"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Сеты конфигураций</span></li></ul></nav><div class="tocCollapsible_NCmR theme-doc-toc-mobile tocMobile_ZeX1"><button type="button" class="clean-btn tocCollapsibleButton_gDea">Содержание этой страницы</button></div><div class="theme-doc-markdown markdown"><header><h1>Наборы конфигураций (Sets)</h1></header>
+<p>Наборы конфигураций (Sets) — ключевая функция B4, позволяющая применять разные стратегии обхода DPI для разных доменов и IP-адресов.</p>
+<p><img decoding="async" loading="lazy" src="/b4/assets/images/20260216221807-1fcaf87a68b9fecc269e5212c08f3047.png" width="880" height="690" class="img_UdsT"></p>
+<h2 class="anchor anchorTargetStickyNavbar_DW5Y" id="концепция">Концепция<a href="#концепция" class="hash-link" aria-label="Прямая ссылка на Концепция" title="Прямая ссылка на Концепция" translate="no">​</a></h2>
+<p>Вместо единой глобальной конфигурации B4 позволяет создавать несколько независимых наборов настроек. Каждый набор содержит:</p>
+<ul>
+<li class=""><strong>Targets</strong> — список доменов и IP, к которым применяется набор</li>
+<li class=""><strong>TCP</strong> — параметры обработки TCP-соединений, разделения пакетов и фейковых пакетов (3 подвкладки: General, Splitting, Faking)</li>
+<li class=""><strong>UDP &amp; QUIC</strong> — параметры обработки UDP/QUIC</li>
+<li class=""><strong>DNS</strong> — настройки DNS-обхода</li>
+<li class=""><strong>Import/Export</strong> — импорт и экспорт конфигурации</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_DW5Y" id="зачем-нужны-разные-наборы">Зачем нужны разные наборы<a href="#зачем-нужны-разные-наборы" class="hash-link" aria-label="Прямая ссылка на Зачем нужны разные наборы" title="Прямая ссылка на Зачем нужны разные наборы" translate="no">​</a></h3>
+<p>Разные сервисы могут требовать разных стратегий обхода:</p>
+<table><thead><tr><th>Сервис</th><th>Рекомендуемая стратегия</th></tr></thead><tbody><tr><td>YouTube</td><td>TCP фрагментация + drop QUIC</td></tr><tr><td>Discord</td><td>Минимальная фрагментация</td></tr><tr><td>Telegram</td><td>GeoIP категории + faking</td></tr><tr><td>Торренты</td><td>UDP fake mode</td></tr></tbody></table>
+<div class="theme-admonition theme-admonition-info admonition_uxqw alert alert--info"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M7 2.3c3.14 0 5.7 2.56 5.7 5.7s-2.56 5.7-5.7 5.7A5.71 5.71 0 0 1 1.3 8c0-3.14 2.56-5.7 5.7-5.7zM7 1C3.14 1 0 4.14 0 8s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm1 3H6v5h2V4zm0 6H6v2h2v-2z"></path></svg></span>Дополнительно</div><div class="admonitionContent_mdOq"><p>Подробнее о том, почему DPI применяется по-разному от сайта к сайту, от провайдера к провайдеру, <a class="" href="/b4/docs/sets/dpi">можно почитать в отдельной статье</a>.</p></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_DW5Y" id="порядок-обработки-matching">Порядок обработки (Matching)<a href="#порядок-обработки-matching" class="hash-link" aria-label="Прямая ссылка на Порядок обработки (Matching)" title="Прямая ссылка на Порядок обработки (Matching)" translate="no">​</a></h3>
+<p>B4 перебирает и сопоставляет наборы <strong>сверху вниз</strong> по списку:</p>
+<ol>
+<li class="">Для каждого соединения B4 извлекает домен (из SNI) и/или IP назначения</li>
+<li class="">Проверяет каждый набор по порядку</li>
+<li class="">Первый набор, чьи цели (<code>targets</code>) совпадают — применяется</li>
+<li class="">Если ни один не совпал — используется <strong>Main Set</strong></li>
+</ol>
+<div class="language-plain codeBlockContainer_FIHn theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_tAhz"><pre tabindex="0" class="prism-code language-plain codeBlock_dG78 thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_IUK3"><span class="token-line" style="color:#F8F8F2"><span class="token plain">Соединение: youtube.com</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">    ↓</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">[Set #1: Discord] → targets: discord.com → НЕ совпадает</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">    ↓</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">[Set #2: YouTube] → targets: youtube, googlevideo → СОВПАДАЕТ ✓</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">    ↓</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">Применяются настройки Set #2</span><br></span></code></pre></div></div>
+<div class="theme-admonition theme-admonition-tip admonition_uxqw alert alert--success"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>Порядок важен</div><div class="admonitionContent_mdOq"><p>Размещайте более специфичные наборы выше в списке. Общие наборы (например, <code>ru-blocked</code>) — ниже.</p><p>Пользуйтесь кнопками перемещения сетов вниз-вверх</p></div></div>
+<h2 class="anchor anchorTargetStickyNavbar_DW5Y" id="менеджер-наборов">Менеджер наборов<a href="#менеджер-наборов" class="hash-link" aria-label="Прямая ссылка на Менеджер наборов" title="Прямая ссылка на Менеджер наборов" translate="no">​</a></h2>
+<p>Доступ: <strong>Settings → Sets</strong></p>
+<h3 class="anchor anchorTargetStickyNavbar_DW5Y" id="интерфейс-списка">Интерфейс списка<a href="#интерфейс-списка" class="hash-link" aria-label="Прямая ссылка на Интерфейс списка" title="Прямая ссылка на Интерфейс списка" translate="no">​</a></h3>
+<p>Каждый набор в списке отображает:</p>
+<table><thead><tr><th>Элемент</th><th>Описание</th></tr></thead><tbody><tr><td><strong>Переключатель</strong></td><td>Включение/отключение набора</td></tr><tr><td><strong>Номер/MAIN</strong></td><td>Позиция в порядке обработки</td></tr><tr><td><strong>Название</strong></td><td>Имя набора</td></tr><tr><td><strong>Счётчик</strong></td><td>Количество доменов/IP в targets</td></tr><tr><td><strong>SNI badge</strong></td><td>Индикатор включённого SNI faking</td></tr><tr><td><strong>Карточки</strong></td><td>Краткая сводка TCP/UDP настроек</td></tr></tbody></table>
+<h3 class="anchor anchorTargetStickyNavbar_DW5Y" id="действия-с-наборами">Действия с наборами<a href="#действия-с-наборами" class="hash-link" aria-label="Прямая ссылка на Действия с наборами" title="Прямая ссылка на Действия с наборами" translate="no">​</a></h3>
+<table><thead><tr><th>Действие</th><th>Описание</th></tr></thead><tbody><tr><td><strong>Переместить вверх/вниз</strong></td><td>Изменить приоритет обработки</td></tr><tr><td><strong>Дублировать</strong></td><td>Создать копию набора</td></tr><tr><td><strong>Редактировать</strong></td><td>Открыть редактор</td></tr><tr><td><strong>Удалить</strong></td><td>Удалить набор (кроме Main)</td></tr></tbody></table>
+<h3 class="anchor anchorTargetStickyNavbar_DW5Y" id="main-set">Main Set<a href="#main-set" class="hash-link" aria-label="Прямая ссылка на Main Set" title="Прямая ссылка на Main Set" translate="no">​</a></h3>
+<p><strong>Main Set</strong> — особый набор, который:</p>
+<ul>
+<li class="">Нельзя удалить</li>
+<li class="">Используется как fallback для трафика без совпадений</li>
+<li class="">Рекомендуется оставлять с минимальными настройками</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_DW5Y" id="создание-набора">Создание набора<a href="#создание-набора" class="hash-link" aria-label="Прямая ссылка на Создание набора" title="Прямая ссылка на Создание набора" translate="no">​</a></h2>
+<ol>
+<li class="">Нажмите <strong>Create New Set</strong></li>
+<li class="">Введите название (например, &quot;YouTube Bypass&quot;)</li>
+<li class="">Настройте параметры во вкладках</li>
+<li class="">Нажмите <strong>Save Changes</strong></li>
+</ol>
+<p>Новый набор создаётся с настройками по умолчанию, оптимизированными для большинства случаев.</p>
+<div class="theme-admonition theme-admonition-warning admonition_uxqw alert alert--warning"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>Сохранение</div><div class="admonitionContent_mdOq"><p>Сет, добавленный в список еще не находится в конфигурации сервиса.
+Не забудьте применить сохранение вверху страницы после добавления сета!</p></div></div>
+<h2 class="anchor anchorTargetStickyNavbar_DW5Y" id="редактор-набора">Редактор набора<a href="#редактор-набора" class="hash-link" aria-label="Прямая ссылка на Редактор набора" title="Прямая ссылка на Редактор набора" translate="no">​</a></h2>
+<p>Редактор содержит пять вкладок: <strong>Targets</strong>, <strong>TCP</strong> (с подвкладками General, Splitting, Faking), <strong>UDP &amp; QUIC</strong>, <strong>DNS</strong> и <strong>Import/Export</strong>.</p>
+<h3 class="anchor anchorTargetStickyNavbar_DW5Y" id="targets--цели">Targets — Цели<a href="#targets--цели" class="hash-link" aria-label="Прямая ссылка на Targets — Цели" title="Прямая ссылка на Targets — Цели" translate="no">​</a></h3>
+<p>Определяет, к какому трафику применяется набор.</p>
+<h4 class="anchor anchorTargetStickyNavbar_DW5Y" id="bypass-domains-домены">Bypass Domains (Домены)<a href="#bypass-domains-домены" class="hash-link" aria-label="Прямая ссылка на Bypass Domains (Домены)" title="Прямая ссылка на Bypass Domains (Домены)" translate="no">​</a></h4>
+<p><strong>Manual Domains</strong> — ручной ввод доменов:</p>
+<div class="language-plain codeBlockContainer_FIHn theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_tAhz"><pre tabindex="0" class="prism-code language-plain codeBlock_dG78 thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_IUK3"><span class="token-line" style="color:#F8F8F2"><span class="token plain">youtube.com</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">googlevideo.com</span><br></span></code></pre></div></div>
+<div class="theme-admonition theme-admonition-tip admonition_uxqw alert alert--success"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>Суб домены</div><div class="admonitionContent_mdOq"><p>Поддомены будут автоматически покрыты, если вы добавите общий домен. То есть совпадение пройдет для поддомена <code>sub2.sub1.example.com</code> если в сет вы добавите <code>example.com</code>.</p></div></div>
+<p><strong>GeoSite Categories</strong> — категории из geosite.dat:</p>
+<ul>
+<li class="">Выберите категорию из выпадающего списка</li>
+<li class="">Клик по чипу категории показывает превью доменов</li>
+<li class="">Отображается количество доменов в категории</li>
+</ul>
+<h4 class="anchor anchorTargetStickyNavbar_DW5Y" id="bypass-ips-ip-адреса">Bypass IPs (IP-адреса)<a href="#bypass-ips-ip-адреса" class="hash-link" aria-label="Прямая ссылка на Bypass IPs (IP-адреса)" title="Прямая ссылка на Bypass IPs (IP-адреса)" translate="no">​</a></h4>
+<p><strong>Manual IPs</strong> — ручной ввод IP/CIDR:</p>
+<div class="language-plain codeBlockContainer_FIHn theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_tAhz"><pre tabindex="0" class="prism-code language-plain codeBlock_dG78 thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_IUK3"><span class="token-line" style="color:#F8F8F2"><span class="token plain">142.250.0.0/16</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">208.65.153.238</span><br></span></code></pre></div></div>
+<p>Поддерживается:</p>
+<ul>
+<li class="">Одиночный IP: <code>1.2.3.4</code></li>
+<li class="">CIDR-диапазон: <code>10.0.0.0/8</code></li>
+<li class="">Несколько через запятую или пробел</li>
+</ul>
+<p><strong>GeoIP Categories</strong> — категории из geoip.dat:</p>
+<ul>
+<li class="">Двухбуквенные коды стран: <code>ru-blocked</code>, <code>ru</code></li>
+<li class="">Специальные: <code>cloudflare</code>, <code>google</code>, <code>facebook</code></li>
+</ul>
+<div class="theme-admonition theme-admonition-warning admonition_uxqw alert alert--warning"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>Если отсутствуют поля geodata</div><div class="admonitionContent_mdOq"><p>Скорее всего у вас не настроены файлы geodata. Настройте их <a class="" href="/b4/docs/settings#geodat-settings-%D0%BD%D0%B0%D1%81%D1%82%D1%80%D0%BE%D0%B9%D0%BA%D0%B8-geodat">в настройках сервиса в соотвествующем разделе</a>.</p></div></div>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_DW5Y" id="tcp--настройки-tcp">TCP — Настройки TCP<a href="#tcp--настройки-tcp" class="hash-link" aria-label="Прямая ссылка на TCP — Настройки TCP" title="Прямая ссылка на TCP — Настройки TCP" translate="no">​</a></h3>
+<p>TCP-вкладка объединяет все параметры обработки TCP-соединений и техники обхода DPI. Вкладка разделена на <strong>три подвкладки</strong>:</p>
+<table><thead><tr><th>Подвкладка</th><th>Содержание</th></tr></thead><tbody><tr><td><strong>General</strong></td><td>Основные параметры: лимиты соединения, задержки, удаление SACK, дупликация пакетов</td></tr><tr><td><strong>Splitting</strong></td><td>Стратегии разделения пакетов (TCP, IP, TLS, OOB фрагментация)</td></tr><tr><td><strong>Faking</strong></td><td>Все техники обмана DPI: фейковые пакеты, SYN fake, desync, манипуляция окном, мутация</td></tr></tbody></table>
+<p><img decoding="async" loading="lazy" alt="set tabs" src="/b4/assets/images/20260216221659-3ce1aa86d6ed79e561a19fa60cf158f7.png" width="888" height="351" class="img_UdsT"></p>
+<h4 class="anchor anchorTargetStickyNavbar_DW5Y" id="как-работает-tcp-обработка-в-b4">Как работает TCP-обработка в B4<a href="#как-работает-tcp-обработка-в-b4" class="hash-link" aria-label="Прямая ссылка на Как работает TCP-обработка в B4" title="Прямая ссылка на Как работает TCP-обработка в B4" translate="no">​</a></h4>
+<p>Когда B4 перехватывает TCP-пакет, направленный на целевой домен/IP, он может:</p>
+<ol>
+<li class=""><strong>Разделить пакет</strong> — фрагментация на уровне TCP, IP или TLS (подвкладка Splitting)</li>
+<li class=""><strong>Отправить фейковые пакеты</strong> — поддельные пакеты перед настоящими (подвкладка Faking)</li>
+<li class=""><strong>Манипулировать TCP Window</strong> — фейковые ACK с разными размерами окна (подвкладка Faking)</li>
+<li class=""><strong>Применить Desync-атаку</strong> — инжекция фейковых TCP control-пакетов (подвкладка Faking)</li>
+</ol>
+<p>Все эти техники применяются <strong>только к первым N байтам</strong> соединения (параметр <code>Connection Bytes Limit</code>), после чего трафик идёт без вмешательства.</p>
+<h4 class="anchor anchorTargetStickyNavbar_DW5Y" id="general--основные-параметры">General — Основные параметры<a href="#general--основные-параметры" class="hash-link" aria-label="Прямая ссылка на General — Основные параметры" title="Прямая ссылка на General — Основные параметры" translate="no">​</a></h4>
+<table><thead><tr><th>Параметр</th><th>Что делает</th><th>Типичные значения</th></tr></thead><tbody><tr><td><strong>Connection Bytes Limit</strong></td><td>Сколько первых байт соединения обрабатывать</td><td><code>19</code> / <code>32</code></td></tr><tr><td><strong>Segment 2 Delay</strong></td><td>Задержка между 1-м и 2-м сегментами (мс)</td><td><code>0–100 ms</code></td></tr><tr><td><strong>Drop SACK Options</strong></td><td>Удаляет TCP SACK-опции из заголовка</td><td><code>off</code></td></tr><tr><td><strong>Packet Duplication</strong></td><td>Отправка нескольких копий каждого исходящего TCP-пакета</td><td><code>off</code></td></tr></tbody></table>
+<p><img decoding="async" loading="lazy" alt="set general" src="/b4/assets/images/20260216221928-a506b47645c9aace9daf45f1afbd7131.png" width="1207" height="821" class="img_UdsT"></p>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="connection-bytes-limit">Connection Bytes Limit<a href="#connection-bytes-limit" class="hash-link" aria-label="Прямая ссылка на Connection Bytes Limit" title="Прямая ссылка на Connection Bytes Limit" translate="no">​</a></h5>
+<p>B4 применяет <code>фрагментацию</code>, <code>desync</code> и <code>фейкинг</code> <strong>только к первым N байтам</strong> потока. Остальная часть соединения идёт «как есть», без вмешательства. Это:</p>
+<ul>
+<li class="">снижает нагрузку на CPU</li>
+<li class="">уменьшает риск странных багов на длинных соединениях</li>
+</ul>
+<p>Рекомендуемые значения:</p>
+<ul>
+<li class=""><code>19</code> — минимально агрессивный вариант, достаточен для большинства случаев</li>
+<li class=""><code>32</code>–<code>64</code> — когда нужно обработать больше данных в начале соединения</li>
+</ul>
+<div class="theme-admonition theme-admonition-danger admonition_uxqw alert alert--danger"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M5.05.31c.81 2.17.41 3.38-.52 4.31C3.55 5.67 1.98 6.45.9 7.98c-1.45 2.05-1.7 6.53 3.53 7.7-2.2-1.16-2.67-4.52-.3-6.61-.61 2.03.53 3.33 1.94 2.86 1.39-.47 2.3.53 2.27 1.67-.02.78-.31 1.44-1.13 1.81 3.42-.59 4.78-3.42 4.78-5.56 0-2.84-2.53-3.22-1.25-5.61-1.52.13-2.03 1.13-1.89 2.75.09 1.08-1.02 1.8-1.86 1.33-.67-.41-.66-1.19-.06-1.78C8.18 5.31 8.68 2.45 5.05.32L5.03.3l.02.01z"></path></svg></span>Важно</div><div class="admonitionContent_mdOq"><ul>
+<li class="">Значение <code>Connection Bytes Limit</code> <strong>в сете</strong> не может быть больше, чем в <strong>MAIN Set</strong>.
+<code>MAIN</code> задаёт глобальный верхний предел для всех сетов.</li>
+<li class="">Изменения параметра в <code>MAIN</code> требует <strong>обязательного</strong> рестарта B4.</li>
+</ul></div></div>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="segment-2-delay">Segment 2 Delay<a href="#segment-2-delay" class="hash-link" aria-label="Прямая ссылка на Segment 2 Delay" title="Прямая ссылка на Segment 2 Delay" translate="no">​</a></h5>
+<p>Искусственная задержка перед отправкой <strong>второго TCP-сегмента</strong>:</p>
+<ul>
+<li class="">Может повысить эффективность обхода DPI</li>
+<li class="">Слишком большие значения увеличивают задержку соединения</li>
+</ul>
+<div class="theme-admonition theme-admonition-tip admonition_uxqw alert alert--success"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>совет</div><div class="admonitionContent_mdOq"><ul>
+<li class="">агрессивный обход: <code>20–80 ms</code>;</li>
+<li class="">чувствительные к задержкам сервисы (игры, голос, Discord): <code>0–10 ms</code> или вообще <code>0</code>.</li>
+</ul></div></div>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="drop-sack-options">Drop SACK Options<a href="#drop-sack-options" class="hash-link" aria-label="Прямая ссылка на Drop SACK Options" title="Прямая ссылка на Drop SACK Options" translate="no">​</a></h5>
+<p>Selective ACK помогает TCP восстанавливать потерянные пакеты. Удаление SACK-опций может помочь при обходе некоторых DPI.</p>
+<ul>
+<li class="">Может немного снизить производительность на линиях с потерями</li>
+</ul>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="packet-duplication">Packet Duplication<a href="#packet-duplication" class="hash-link" aria-label="Прямая ссылка на Packet Duplication" title="Прямая ссылка на Packet Duplication" translate="no">​</a></h5>
+<p>При включении B4 отправляет <strong>несколько копий</strong> каждого исходящего TCP-пакета. Это помогает обойти провайдеров, которые случайным образом дропают пакеты к определённым IP-адресам (например, Telegram).</p>
+<ul>
+<li class="">Создайте отдельный сет с целевыми IP</li>
+<li class="">Включите Packet Duplication и задайте количество копий (<code>2–5</code> обычно достаточно)</li>
+<li class="">Используется <strong>вместо</strong> остальных техник обхода DPI для этого сета</li>
+<li class="">Расходует дополнительный трафик пропорционально количеству копий</li>
+</ul>
+<hr>
+<h3 class="anchor anchorTargetStickyNavbar_DW5Y" id="udp--настройки-udp-и-quic">UDP — Настройки UDP и QUIC<a href="#udp--настройки-udp-и-quic" class="hash-link" aria-label="Прямая ссылка на UDP — Настройки UDP и QUIC" title="Прямая ссылка на UDP — Настройки UDP и QUIC" translate="no">​</a></h3>
+<p>UDP-вкладка управляет обработкой <code>UDP</code>-трафика, включая <code>QUIC</code>-протокол (HTTP/3). Основная задача — либо заблокировать QUIC для принудительного fallback на TCP, либо применить DPI bypass техники к UDP-пакетам.</p>
+<h4 class="anchor anchorTargetStickyNavbar_DW5Y" id="как-работает-udp-обработка-в-b4">Как работает UDP-обработка в B4<a href="#как-работает-udp-обработка-в-b4" class="hash-link" aria-label="Прямая ссылка на Как работает UDP-обработка в B4" title="Прямая ссылка на Как работает UDP-обработка в B4" translate="no">​</a></h4>
+<p>UDP-обработка состоит из двух этапов:</p>
+<ol>
+<li class=""><strong>Matching</strong> — определение, какой UDP-трафик обрабатывать (QUIC, конкретные порты)</li>
+<li class=""><strong>Action</strong> — что делать с matched трафиком (drop или fake)</li>
+</ol>
+<hr>
+<h4 class="anchor anchorTargetStickyNavbar_DW5Y" id="этап-1-какой-трафик-обрабатывать">Этап 1: Какой трафик обрабатывать<a href="#этап-1-какой-трафик-обрабатывать" class="hash-link" aria-label="Прямая ссылка на Этап 1: Какой трафик обрабатывать" title="Прямая ссылка на Этап 1: Какой трафик обрабатывать" translate="no">​</a></h4>
+<table><thead><tr><th>Параметр</th><th>Описание</th><th>По умолчанию</th></tr></thead><tbody><tr><td><strong>QUIC Filter</strong></td><td>Режим фильтрации QUIC-пакетов</td><td><code>disabled</code></td></tr><tr><td><strong>Port Filter</strong></td><td>Фильтр по destination портам</td><td>пусто</td></tr><tr><td><strong>Filter STUN</strong></td><td>Игнорировать STUN-пакеты</td><td><code>true</code></td></tr></tbody></table>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="quic-filter">QUIC Filter<a href="#quic-filter" class="hash-link" aria-label="Прямая ссылка на QUIC Filter" title="Прямая ссылка на QUIC Filter" translate="no">​</a></h5>
+<p>QUIC — это сетевой протокол на базе UDP, используемый <code>YouTube</code>, <code>Google</code>, <code>Cloudflare</code> и другими. Многие DPI не умеют анализировать QUIC, поэтому его блокируют целиком.</p>
+<table><thead><tr><th>Режим</th><th>Описание</th></tr></thead><tbody><tr><td><strong>Disabled</strong></td><td>QUIC не обрабатывается, проходит как есть</td></tr><tr><td><strong>All</strong></td><td>Все QUIC Initial пакеты (слепое сопоставление по структуре, все подряд)</td></tr><tr><td><strong>Parse</strong></td><td>Только QUIC с SNI из списка доменов сета (умное сопоставление)</td></tr></tbody></table>
+<div class="theme-admonition theme-admonition-tip admonition_uxqw alert alert--success"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>совет</div><div class="admonitionContent_mdOq"><ul>
+<li class=""><strong>Disabled</strong> — используйте, если QUIC не блокируется провайдером</li>
+<li class=""><strong>All</strong> — агрессивный режим, ловит весь QUIC</li>
+<li class=""><strong>Parse</strong> — точечный режим, требует настроенных доменов в Targets</li>
+</ul></div></div>
+<div class="theme-admonition theme-admonition-warning admonition_uxqw alert alert--warning"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>Parse требует домены</div><div class="admonitionContent_mdOq"><p>В режиме <code>Parse</code> без настроенных доменов в Targets <strong>ничего не будет обработано</strong>. B4 парсит SNI из QUIC ClientHello и сверяет с вашим списком.</p></div></div>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="port-filter">Port Filter<a href="#port-filter" class="hash-link" aria-label="Прямая ссылка на Port Filter" title="Прямая ссылка на Port Filter" translate="no">​</a></h5>
+<p>Фильтрация UDP по destination портам. Формат:</p>
+<div class="language-plain codeBlockContainer_FIHn theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_tAhz"><pre tabindex="0" class="prism-code language-plain codeBlock_dG78 thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_IUK3"><span class="token-line" style="color:#F8F8F2"><span class="token plain">5000-6000,8000,9000-9100</span><br></span></code></pre></div></div>
+<p>Используйте для:</p>
+<ul>
+<li class="">VoIP (discord и тп)</li>
+<li class="">Онлайн-игры (зависит от игры)</li>
+<li class="">Кастомных UDP-сервисов</li>
+</ul>
+<p>Если пусто — фильтрация по портам не производится.</p>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="filter-stun">Filter STUN<a href="#filter-stun" class="hash-link" aria-label="Прямая ссылка на Filter STUN" title="Прямая ссылка на Filter STUN" translate="no">​</a></h5>
+<p>STUN используется для NAT traversal в VoIP и видеозвонках.</p>
+<div class="theme-admonition theme-admonition-warning admonition_uxqw alert alert--warning"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>Filter STUN</div><div class="admonitionContent_mdOq"><p><strong>Рекомендуется оставить включённым</strong> — обработка STUN может сломать голосовую связь.</p></div></div>
+<hr>
+<h4 class="anchor anchorTargetStickyNavbar_DW5Y" id="этап-2-что-делать-с-выявленым-трафиком">Этап 2: Что делать с выявленым трафиком<a href="#этап-2-что-делать-с-выявленым-трафиком" class="hash-link" aria-label="Прямая ссылка на Этап 2: Что делать с выявленым трафиком" title="Прямая ссылка на Этап 2: Что делать с выявленым трафиком" translate="no">​</a></h4>
+<p>Эти настройки появляются только если QUIC Filter ≠ Disabled или задан Port Filter.</p>
+<table><thead><tr><th>Параметр</th><th>Описание</th><th>По умолчанию</th></tr></thead><tbody><tr><td><strong>Action Mode</strong></td><td>Режим обработки</td><td><code>fake</code></td></tr><tr><td><strong>Connection Packets Limit</strong></td><td>Сколько первых пакетов соединения обрабатывать</td><td><code>8</code></td></tr></tbody></table>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="action-mode">Action Mode<a href="#action-mode" class="hash-link" aria-label="Прямая ссылка на Action Mode" title="Прямая ссылка на Action Mode" translate="no">​</a></h5>
+<table><thead><tr><th>Режим</th><th>Что происходит</th></tr></thead><tbody><tr><td><strong>Drop</strong></td><td>Пакеты дропаются, приложение делает fallback на TCP</td></tr><tr><td><strong>Fake</strong></td><td>Перед реальным пакетом отправляются фейки + фрагментация</td></tr></tbody></table>
+<p><strong>Drop</strong> — простой и надёжный способ. YouTube, Discord, браузеры автоматически переключаются на HTTPS (TCP) если QUIC недоступен. Минус: теряется преимущество QUIC в скорости.</p>
+<p><strong>Fake</strong> — пытается обойти DPI для UDP. Сложнее, но сохраняет QUIC. Требует настройки фейковых пакетов.</p>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="connection-packets-limit">Connection Packets Limit<a href="#connection-packets-limit" class="hash-link" aria-label="Прямая ссылка на Connection Packets Limit" title="Прямая ссылка на Connection Packets Limit" translate="no">​</a></h5>
+<p>Аналог TCP <code>Connection Bytes Limit</code>, но для UDP считается в пакетах, не байтах. B4 обрабатывает только первые N пакетов соединения.</p>
+<ul>
+<li class=""><code>5–8</code> — рекомендуемое значение</li>
+<li class=""><code>1–3</code> — минимальная нагрузка, но может не хватить для пробития</li>
+</ul>
+<div class="theme-admonition theme-admonition-danger admonition_uxqw alert alert--danger"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M5.05.31c.81 2.17.41 3.38-.52 4.31C3.55 5.67 1.98 6.45.9 7.98c-1.45 2.05-1.7 6.53 3.53 7.7-2.2-1.16-2.67-4.52-.3-6.61-.61 2.03.53 3.33 1.94 2.86 1.39-.47 2.3.53 2.27 1.67-.02.78-.31 1.44-1.13 1.81 3.42-.59 4.78-3.42 4.78-5.56 0-2.84-2.53-3.22-1.25-5.61-1.52.13-2.03 1.13-1.89 2.75.09 1.08-1.02 1.8-1.86 1.33-.67-.41-.66-1.19-.06-1.78C8.18 5.31 8.68 2.45 5.05.32L5.03.3l.02.01z"></path></svg></span>Важно</div><div class="admonitionContent_mdOq"><ul>
+<li class="">Значение <code>Connection Bytes Limit</code> <strong>в сете</strong> не может быть больше, чем в <strong>MAIN Set</strong>.<br>
+<code>MAIN</code> задаёт глобальный верхний предел для всех сетов.</li>
+<li class="">Изменения параметра в <code>MAIN</code> требует <strong>обязательного</strong> рестарта B4.</li>
+</ul></div></div>
+<hr>
+<h4 class="anchor anchorTargetStickyNavbar_DW5Y" id="настройки-fake-mode">Настройки Fake Mode<a href="#настройки-fake-mode" class="hash-link" aria-label="Прямая ссылка на Настройки Fake Mode" title="Прямая ссылка на Настройки Fake Mode" translate="no">​</a></h4>
+<p>Появляются только при <code>Action Mode = Fake</code>.</p>
+<table><thead><tr><th>Параметр</th><th>Описание</th><th>По умолчанию</th></tr></thead><tbody><tr><td><strong>Faking Strategy</strong></td><td>Как сделать фейковые пакеты невалидными</td><td><code>none</code></td></tr><tr><td><strong>Fake Packet Count</strong></td><td>Количество фейков перед реальным пакетом</td><td><code>6</code></td></tr><tr><td><strong>Fake Packet Size</strong></td><td>Размер payload фейкового пакета</td><td><code>64</code></td></tr><tr><td><strong>Segment 2 Delay</strong></td><td>Задержка между сегментами (мс)</td><td><code>0</code></td></tr></tbody></table>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="faking-strategy">Faking Strategy<a href="#faking-strategy" class="hash-link" aria-label="Прямая ссылка на Faking Strategy" title="Прямая ссылка на Faking Strategy" translate="no">​</a></h5>
+<table><thead><tr><th>Стратегия</th><th>Описание</th></tr></thead><tbody><tr><td><strong>None</strong></td><td>Без стратегии (фейки могут дойти до сервера)</td></tr><tr><td><strong>TTL</strong></td><td>Низкий TTL — пакеты не дойдут до сервера</td></tr><tr><td><strong>Checksum</strong></td><td>Битый UDP checksum — сервер отбросит</td></tr></tbody></table>
+<ul>
+<li class=""><strong>TTL</strong> — безопаснее, работает в большинстве сетей</li>
+<li class=""><strong>Checksum</strong> — альтернативный вариант, но может фильтроваться на пути</li>
+</ul>
+<div class="theme-admonition theme-admonition-tip admonition_uxqw alert alert--success"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>Рекомендация</div><div class="admonitionContent_mdOq"><p>Начните с <code>TTL</code>. Если не помогает — попробуйте <code>Checksum</code>.</p></div></div>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="fake-packet-count">Fake Packet Count<a href="#fake-packet-count" class="hash-link" aria-label="Прямая ссылка на Fake Packet Count" title="Прямая ссылка на Fake Packet Count" translate="no">​</a></h5>
+<p>Количество фейковых пакетов, отправляемых <strong>перед</strong> каждым реальным пакетом.</p>
+<ul>
+<li class=""><code>3–6</code> — базовый уровень</li>
+<li class=""><code>10–20</code> — агрессивный режим (больше нагрузки)</li>
+</ul>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="fake-packet-size">Fake Packet Size<a href="#fake-packet-size" class="hash-link" aria-label="Прямая ссылка на Fake Packet Size" title="Прямая ссылка на Fake Packet Size" translate="no">​</a></h5>
+<p>Размер payload фейкового UDP-пакета в байтах.</p>
+<ul>
+<li class=""><code>64</code> — небольшие пакеты, меньше нагрузки</li>
+<li class=""><code>256–512</code> — имитация реального трафика</li>
+<li class=""><code>1200–1400</code> — близко к MTU, максимальная имитация</li>
+</ul>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="udp-segment-2-delay">UDP: Segment 2 Delay<a href="#udp-segment-2-delay" class="hash-link" aria-label="Прямая ссылка на UDP: Segment 2 Delay" title="Прямая ссылка на UDP: Segment 2 Delay" translate="no">​</a></h5>
+<p>Задержка между фрагментами/сегментами в миллисекундах.</p>
+<ul>
+<li class=""><code>0</code> — без задержки</li>
+<li class=""><code>10–50 ms</code> — лёгкий desync</li>
+<li class=""><code>100+ ms</code> — заметно влияет на latency</li>
+</ul>
+<hr>
+<h4 class="anchor anchorTargetStickyNavbar_DW5Y" id="типичные-сценарии">Типичные сценарии<a href="#типичные-сценарии" class="hash-link" aria-label="Прямая ссылка на Типичные сценарии" title="Прямая ссылка на Типичные сценарии" translate="no">​</a></h4>
+<table><thead><tr><th>Сценарий</th><th>Рекомендуемые настройки</th></tr></thead><tbody><tr><td>YouTube блокируется через QUIC</td><td>QUIC Filter: <code>All</code>, Mode: <code>Drop</code></td></tr><tr><td>YouTube + сохранить QUIC</td><td>QUIC Filter: <code>Parse</code>, Mode: <code>Fake</code>, Strategy: <code>TTL</code></td></tr><tr><td>Discord голос лагает</td><td>Filter STUN: <code>On</code>, низкий Seg2 Delay</td></tr><tr><td>Gaming UDP заблокирован</td><td>Port Filter: <code>порты игры</code>, Mode: <code>Fake</code></td></tr><tr><td>Ничего не блокируется</td><td>QUIC Filter: <code>Disabled</code></td></tr></tbody></table>
+<div class="theme-admonition theme-admonition-info admonition_uxqw alert alert--info"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M7 2.3c3.14 0 5.7 2.56 5.7 5.7s-2.56 5.7-5.7 5.7A5.71 5.71 0 0 1 1.3 8c0-3.14 2.56-5.7 5.7-5.7zM7 1C3.14 1 0 4.14 0 8s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm1 3H6v5h2V4zm0 6H6v2h2v-2z"></path></svg></span>Почему Drop часто лучше Fake</div><div class="admonitionContent_mdOq"><p>UDP bypass сложнее TCP — нет handshake, нет retransmit. Если <code>Fake</code> не работает стабильно, <code>Drop</code> + fallback на TCP — надёжнее.</p></div></div>
+<hr>
+<h4 class="anchor anchorTargetStickyNavbar_DW5Y" id="splitting--стратегия-разделения-пакетов">Splitting — Стратегия разделения пакетов<a href="#splitting--стратегия-разделения-пакетов" class="hash-link" aria-label="Прямая ссылка на Splitting — Стратегия разделения пакетов" title="Прямая ссылка на Splitting — Стратегия разделения пакетов" translate="no">​</a></h4>
+<div class="theme-admonition theme-admonition-info admonition_uxqw alert alert--info"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M7 2.3c3.14 0 5.7 2.56 5.7 5.7s-2.56 5.7-5.7 5.7A5.71 5.71 0 0 1 1.3 8c0-3.14 2.56-5.7 5.7-5.7zM7 1C3.14 1 0 4.14 0 8s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm1 3H6v5h2V4zm0 6H6v2h2v-2z"></path></svg></span>Расположение в интерфейсе</div><div class="admonitionContent_mdOq"><p>Эти настройки находятся во вкладке <strong>TCP → Splitting</strong>. Ранее они были в отдельной вкладке «Fragmentation».</p></div></div>
+<p>Разделение пакетов — одна из ключевых техник обхода DPI. B4 поддерживает несколько стратегий разделения на разных уровнях сетевого стека.</p>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="выбор-стратегии">Выбор стратегии<a href="#выбор-стратегии" class="hash-link" aria-label="Прямая ссылка на Выбор стратегии" title="Прямая ссылка на Выбор стратегии" translate="no">​</a></h5>
+<table><thead><tr><th>Стратегия</th><th>Уровень разреза</th><th>Совместимость</th><th>Эффективность</th></tr></thead><tbody><tr><td><strong>TCP Segmentation</strong></td><td>TCP</td><td>Высокая</td><td>Высокая</td></tr><tr><td><strong>IP Fragmentation</strong></td><td>IP</td><td>Средняя</td><td>Высокая</td></tr><tr><td><strong>TLS Record Split</strong></td><td>TLS</td><td>Высокая</td><td>Очень высокая</td></tr><tr><td><strong>OOB (Out-of-Band)</strong></td><td>TCP + URG</td><td>Средняя</td><td>Высокая</td></tr><tr><td><strong>None</strong></td><td>—</td><td>—</td><td>Только faking</td></tr></tbody></table>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="tcp-segmentation">TCP Segmentation<a href="#tcp-segmentation" class="hash-link" aria-label="Прямая ссылка на TCP Segmentation" title="Прямая ссылка на TCP Segmentation" translate="no">​</a></h5>
+<p>Разбивает данные на уровне TCP. Один TCP-пакет превращается в 2–3 TCP-сегмента с разными порядковыми номерами.</p>
+<p><strong>Плюсы:</strong></p>
+<ul>
+<li class="">Работает через NAT и файрволы</li>
+<li class="">Не требует особой поддержки от сети</li>
+<li class="">Сервер гарантированно соберёт данные</li>
+</ul>
+<p><strong>Минусы:</strong></p>
+<ul>
+<li class="">Может не помогать против продвинутых DPI</li>
+</ul>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="ip-fragmentation">IP Fragmentation<a href="#ip-fragmentation" class="hash-link" aria-label="Прямая ссылка на IP Fragmentation" title="Прямая ссылка на IP Fragmentation" translate="no">​</a></h5>
+<p>Разбивает пакет на уровне IP-протокола.</p>
+<p><strong>Плюсы:</strong></p>
+<ul>
+<li class="">Эффективен против многих DPI</li>
+<li class="">Работает на более низком уровне, чем TCP</li>
+</ul>
+<p><strong>Минусы:</strong></p>
+<ul>
+<li class="">Некоторые сети/NAT дропают фрагментированные пакеты</li>
+<li class="">Строгие MTU-лимиты могут вызвать проблемы</li>
+</ul>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="tls-record-splitting">TLS Record Splitting<a href="#tls-record-splitting" class="hash-link" aria-label="Прямая ссылка на TLS Record Splitting" title="Прямая ссылка на TLS Record Splitting" translate="no">​</a></h5>
+<p>Разбивает один TLS record на два отдельных TLS record. Это происходит <strong>внутри</strong> TLS-протокола, не затрагивая TCP/IP.</p>
+<p><strong>Плюсы:</strong></p>
+<ul>
+<li class="">Очень эффективен</li>
+<li class="">Полностью валидный TLS — сервер обязан поддерживать</li>
+<li class="">Не зависит от сетевой инфраструктуры</li>
+</ul>
+<p><strong>Минусы:</strong></p>
+<ul>
+<li class="">Работает только для TLS handshake</li>
+<li class="">Некоторые broken middleboxes могут не понять</li>
+</ul>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="oob-out-of-band">OOB (Out-of-Band)<a href="#oob-out-of-band" class="hash-link" aria-label="Прямая ссылка на OOB (Out-of-Band)" title="Прямая ссылка на OOB (Out-of-Band)" translate="no">​</a></h5>
+<p>Использует TCP URG (Urgent) механизм для инжекции дополнительного байта в поток данных.</p>
+<p><strong>Плюсы:</strong></p>
+<ul>
+<li class="">Эффективен против многих DPI</li>
+<li class="">Работает на уровне TCP-протокола</li>
+</ul>
+<p><strong>Минусы:</strong></p>
+<ul>
+<li class="">Старые middleboxes могут некорректно обрабатывать URG</li>
+<li class="">Некоторые серверы неправильно реализуют OOB</li>
+</ul>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="none">None<a href="#none" class="hash-link" aria-label="Прямая ссылка на None" title="Прямая ссылка на None" translate="no">​</a></h5>
+<p>Фрагментация отключена. Пакеты отправляются как есть. Используйте, если полагаетесь только на Faking (фейковые пакеты).</p>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="общие-параметры">Общие параметры<a href="#общие-параметры" class="hash-link" aria-label="Прямая ссылка на Общие параметры" title="Прямая ссылка на Общие параметры" translate="no">​</a></h5>
+<table><thead><tr><th>Параметр</th><th>Описание</th><th>Применимость</th></tr></thead><tbody><tr><td><strong>Reverse Fragment Order</strong></td><td>Отправить фрагменты в обратном порядке</td><td>TCP, IP, TLS, OOB</td></tr></tbody></table>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="reverse-fragment-order">Reverse Fragment Order<a href="#reverse-fragment-order" class="hash-link" aria-label="Прямая ссылка на Reverse Fragment Order" title="Прямая ссылка на Reverse Fragment Order" translate="no">​</a></h5>
+<p>По умолчанию фрагменты отправляются в прямом порядке: сначала начало, потом конец. При включении <strong>Reverse Fragment Order</strong>:</p>
+<div class="language-text codeBlockContainer_FIHn theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_tAhz"><pre tabindex="0" class="prism-code language-text codeBlock_dG78 thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_IUK3"><span class="token-line" style="color:#F8F8F2"><span class="token plain">Прямой порядок:    Сегмент 1 → Сегмент 2 → Сегмент 3</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">Обратный порядок:  Сегмент 2 → Сегмент 1 → Сегмент 3</span><br></span></code></pre></div></div>
+<p><strong>Зачем:</strong></p>
+<ul>
+<li class="">Изменяет порядок прибытия фрагментов</li>
+<li class="">TCP гарантирует сборку в правильном порядке по sequence number — на работу сервера не влияет</li>
+</ul>
+<div class="theme-admonition theme-admonition-tip admonition_uxqw alert alert--success"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>Рекомендация</div><div class="admonitionContent_mdOq"><p>Включите Reverse Fragment Order по умолчанию. Это увеличивает шансы обхода без побочных эффектов.</p></div></div>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="параметры-tcpip-стратегий">Параметры TCP/IP стратегий<a href="#параметры-tcpip-стратегий" class="hash-link" aria-label="Прямая ссылка на Параметры TCP/IP стратегий" title="Прямая ссылка на Параметры TCP/IP стратегий" translate="no">​</a></h5>
+<p>Эти параметры появляются при выборе <strong>TCP Segmentation</strong> или <strong>IP Fragmentation</strong>.</p>
+<table><thead><tr><th>Параметр</th><th>Описание</th><th>По умолчанию</th></tr></thead><tbody><tr><td><strong>SNI Split Position</strong></td><td>Позиция разреза относительно начала SNI</td><td><code>1</code></td></tr><tr><td><strong>Middle SNI</strong></td><td>Резать посередине SNI автоматически</td><td><code>true</code></td></tr></tbody></table>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="sni-split-position">SNI Split Position<a href="#sni-split-position" class="hash-link" aria-label="Прямая ссылка на SNI Split Position" title="Прямая ссылка на SNI Split Position" translate="no">​</a></h5>
+<p>Определяет, на какой позиции <strong>от начала SNI</strong> делать разрез.</p>
+<div class="language-text codeBlockContainer_FIHn theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_tAhz"><pre tabindex="0" class="prism-code language-text codeBlock_dG78 thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_IUK3"><span class="token-line" style="color:#F8F8F2"><span class="token plain">SNI: youtube.com (11 символов)</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">     ^</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">     позиция 0</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">SNI Position = 1:  y|outube.com     → &quot;y&quot; + &quot;outube.com&quot;</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">SNI Position = 3:  you|tube.com     → &quot;you&quot; + &quot;tube.com&quot;</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">SNI Position = 6:  youtub|e.com     → &quot;youtub&quot; + &quot;e.com&quot;</span><br></span></code></pre></div></div>
+<ul>
+<li class=""><code>0</code> — резать перед первым символом SNI</li>
+<li class=""><code>1–3</code> — резать в начале SNI</li>
+<li class="">Большие значения — резать ближе к концу</li>
+</ul>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="middle-sni">Middle SNI<a href="#middle-sni" class="hash-link" aria-label="Прямая ссылка на Middle SNI" title="Прямая ссылка на Middle SNI" translate="no">​</a></h5>
+<p>Если включено, B4 <strong>автоматически</strong> находит SNI в ClientHello и режет посередине, игнорируя <code>SNI Split Position</code>.</p>
+<p><strong>Когда использовать:</strong></p>
+<ul>
+<li class=""><strong>Middle SNI = On</strong> — универсальный вариант, работает для любых доменов</li>
+<li class=""><strong>Middle SNI = Off</strong> — если нужен точный контроль через <code>SNI Split Position</code></li>
+</ul>
+<div class="theme-admonition theme-admonition-info admonition_uxqw alert alert--info"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M7 2.3c3.14 0 5.7 2.56 5.7 5.7s-2.56 5.7-5.7 5.7A5.71 5.71 0 0 1 1.3 8c0-3.14 2.56-5.7 5.7-5.7zM7 1C3.14 1 0 4.14 0 8s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm1 3H6v5h2V4zm0 6H6v2h2v-2z"></path></svg></span>Приоритет</div><div class="admonitionContent_mdOq"><p>Если <code>Middle SNI</code> включён, <code>SNI Split Position</code> используется как fallback, если SNI не найден в пакете.</p></div></div>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="параметры-oob-стратегии">Параметры OOB стратегии<a href="#параметры-oob-стратегии" class="hash-link" aria-label="Прямая ссылка на Параметры OOB стратегии" title="Прямая ссылка на Параметры OOB стратегии" translate="no">​</a></h5>
+<p>Появляются при выборе <strong>OOB (Out-of-Band)</strong>.</p>
+<table><thead><tr><th>Параметр</th><th>Описание</th><th>По умолчанию</th></tr></thead><tbody><tr><td><strong>OOB Position</strong></td><td>Позиция инжекции OOB-байта (в байтах)</td><td><code>1</code></td></tr><tr><td><strong>OOB Character</strong></td><td>Символ для OOB-данных</td><td><code>x</code></td></tr></tbody></table>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="oob-position">OOB Position<a href="#oob-position" class="hash-link" aria-label="Прямая ссылка на OOB Position" title="Прямая ссылка на OOB Position" translate="no">​</a></h5>
+<p>Определяет, после скольких байт payload вставить OOB-байт.</p>
+<div class="language-text codeBlockContainer_FIHn theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_tAhz"><pre tabindex="0" class="prism-code language-text codeBlock_dG78 thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_IUK3"><span class="token-line" style="color:#F8F8F2"><span class="token plain">Payload: [ClientHello...youtube.com...]</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">          ^</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">          позиция 0</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">OOB Position = 1:  [C][OOB][lientHello...youtube.com...]</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">OOB Position = 50: [ClientHello...yout][OOB][ube.com...]</span><br></span></code></pre></div></div>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="oob-character">OOB Character<a href="#oob-character" class="hash-link" aria-label="Прямая ссылка на OOB Character" title="Прямая ссылка на OOB Character" translate="no">​</a></h5>
+<p>Байт, который будет отправлен с URG-флагом. Сервер его отбросит, но DPI увидит.</p>
+<ul>
+<li class="">По умолчанию: <code>x</code> (0x78)</li>
+<li class="">Можно использовать любой символ</li>
+<li class="">Не влияет на эффективность bypass — важен сам факт URG-флага</li>
+</ul>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="параметры-tls-стратегии">Параметры TLS стратегии<a href="#параметры-tls-стратегии" class="hash-link" aria-label="Прямая ссылка на Параметры TLS стратегии" title="Прямая ссылка на Параметры TLS стратегии" translate="no">​</a></h5>
+<p>Появляются при выборе <strong>TLS Record Splitting</strong>.</p>
+<table><thead><tr><th>Параметр</th><th>Описание</th><th>По умолчанию</th></tr></thead><tbody><tr><td><strong>TLS Record Split Position</strong></td><td>Позиция разреза внутри TLS record (байты)</td><td><code>1</code></td></tr></tbody></table>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="tls-record-split-position">TLS Record Split Position<a href="#tls-record-split-position" class="hash-link" aria-label="Прямая ссылка на TLS Record Split Position" title="Прямая ссылка на TLS Record Split Position" translate="no">​</a></h5>
+<p>Определяет, после скольких байт <strong>данных handshake</strong> разрезать TLS record.</p>
+<div class="language-text codeBlockContainer_FIHn theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_tAhz"><pre tabindex="0" class="prism-code language-text codeBlock_dG78 thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_IUK3"><span class="token-line" style="color:#F8F8F2"><span class="token plain">TLS Record: [Header 5 байт][Handshake data N байт]</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">                            ^</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">                            позиция 0</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">Split Position = 1:</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">  Record 1: [Header][1 байт]</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">  Record 2: [Header][остальные N-1 байт]</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">Split Position = 50:</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">  Record 1: [Header][50 байт — начало ClientHello]</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">  Record 2: [Header][остальное — включая SNI]</span><br></span></code></pre></div></div>
+<p><strong>Рекомендации:</strong></p>
+<ul>
+<li class=""><code>1–10</code> — агрессивный split в начале handshake</li>
+<li class=""><code>50–100</code> — split ближе к SNI (зависит от размера ClientHello)</li>
+<li class="">Слишком большое значение автоматически корректируется до <code>recordLen / 2</code></li>
+</ul>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="рекомендации-по-выбору">Рекомендации по выбору<a href="#рекомендации-по-выбору" class="hash-link" aria-label="Прямая ссылка на Рекомендации по выбору" title="Прямая ссылка на Рекомендации по выбору" translate="no">​</a></h5>
+<table><thead><tr><th>Ситуация</th><th>Рекомендуемая стратегия</th></tr></thead><tbody><tr><td>Не знаю, что выбрать</td><td>TCP + Middle SNI + Reverse</td></tr><tr><td>TCP не помогает</td><td>TLS Record Split</td></tr><tr><td>Нужна максимальная совместимость</td><td>TCP Segmentation</td></tr><tr><td>TCP и TLS не помогают</td><td>OOB или TLS + Desync (подвкладка Faking)</td></tr><tr><td>Полагаюсь только на faking</td><td>None</td></tr></tbody></table>
+<div class="theme-admonition theme-admonition-tip admonition_uxqw alert alert--success"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>Комбинируйте с Faking</div><div class="admonitionContent_mdOq"><p>Splitting эффективнее в связке с Faking (подвкладка TCP → Faking).</p></div></div>
+<hr>
+<h4 class="anchor anchorTargetStickyNavbar_DW5Y" id="faking--фейковые-пакеты-и-обход-dpi">Faking — Фейковые пакеты и обход DPI<a href="#faking--фейковые-пакеты-и-обход-dpi" class="hash-link" aria-label="Прямая ссылка на Faking — Фейковые пакеты и обход DPI" title="Прямая ссылка на Faking — Фейковые пакеты и обход DPI" translate="no">​</a></h4>
+<div class="theme-admonition theme-admonition-info admonition_uxqw alert alert--info"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M7 2.3c3.14 0 5.7 2.56 5.7 5.7s-2.56 5.7-5.7 5.7A5.71 5.71 0 0 1 1.3 8c0-3.14 2.56-5.7 5.7-5.7zM7 1C3.14 1 0 4.14 0 8s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm1 3H6v5h2V4zm0 6H6v2h2v-2z"></path></svg></span>Расположение в интерфейсе</div><div class="admonitionContent_mdOq"><p>Эти настройки находятся во вкладке <strong>TCP → Faking</strong>. Ранее часть из них была в отдельной вкладке «Faking», а часть — в основной вкладке TCP.</p></div></div>
+<p>Faking — это техника отправки <strong>поддельных пакетов</strong> перед настоящими. DPI видит фейк, пытается его обработать, сбивается с толку — а настоящий пакет проходит незамеченным.</p>
+<p>Подвкладка Faking содержит шесть сворачиваемых секций. Каждая секция показывает свой текущий статус (включена/выключена) без необходимости её раскрывать:</p>
+<ol>
+<li class=""><strong>Fake SNI Packets</strong> — отправка фейковых пакетов с поддельным <code>ClientHello</code></li>
+<li class=""><strong>SYN Fake Packets</strong> — фейковые SYN-пакеты при TCP-рукопожатии</li>
+<li class=""><strong>TCP Desync Attack</strong> — инжекция фейковых RST/FIN/ACK для сбоя state-tracking DPI</li>
+<li class=""><strong>Window Manipulation</strong> — фейковые ACK с манипулированным размером TCP-окна</li>
+<li class=""><strong>Incoming Response Bypass</strong> — обработка ответов сервера для обхода блокировки загрузок</li>
+<li class=""><strong>ClientHello Mutation</strong> — модификация структуры настоящего <code>ClientHello</code></li>
+</ol>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="концепция-фейковых-пакетов">Концепция фейковых пакетов<a href="#концепция-фейковых-пакетов" class="hash-link" aria-label="Прямая ссылка на Концепция фейковых пакетов" title="Прямая ссылка на Концепция фейковых пакетов" translate="no">​</a></h5>
+<p>B4 отправляет <strong>поддельные пакеты</strong> перед настоящими. Фейковые пакеты специально делаются <strong>невалидными</strong> (низкий TTL, битый checksum, неправильный sequence number), чтобы сервер их отбросил, а настоящий пакет прошёл без проблем.</p>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="fake-sni-packets">Fake SNI Packets<a href="#fake-sni-packets" class="hash-link" aria-label="Прямая ссылка на Fake SNI Packets" title="Прямая ссылка на Fake SNI Packets" translate="no">​</a></h5>
+<p>Управляет отправкой фейковых пакетов с поддельным <code>TLS ClientHello</code>.</p>
+<table><thead><tr><th>Параметр</th><th>Описание</th><th>По умолчанию</th></tr></thead><tbody><tr><td><strong>Enable Fake SNI</strong></td><td>Включить отправку фейковых SNI-пакетов</td><td><code>true</code></td></tr><tr><td><strong>Fake Strategy</strong></td><td>Как сделать фейк невалидным для сервера</td><td><code>pastseq</code></td></tr><tr><td><strong>Fake Payload Type</strong></td><td>Содержимое фейкового пакета</td><td><code>Default</code></td></tr><tr><td><strong>Fake TTL</strong></td><td>Time-To-Live для фейковых пакетов</td><td><code>8</code></td></tr><tr><td><strong>Sequence Offset</strong></td><td>Смещение TCP sequence number</td><td><code>10000</code></td></tr><tr><td><strong>Fake Packet Count</strong></td><td>Количество фейков перед настоящим пакетом</td><td><code>1</code></td></tr></tbody></table>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="enable-fake-sni">Enable Fake SNI<a href="#enable-fake-sni" class="hash-link" aria-label="Прямая ссылка на Enable Fake SNI" title="Прямая ссылка на Enable Fake SNI" translate="no">​</a></h5>
+<p>Главный переключатель. При включении B4 отправляет фейковые пакеты <strong>перед</strong> каждым настоящим <code>ClientHello</code>.</p>
+<ul>
+<li class=""><strong>Включено</strong> — фейки отправляются согласно настройкам ниже</li>
+<li class=""><strong>Выключено</strong> — только фрагментация (если настроена), без фейков</li>
+</ul>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="fake-strategy">Fake Strategy<a href="#fake-strategy" class="hash-link" aria-label="Прямая ссылка на Fake Strategy" title="Прямая ссылка на Fake Strategy" translate="no">​</a></h5>
+<p>Определяет, <strong>как</strong> сделать фейковый пакет невалидным. Сервер должен его отбросить, а DPI — обработать.</p>
+<table><thead><tr><th>Стратегия</th><th>Как работает</th><th>Надёжность</th></tr></thead><tbody><tr><td><strong>TTL</strong></td><td>Низкий TTL — пакет «умирает» не дойдя до сервера</td><td>Высокая</td></tr><tr><td><strong>Past Sequence</strong></td><td>Sequence number в прошлом — сервер игнорирует</td><td>Высокая</td></tr><tr><td><strong>Random Sequence</strong></td><td>Случайный sequence — сервер не может собрать поток</td><td>Средняя</td></tr><tr><td><strong>TCP Checksum</strong></td><td>Битый TCP checksum — сервер отбрасывает</td><td>Средняя</td></tr><tr><td><strong>MD5 Sum</strong></td><td>Неверная MD5 подпись (для TCP-MD5)</td><td>Низкая</td></tr></tbody></table>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="ttl-time-to-live">TTL (Time-To-Live)<a href="#ttl-time-to-live" class="hash-link" aria-label="Прямая ссылка на TTL (Time-To-Live)" title="Прямая ссылка на TTL (Time-To-Live)" translate="no">​</a></h5>
+<p>Каждый IP-пакет имеет счётчик TTL. При прохождении через каждый роутер TTL уменьшается на 1. Когда TTL = 0, пакет уничтожается. Фейковый пакет с низким TTL не дойдёт до сервера.</p>
+<ul>
+<li class=""><code>8–12</code> — универсальное значение для большинства сетей</li>
+<li class="">Подбирайте экспериментально, если значение по умолчанию не работает</li>
+</ul>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="past-sequence">Past Sequence<a href="#past-sequence" class="hash-link" aria-label="Прямая ссылка на Past Sequence" title="Прямая ссылка на Past Sequence" translate="no">​</a></h5>
+<p>Отправляет фейк с TCP sequence number в прошлом. Сервер игнорирует такие пакеты как устаревшие.</p>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="random-sequence">Random Sequence<a href="#random-sequence" class="hash-link" aria-label="Прямая ссылка на Random Sequence" title="Прямая ссылка на Random Sequence" translate="no">​</a></h5>
+<p>Отправляет фейк со случайным sequence number далеко в будущем. Сервер не сможет вставить его в поток данных.</p>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="tcp-checksum">TCP Checksum<a href="#tcp-checksum" class="hash-link" aria-label="Прямая ссылка на TCP Checksum" title="Прямая ссылка на TCP Checksum" translate="no">​</a></h5>
+<p>Намеренно портит TCP checksum. Сервер проверяет checksum и отбрасывает такой пакет.</p>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="md5-sum">MD5 Sum<a href="#md5-sum" class="hash-link" aria-label="Прямая ссылка на MD5 Sum" title="Прямая ссылка на MD5 Sum" translate="no">​</a></h5>
+<p>Для соединений с TCP-MD5 (редко используется). Неверная MD5 подпись приводит к отбрасыванию пакета.</p>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="fake-payload-type">Fake Payload Type<a href="#fake-payload-type" class="hash-link" aria-label="Прямая ссылка на Fake Payload Type" title="Прямая ссылка на Fake Payload Type" translate="no">​</a></h5>
+<p>Определяет <strong>содержимое</strong> фейкового пакета — что именно увидит DPI.</p>
+<table><thead><tr><th>Тип</th><th>Содержимое</th></tr></thead><tbody><tr><td><strong>Default</strong></td><td>Предзаготовленный ClientHello с фейковым SNI (внутрненний payload B4)</td></tr><tr><td><strong>Random</strong></td><td>Случайные байты (мусор)</td></tr><tr><td><strong>Custom</strong></td><td>Ваш payload в hex-формате</td></tr></tbody></table>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="default">Default<a href="#default" class="hash-link" aria-label="Прямая ссылка на Default" title="Прямая ссылка на Default" translate="no">​</a></h5>
+<p>B4 отправляет валидно выглядящий TLS ClientHello с фейковым доменом. DPI думает, что это реальное соединение к безобидному сайту.</p>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="random">Random<a href="#random" class="hash-link" aria-label="Прямая ссылка на Random" title="Прямая ссылка на Random" translate="no">​</a></h5>
+<p>Случайные байты. Некоторые DPI при виде мусора сбрасывают состояние соединения.</p>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="custom">Custom<a href="#custom" class="hash-link" aria-label="Прямая ссылка на Custom" title="Прямая ссылка на Custom" translate="no">​</a></h5>
+<p>Позволяет задать <strong>свой payload</strong> в hex-формате. Используйте функцию <code>Capture</code> для захвата реальных ClientHello.</p>
+<div class="language-text codeBlockContainer_FIHn theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_tAhz"><pre tabindex="0" class="prism-code language-text codeBlock_dG78 thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_IUK3"><span class="token-line" style="color:#F8F8F2"><span class="token plain">Пример hex: 160301020001000...</span><br></span></code></pre></div></div>
+<div class="theme-admonition theme-admonition-info admonition_uxqw alert alert--info"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M7 2.3c3.14 0 5.7 2.56 5.7 5.7s-2.56 5.7-5.7 5.7A5.71 5.71 0 0 1 1.3 8c0-3.14 2.56-5.7 5.7-5.7zM7 1C3.14 1 0 4.14 0 8s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm1 3H6v5h2V4zm0 6H6v2h2v-2z"></path></svg></span>Когда использовать Custom</div><div class="admonitionContent_mdOq"><p>Если Default и Random не работают, попробуйте захватить реальный ClientHello к любому доступному сайту через <code>Capture</code>, и использовать как <code>Custom payload</code>.</p></div></div>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="fake-ttl">Fake TTL<a href="#fake-ttl" class="hash-link" aria-label="Прямая ссылка на Fake TTL" title="Прямая ссылка на Fake TTL" translate="no">​</a></h5>
+<p>Time-To-Live для фейковых пакетов. Используется только при <strong>Strategy = TTL</strong>.</p>
+<ul>
+<li class=""><code>5–10</code> — стандартный диапазон, подходит для большинства сетей</li>
+<li class="">Подбирайте экспериментально — слишком высокий TTL может вызвать ошибку соединения</li>
+</ul>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="sequence-offset">Sequence Offset<a href="#sequence-offset" class="hash-link" aria-label="Прямая ссылка на Sequence Offset" title="Прямая ссылка на Sequence Offset" translate="no">​</a></h5>
+<p>Смещение TCP sequence number для стратегий <strong>Past Sequence</strong> и <strong>Random Sequence</strong>.</p>
+<p>Для <strong>Past Sequence:</strong></p>
+<div class="language-text codeBlockContainer_FIHn theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_tAhz"><pre tabindex="0" class="prism-code language-text codeBlock_dG78 thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_IUK3"><span class="token-line" style="color:#F8F8F2"><span class="token plain">Реальный seq: 50000</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">Offset: 10000</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">Фейковый seq: 50000 - 10000 = 40000 (в прошлом)</span><br></span></code></pre></div></div>
+<p>Для <strong>Random Sequence:</strong></p>
+<div class="language-text codeBlockContainer_FIHn theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_tAhz"><pre tabindex="0" class="prism-code language-text codeBlock_dG78 thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_IUK3"><span class="token-line" style="color:#F8F8F2"><span class="token plain">Реальный seq: 50000</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">Offset: 10000</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">Фейковый seq: 50000 + 10000 + random = далеко в будущем</span><br></span></code></pre></div></div>
+<div class="theme-admonition theme-admonition-tip admonition_uxqw alert alert--success"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>Рекомендуемые значения</div><div class="admonitionContent_mdOq"><ul>
+<li class=""><code>10000</code> — стандартное значение</li>
+<li class=""><code>50000–100000</code> — если DPI отслеживает близкие sequence numbers</li>
+</ul></div></div>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="faking-packet-count">Faking Packet Count<a href="#faking-packet-count" class="hash-link" aria-label="Прямая ссылка на Faking Packet Count" title="Прямая ссылка на Faking Packet Count" translate="no">​</a></h5>
+<p>Сколько фейковых пакетов отправить перед <strong>каждым</strong> настоящим пакетом.</p>
+<div class="language-text codeBlockContainer_FIHn theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_tAhz"><pre tabindex="0" class="prism-code language-text codeBlock_dG78 thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_IUK3"><span class="token-line" style="color:#F8F8F2"><span class="token plain">Count = 1:  [Фейк] → [Настоящий]</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">Count = 3:  [Фейк1] → [Фейк2] → [Фейк3] → [Настоящий]</span><br></span></code></pre></div></div>
+<ul>
+<li class=""><code>1</code> — минимальная нагрузка, достаточно для большинства DPI</li>
+<li class=""><code>3–5</code> — если один фейк не помогает</li>
+<li class=""><code>10–20</code> — агрессивный режим (больше трафика)</li>
+</ul>
+<div class="theme-admonition theme-admonition-warning admonition_uxqw alert alert--warning"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>Нагрузка</div><div class="admonitionContent_mdOq"><p>Каждый фейк — это дополнительный пакет. <code>Count = 10</code> означает 10x больше пакетов на handshake. Используйте минимально необходимое значение, по возможности</p></div></div>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="syn-fake-packets">SYN Fake Packets<a href="#syn-fake-packets" class="hash-link" aria-label="Прямая ссылка на SYN Fake Packets" title="Прямая ссылка на SYN Fake Packets" translate="no">​</a></h5>
+<p>При включении B4 отправляет фейковые SYN-пакеты рядом с реальным TCP-рукопожатием. Фейки используют низкий TTL (не дойдут до сервера) и битый checksum или смещённый sequence number.</p>
+<table><thead><tr><th>Параметр</th><th>Что делает</th></tr></thead><tbody><tr><td><strong>SYN Fake Packets</strong></td><td>Включает отправку фейковых SYN-пакетов во время TCP-рукопожатия</td></tr><tr><td><strong>SYN Fake Payload Length</strong></td><td>Длина payload в фейковом SYN (0 = только заголовок, &gt;0 = псевдо-TLS)</td></tr><tr><td><strong>SYN Fake TTL</strong></td><td>TTL для фейковых SYN-пакетов</td></tr><tr><td><strong>TCP MD5 Signature</strong></td><td>Добавляет невалидную MD5-подпись в фейковые пакеты</td></tr></tbody></table>
+<p><code>SYN Fake Payload Length</code>:</p>
+<ul>
+<li class=""><code>0</code> — только TCP-заголовок</li>
+<li class=""><code>&gt;0</code> — добавляется payload, имитирующий начало TLS ClientHello</li>
+</ul>
+<div class="theme-admonition theme-admonition-warning admonition_uxqw alert alert--warning"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>Агрессивная техника</div><div class="admonitionContent_mdOq"><p>Если сервис начинает работать нестабильно (reset, таймауты) — отключите SYN Fake первым делом.</p></div></div>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="tcp-desync-attack">TCP Desync Attack<a href="#tcp-desync-attack" class="hash-link" aria-label="Прямая ссылка на TCP Desync Attack" title="Прямая ссылка на TCP Desync Attack" translate="no">​</a></h5>
+<p>Desync-атака инжектирует фейковые TCP control-пакеты (RST/FIN/ACK) с <strong>битым checksum</strong> и <strong>низким TTL</strong>. Пакеты отбрасываются реальным сервером, но влияют на промежуточные системы анализа трафика.</p>
+<table><thead><tr><th>Параметр</th><th>Описание</th><th>По умолчанию</th></tr></thead><tbody><tr><td><strong>Desync Mode</strong></td><td>Тип атаки</td><td><code>off</code></td></tr><tr><td><strong>Desync TTL</strong></td><td>TTL для фейковых пакетов</td><td><code>3</code></td></tr><tr><td><strong>Desync Count</strong></td><td>Количество фейковых пакетов за атаку</td><td><code>3</code></td></tr><tr><td><strong>Post-ClientHello RST</strong></td><td>Фейковый RST после ClientHello</td><td><code>off</code></td></tr></tbody></table>
+<p>Режимы Desync:</p>
+<table><thead><tr><th>Режим</th><th>Что отправляется</th></tr></thead><tbody><tr><td><strong>off</strong></td><td>Desync отключён</td></tr><tr><td><strong>rst</strong></td><td>Фейковые RST с разными sequence number</td></tr><tr><td><strong>fin</strong></td><td>Фейковые FIN+ACK с прошлыми sequence</td></tr><tr><td><strong>ack</strong></td><td>Фейковые ACK с рандомными future seq/ack</td></tr><tr><td><strong>combo</strong></td><td>RST + FIN + ACK последовательно</td></tr><tr><td><strong>full</strong></td><td>Полная атака: fake SYN, overlapping RST, PSH, URG</td></tr></tbody></table>
+<p><strong>Desync TTL:</strong> Низкий TTL гарантирует, что пакеты не дойдут до сервера. <code>3–8</code> — рекомендуемый диапазон.</p>
+<div class="theme-admonition theme-admonition-tip admonition_uxqw alert alert--success"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>Когда использовать</div><div class="admonitionContent_mdOq"><p>Начните с <code>combo</code> и TTL <code>3–5</code>. Если не помогает — попробуйте <code>full</code>.</p></div></div>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="window-manipulation">Window Manipulation<a href="#window-manipulation" class="hash-link" aria-label="Прямая ссылка на Window Manipulation" title="Прямая ссылка на Window Manipulation" translate="no">​</a></h5>
+<p>B4 отправляет <strong>фейковые ACK-пакеты</strong> с изменённым размером TCP-окна перед реальным пакетом.</p>
+<table><thead><tr><th>Режим</th><th>Описание</th></tr></thead><tbody><tr><td><strong>Disabled</strong></td><td>Без манипуляции окном</td></tr><tr><td><strong>Zero</strong></td><td>Сначала ACK с <code>window=0</code>, затем с <code>window=65535</code></td></tr><tr><td><strong>Random</strong></td><td>Случайные значения из списка</td></tr><tr><td><strong>Oscillate</strong></td><td>Перебор значений по порядку</td></tr><tr><td><strong>Escalate</strong></td><td>Рост: <code>0 → 100 → 500 → 1460 → 8192 → 32768 → 65535</code></td></tr></tbody></table>
+<p>Все фейковые пакеты отправляются с низким TTL — они <strong>не доходят до сервера</strong>.</p>
+<p>Для режимов <strong>Random</strong> и <strong>Oscillate</strong> используется кастомный список значений окна. По умолчанию: <code>0, 1460, 8192, 65535</code>.</p>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="incoming-response-bypass">Incoming Response Bypass<a href="#incoming-response-bypass" class="hash-link" aria-label="Прямая ссылка на Incoming Response Bypass" title="Прямая ссылка на Incoming Response Bypass" translate="no">​</a></h5>
+<p>Обработка <strong>входящих</strong> пакетов от сервера. Эта техника помогает в случаях, когда соединение устанавливается нормально, но загрузка данных обрывается.</p>
+<table><thead><tr><th>Параметр</th><th>Описание</th><th>По умолчанию</th></tr></thead><tbody><tr><td><strong>Incoming Mode</strong></td><td>Режим обработки входящих пакетов</td><td><code>disabled</code></td></tr><tr><td><strong>Strategy</strong></td><td>Стратегия для фейковых пакетов (TTL, checksum)</td><td><code>ttl</code></td></tr><tr><td><strong>Fake TTL</strong></td><td>TTL для фейковых пакетов к серверу</td><td><code>8</code></td></tr><tr><td><strong>Fake Count</strong></td><td>Количество фейковых пакетов</td><td><code>3</code></td></tr><tr><td><strong>Threshold Min</strong></td><td>Минимум байт до начала обработки</td><td><code>0</code></td></tr><tr><td><strong>Threshold Max</strong></td><td>Максимум байт, после которых обработка прекращается</td><td><code>0</code></td></tr></tbody></table>
+<p>Режимы:</p>
+<table><thead><tr><th>Режим</th><th>Описание</th></tr></thead><tbody><tr><td><strong>Disabled</strong></td><td>Входящие пакеты не обрабатываются</td></tr><tr><td><strong>Fake</strong></td><td>Инжекция фейковых пакетов в направлении сервера</td></tr><tr><td><strong>Corrupt</strong></td><td>Модификация входящих пакетов для сбоя анализа DPI</td></tr></tbody></table>
+<div class="theme-admonition theme-admonition-tip admonition_uxqw alert alert--success"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>Рекомендация</div><div class="admonitionContent_mdOq"><p>Если загрузки обрываются вскоре после начала скачивания, включите Incoming Mode = <code>Fake</code> со стратегией <code>TTL</code>.</p></div></div>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="clienthello-mutation">ClientHello Mutation<a href="#clienthello-mutation" class="hash-link" aria-label="Прямая ссылка на ClientHello Mutation" title="Прямая ссылка на ClientHello Mutation" translate="no">​</a></h5>
+<p>Мутация изменяет <strong>структуру настоящего ClientHello</strong>, делая его непохожим на стандартный, но оставляя валидным для сервера.</p>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="да-что-вообще-такое-этот-ваш-clienthello">Да что вообще такое этот ваш ClientHello<a href="#да-что-вообще-такое-этот-ваш-clienthello" class="hash-link" aria-label="Прямая ссылка на Да что вообще такое этот ваш ClientHello" title="Прямая ссылка на Да что вообще такое этот ваш ClientHello" translate="no">​</a></h5>
+<p>При установке TLS-соединения клиент отправляет <code>ClientHello</code> — сообщение со списком поддерживаемых шифров, расширений и <strong>SNI</strong> (имя сервера). Мутация добавляет/изменяет расширения, оставляя ClientHello валидным для сервера.</p>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="mutation-mode">Mutation Mode<a href="#mutation-mode" class="hash-link" aria-label="Прямая ссылка на Mutation Mode" title="Прямая ссылка на Mutation Mode" translate="no">​</a></h5>
+<table><thead><tr><th>Режим</th><th>Что делает</th></tr></thead><tbody><tr><td><strong>Disabled</strong></td><td>Без мутации</td></tr><tr><td><strong>Random</strong></td><td>Перемешивает порядок расширений + добавляет шум</td></tr><tr><td><strong>GREASE</strong></td><td>Вставляет GREASE-расширения</td></tr><tr><td><strong>Padding</strong></td><td>Добавляет padding для изменения размера</td></tr><tr><td><strong>Fake Extensions</strong></td><td>Вставляет неизвестные TLS-расширения</td></tr><tr><td><strong>Fake SNIs</strong></td><td>Добавляет дополнительные фейковые SNI</td></tr><tr><td><strong>Advanced</strong></td><td>Комбинирует все техники</td></tr></tbody></table>
+<hr>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="mutation-disabled">Mutation: Disabled<a href="#mutation-disabled" class="hash-link" aria-label="Прямая ссылка на Mutation: Disabled" title="Прямая ссылка на Mutation: Disabled" translate="no">​</a></h5>
+<p>Мутация отключена. <code>ClientHello</code> отправляется как есть (но может быть фрагментирован).</p>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="mutation-random">Mutation: Random<a href="#mutation-random" class="hash-link" aria-label="Прямая ссылка на Mutation: Random" title="Прямая ссылка на Mutation: Random" translate="no">​</a></h5>
+<p>Перемешивает порядок TLS-расширений в случайном порядке. Сервер обрабатывает расширения независимо от порядка.</p>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="mutation-grease-generate-random-extensions-and-sustain-extensibility">Mutation: GREASE (Generate Random Extensions And Sustain Extensibility)<a href="#mutation-grease-generate-random-extensions-and-sustain-extensibility" class="hash-link" aria-label="Прямая ссылка на Mutation: GREASE (Generate Random Extensions And Sustain Extensibility)" title="Прямая ссылка на Mutation: GREASE (Generate Random Extensions And Sustain Extensibility)" translate="no">​</a></h5>
+<p><code>GREASE</code> — это специальные значения, зарезервированные в <code>TLS</code> для тестирования совместимости. Сервер обязан их игнорировать.</p>
+<p><strong>GREASE Extension Count</strong> — сколько GREASE-расширений добавить:</p>
+<ul>
+<li class=""><code>1–3</code> — минимальное воздействие</li>
+<li class=""><code>5–10</code> — агрессивный режим</li>
+</ul>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="padding">Padding<a href="#padding" class="hash-link" aria-label="Прямая ссылка на Padding" title="Прямая ссылка на Padding" translate="no">​</a></h5>
+<p>Добавляет TLS Padding Extension для увеличения размера <code>ClientHello</code>.</p>
+<div class="language-text codeBlockContainer_FIHn theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_tAhz"><pre tabindex="0" class="prism-code language-text codeBlock_dG78 thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_IUK3"><span class="token-line" style="color:#F8F8F2"><span class="token plain">Без padding: ClientHello = 300 байт</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">С padding (2048): ClientHello = 2048 байт</span><br></span></code></pre></div></div>
+<p><strong>Padding Size</strong> — целевой размер в байтах:</p>
+<ul>
+<li class=""><code>256–512</code> — небольшое увеличение</li>
+<li class=""><code>1024–2048</code> — значительное изменение размера</li>
+<li class=""><code>4096–16384</code> — максимальный padding</li>
+</ul>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="fake-extensions">Fake Extensions<a href="#fake-extensions" class="hash-link" aria-label="Прямая ссылка на Fake Extensions" title="Прямая ссылка на Fake Extensions" translate="no">​</a></h5>
+<p>Вставляет несуществующие или редко используемые TLS-расширения со случайными данными. Сервер игнорирует неизвестные расширения (по спецификации TLS).</p>
+<p><strong>Fake Extension Count</strong> — количество фейковых расширений:</p>
+<ul>
+<li class=""><code>3–5</code> — стандартное значение</li>
+<li class=""><code>10–15</code> — агрессивный режим</li>
+</ul>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="fake-snis">Fake SNIs<a href="#fake-snis" class="hash-link" aria-label="Прямая ссылка на Fake SNIs" title="Прямая ссылка на Fake SNIs" translate="no">​</a></h5>
+<p>Добавляет <strong>дополнительные</strong> SNI-записи в ClientHello. По стандарту SNI должен быть один, но B4 добавляет несколько. Сервер использует первый (настоящий) SNI.</p>
+<p><strong>Добавление Fake SNI:</strong></p>
+<ol>
+<li class="">Введите домен в поле &quot;Add Fake SNI&quot;</li>
+<li class="">Нажмите Enter или кнопку +</li>
+<li class="">Домен появится в списке чипов</li>
+</ol>
+<p><strong>Рекомендуемые фейковые домены:</strong></p>
+<ul>
+<li class="">Популярные незаблокированные сайты: <code>ya.ru</code>, <code>vk.com</code>, <code>mail.ru</code></li>
+<li class="">Государственные сайты: <code>gosuslugi.ru</code>, <code>kremlin.ru</code></li>
+<li class="">Сайты самого провайдера</li>
+</ul>
+<h5 class="anchor anchorTargetStickyNavbar_DW5Y" id="advanced-all">Advanced (All)<a href="#advanced-all" class="hash-link" aria-label="Прямая ссылка на Advanced (All)" title="Прямая ссылка на Advanced (All)" translate="no">​</a></h5>
+<p>Комбинирует <strong>все</strong> техники мутации:</p>
+<ol>
+<li class="">Добавляет Fake SNIs</li>
+<li class="">Добавляет стандартные TLS-расширения (supported_groups, signature_algorithms, supported_versions)</li>
+<li class="">Добавляет TLS 1.3 расширения (psk_key_exchange_modes, key_share, status_request)</li>
+<li class="">Добавляет GREASE</li>
+<li class="">Добавляет Fake ALPN с множеством протоколов</li>
+<li class="">Добавляет Fake Extensions</li>
+<li class="">Перемешивает всё</li>
+<li class="">Добавляет Padding</li>
+</ol>
+<p><strong>Используйте Advanced</strong>, если отдельные режимы не помогают. Это максимально агрессивная мутация.</p>
+<div class="theme-admonition theme-admonition-warning admonition_uxqw alert alert--warning"><div class="admonitionHeading_Z8fI"><span class="admonitionIcon_oefB"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>Размер пакета</div><div class="admonitionContent_mdOq"><p>Advanced-мутация значительно увеличивает размер ClientHello. Если пакет превышает MTU (~1460 байт), B4 автоматически урезает мутации.</p></div></div></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_tsoH"><a href="https://github.com/DanielLavrushin/b4/tree/main/docs/docs/sets/index.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Bcmd" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Отредактировать эту страницу</a></div><div class="col lastUpdated_T7TT"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Страница документа"><a class="pagination-nav__link pagination-nav__link--prev" href="/b4/docs/settings"><div class="pagination-nav__sublabel">Предыдущая страница</div><div class="pagination-nav__label">Общие настройки</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/b4/docs/sets/dpi"><div class="pagination-nav__sublabel">Следующая страница</div><div class="pagination-nav__label">Зачем нужны разные наборы</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_Tz3h thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#концепция" class="table-of-contents__link toc-highlight">Концепция</a><ul><li><a href="#зачем-нужны-разные-наборы" class="table-of-contents__link toc-highlight">Зачем нужны разные наборы</a></li><li><a href="#порядок-обработки-matching" class="table-of-contents__link toc-highlight">Порядок обработки (Matching)</a></li></ul></li><li><a href="#менеджер-наборов" class="table-of-contents__link toc-highlight">Менеджер наборов</a><ul><li><a href="#интерфейс-списка" class="table-of-contents__link toc-highlight">Интерфейс списка</a></li><li><a href="#действия-с-наборами" class="table-of-contents__link toc-highlight">Действия с наборами</a></li><li><a href="#main-set" class="table-of-contents__link toc-highlight">Main Set</a></li></ul></li><li><a href="#создание-набора" class="table-of-contents__link toc-highlight">Создание набора</a></li><li><a href="#редактор-набора" class="table-of-contents__link toc-highlight">Редактор набора</a><ul><li><a href="#targets--цели" class="table-of-contents__link toc-highlight">Targets — Цели</a><ul><li><a href="#bypass-domains-домены" class="table-of-contents__link toc-highlight">Bypass Domains (Домены)</a></li><li><a href="#bypass-ips-ip-адреса" class="table-of-contents__link toc-highlight">Bypass IPs (IP-адреса)</a></li></ul></li><li><a href="#tcp--настройки-tcp" class="table-of-contents__link toc-highlight">TCP — Настройки TCP</a><ul><li><a href="#как-работает-tcp-обработка-в-b4" class="table-of-contents__link toc-highlight">Как работает TCP-обработка в B4</a></li><li><a href="#general--основные-параметры" class="table-of-contents__link toc-highlight">General — Основные параметры</a></li></ul></li><li><a href="#udp--настройки-udp-и-quic" class="table-of-contents__link toc-highlight">UDP — Настройки UDP и QUIC</a><ul><li><a href="#как-работает-udp-обработка-в-b4" class="table-of-contents__link toc-highlight">Как работает UDP-обработка в B4</a></li><li><a href="#этап-1-какой-трафик-обрабатывать" class="table-of-contents__link toc-highlight">Этап 1: Какой трафик обрабатывать</a></li><li><a href="#этап-2-что-делать-с-выявленым-трафиком" class="table-of-contents__link toc-highlight">Этап 2: Что делать с выявленым трафиком</a></li><li><a href="#настройки-fake-mode" class="table-of-contents__link toc-highlight">Настройки Fake Mode</a></li><li><a href="#типичные-сценарии" class="table-of-contents__link toc-highlight">Типичные сценарии</a></li><li><a href="#splitting--стратегия-разделения-пакетов" class="table-of-contents__link toc-highlight">Splitting — Стратегия разделения пакетов</a></li><li><a href="#faking--фейковые-пакеты-и-обход-dpi" class="table-of-contents__link toc-highlight">Faking — Фейковые пакеты и обход DPI</a></li></ul></li></ul></li></ul></div></div></div></div></main></div></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 B4 Project</div></div></div></footer></div>
+</body>
+</html>
