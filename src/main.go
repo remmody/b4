@@ -55,6 +55,9 @@ func init() {
 }
 
 func main() {
+	// Initialize timezone from TZ environment variable
+	initTimezone()
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -159,7 +162,7 @@ func runB4(cmd *cobra.Command, args []string) error {
 	}
 
 	// Start SOCKS5 server if configured
-	socks5Server := socks5.NewServer(&cfg.System.Socks5)
+	socks5Server := socks5.NewServer(&cfg.System.Socks5, &cfg)
 	if err := socks5Server.Start(); err != nil {
 		metrics.RecordEvent("error", fmt.Sprintf("Failed to start SOCKS5 server: %v", err))
 		return log.Errorf("failed to start SOCKS5 server: %w", err)
@@ -306,6 +309,23 @@ func gracefulShutdown(cfg *config.Config, pool *nfq.Pool, httpServer *http.Serve
 	log.CloseErrorFile()
 	log.Flush()
 	return nil
+}
+
+func initTimezone() {
+	// Load timezone from TZ environment variable, default to UTC
+	tzName := os.Getenv("TZ")
+	if tzName == "" {
+		tzName = "UTC"
+	}
+
+	loc, err := time.LoadLocation(tzName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[WARN] Failed to load timezone %s: %v, using UTC\n", tzName, err)
+		loc, _ = time.LoadLocation("UTC")
+	}
+
+	time.Local = loc
+	fmt.Fprintf(os.Stderr, "[INIT] Timezone set to %s\n", loc.String())
 }
 
 func initLogging(cfg *config.Config) error {
