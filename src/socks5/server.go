@@ -15,6 +15,8 @@ import (
 
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/log"
+	"github.com/daniellavrushin/b4/metrics"
+	"github.com/daniellavrushin/b4/sni"
 )
 
 // SOCKS5 protocol constants (RFC 1928, RFC 1929)
@@ -52,6 +54,7 @@ const (
 // Server is a SOCKS5 proxy server.
 type Server struct {
 	cfg      *config.Socks5Config
+	fullCfg  *config.Config
 	listener net.Listener
 	udpConn  *net.UDPConn
 
@@ -72,9 +75,10 @@ type udpAssoc struct {
 }
 
 // NewServer creates a new SOCKS5 server.
-func NewServer(cfg *config.Socks5Config) *Server {
+func NewServer(cfg *config.Socks5Config, fullCfg *config.Config) *Server {
 	return &Server{
 		cfg:       cfg,
+		fullCfg:   fullCfg,
 		connSem:   make(chan struct{}, maxConnections),
 		udpAssocs: make(map[string]*udpAssoc),
 	}
@@ -330,6 +334,53 @@ func (s *Server) handleConnect(conn net.Conn, dest string) error {
 
 	log.Tracef("SOCKS5 TCP relay: %s <-> %s", conn.RemoteAddr(), dest)
 
+	// Extract client info and destination
+	clientAddr := conn.RemoteAddr().String()
+	clientHost, clientPortStr, _ := net.SplitHostPort(clientAddr)
+	clientPort := 0
+	if p, err := strconv.Atoi(clientPortStr); err == nil {
+		clientPort = p
+	}
+
+	// Extract domain and destination info
+	domain := dest
+	destHost, destPortStr, _ := net.SplitHostPort(dest)
+	if destHost != "" {
+		domain = destHost
+	}
+	destPort := 0
+	if p, err := strconv.Atoi(destPortStr); err == nil {
+		destPort = p
+	}
+
+	// Match destination against configured sets
+	matchedSNI, sniTarget, matchedIP, ipTarget := s.matchDestination(dest)
+
+	// Determine which set to use for metrics
+	setName := ""
+	if matchedSNI {
+		setName = sniTarget
+	} else if matchedIP {
+		setName = ipTarget
+	}
+
+	// Log in CSV format for UI (matching nfq.go format)
+	// Format: ,PROTOCOL,sniTarget,host,source:port,ipTarget,destination:port,sourceMac
+	// Use P-TCP to indicate proxy traffic
+	if !log.IsDiscoveryActive() {
+		log.Infof(",P-TCP,%s,%s,%s:%d,%s,%s:%d,", sniTarget, domain, clientHost, clientPort, ipTarget, destHost, destPort)
+	}
+
+	// Also log in human-readable format
+	log.Infof("[SOCKS5-TCP] Client: %s -> Destination: %s (Set: %s)", clientAddr, dest, setName)
+
+	// Record connection in metrics for UI display
+	m := getMetricsCollector()
+	if m != nil {
+		matched := matchedSNI || matchedIP
+		m.RecordConnection("P-TCP", domain, clientAddr, dest, matched, "", setName)
+	}
+
 	// Clear handshake deadline for data relay
 	conn.SetDeadline(time.Time{})
 
@@ -430,4 +481,52 @@ func sendReply(conn net.Conn, rep byte, bindAddr net.Addr) error {
 
 	_, err := conn.Write(reply)
 	return err
+}
+
+// matchDestination checks if destination matches any configured sets
+// Returns (matchedSNI, sniTarget, matchedIP, ipTarget)
+func (s *Server) matchDestination(dest string) (bool, string, bool, string) {
+	if s.fullCfg == nil || len(s.fullCfg.Sets) == 0 {
+		return false, "", false, ""
+	}
+
+	// Parse destination
+	host, _, err := net.SplitHostPort(dest)
+	if err != nil {
+		return false, "", false, ""
+	}
+
+	// Build matcher from config
+	matcher := sni.NewSuffixSet(s.fullCfg.Sets)
+	if matcher == nil {
+		return false, "", false, ""
+	}
+
+	var matchedSNI, matchedIP bool
+	var sniTarget, ipTarget string
+
+	// Check domain/SNI match
+	if host != "" {
+		// Try to match as domain
+		if matched, set := matcher.MatchSNI(host); matched && set != nil {
+			matchedSNI = true
+			sniTarget = set.Name
+		}
+	}
+
+	// Check IP match
+	ip := net.ParseIP(host)
+	if ip != nil {
+		if matched, set := matcher.MatchIP(ip); matched && set != nil {
+			matchedIP = true
+			ipTarget = set.Name
+		}
+	}
+
+	return matchedSNI, sniTarget, matchedIP, ipTarget
+}
+
+// getMetricsCollector is a helper to safely get the metrics collector
+func getMetricsCollector() *metrics.MetricsCollector {
+	return metrics.GetMetricsCollector()
 }

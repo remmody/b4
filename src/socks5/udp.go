@@ -158,6 +158,50 @@ func (s *Server) forwardUDP(data []byte, dest string, clientAddr *net.UDPAddr) {
 
 	log.Tracef("SOCKS5 UDP forwarded %d bytes to %s", len(data), dest)
 
+	// Extract client info and destination
+	clientAddrStr := clientAddr.String()
+	clientHost := clientAddr.IP.String()
+	clientPort := clientAddr.Port
+
+	// Extract domain and destination info
+	domain := dest
+	destHost, destPortStr, _ := net.SplitHostPort(dest)
+	if destHost != "" {
+		domain = destHost
+	}
+	destPort := 0
+	if p, err := strconv.Atoi(destPortStr); err == nil {
+		destPort = p
+	}
+
+	// Match destination against configured sets
+	matchedSNI, sniTarget, matchedIP, ipTarget := s.matchDestination(dest)
+
+	// Determine which set to use for metrics
+	setName := ""
+	if matchedSNI {
+		setName = sniTarget
+	} else if matchedIP {
+		setName = ipTarget
+	}
+
+	// Log in CSV format for UI (matching nfq.go format)
+	// Format: ,PROTOCOL,sniTarget,host,source:port,ipTarget,destination:port,sourceMac
+	// Use P-UDP to indicate proxy traffic
+	if !log.IsDiscoveryActive() {
+		log.Infof(",P-UDP,%s,%s,%s:%d,%s,%s:%d,", sniTarget, domain, clientHost, clientPort, ipTarget, destHost, destPort)
+	}
+
+	// Also log in human-readable format
+	log.Infof("[SOCKS5-UDP] Client: %s -> Destination: %s (%d bytes, Set: %s)", clientAddrStr, dest, len(data), setName)
+
+	// Record connection in metrics for UI display
+	m := getMetricsCollector()
+	if m != nil {
+		matched := matchedSNI || matchedIP
+		m.RecordConnection("P-UDP", domain, clientAddrStr, dest, matched, "", setName)
+	}
+
 	// Wait for a response
 	readTimeout := time.Duration(s.cfg.UDPReadTimeout) * time.Second
 	if readTimeout <= 0 {
