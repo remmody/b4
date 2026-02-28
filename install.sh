@@ -547,20 +547,51 @@ ensure_https_support() {
     print_info "On OpenWrt: opkg install wget-ssl ca-certificates"
 }
 
+# Map kernel module package name to the actual module name for lsmod check
+kmod_to_module() {
+    case "$1" in
+    kmod-nfnetlink-queue) echo "nfnetlink_queue" ;;
+    kmod-ipt-nfqueue) echo "xt_NFQUEUE" ;;
+    kmod-ipt-raw) echo "iptable_raw" ;;
+    kmod-ipt-ipset) echo "ip_set" ;;
+    kmod-nft-core | kmod-nft-base) echo "nf_tables" ;;
+    kmod-nft-queue) echo "nft_queue" ;;
+    kmod-nf-conntrack-netlink) echo "nf_conntrack_netlink" ;;
+    iptables-mod-nfqueue) echo "xt_NFQUEUE" ;;
+    *) echo "" ;;
+    esac
+}
+
+# Check if a kernel module package is actually needed
+# Returns 0 (needed) or 1 (not needed / already loaded)
+kmod_pkg_needed() {
+    pkg="$1"
+    mod=$(kmod_to_module "$pkg")
+    [ -z "$mod" ] && return 0
+    # Module already loaded - no need for the package
+    lsmod 2>/dev/null | grep -q "^${mod}" && return 1
+    return 0
+}
+
 check_recommended_packages() {
     case "$SYSTEM_TYPE" in
     openwrt)
-        recommended="kmod-nfnetlink-queue kmod-ipt-nfqueue kmod-ipt-raw kmod-ipt-ipset kmod-nft-core kmod-nft-queue kmod-nf-conntrack-netlink iptables-mod-nfqueue jq wget-ssl coreutils-nohup"
+        # Userspace packages always recommended
+        recommended="jq wget-ssl coreutils-nohup"
+        # Kernel module packages - only recommend if the module isn't already loaded
+        kmod_packages="kmod-nfnetlink-queue kmod-ipt-nfqueue kmod-ipt-raw kmod-ipt-ipset kmod-nft-core kmod-nft-queue kmod-nf-conntrack-netlink iptables-mod-nfqueue"
         pkg_cmd="opkg"
         ;;
     entware | merlin)
         recommended="ca-certificates curl wget-ssl jq coreutils-nohup iptables"
+        kmod_packages=""
         pkg_cmd="opkg"
         ;;
     padavan)
         # If Entware is available, use opkg
         if command_exists opkg; then
             recommended="ca-certificates curl wget-ssl jq coreutils-nohup iptables"
+            kmod_packages=""
             pkg_cmd="opkg"
         else
             missing=""
@@ -600,9 +631,21 @@ check_recommended_packages() {
         ;;
     esac
 
+    # Check which userspace packages are missing
     missing=""
     for pkg in $recommended; do
         $pkg_cmd list-installed 2>/dev/null | grep -q "^${pkg} " || missing="${missing} $pkg"
+    done
+
+    # Check kernel module packages: skip if module already loaded or package not in repo
+    for pkg in $kmod_packages; do
+        # Skip if already installed
+        $pkg_cmd list-installed 2>/dev/null | grep -q "^${pkg} " && continue
+        # Skip if the kernel module is already loaded (built-in or loaded by firmware)
+        kmod_pkg_needed "$pkg" || continue
+        # Skip if the package doesn't exist in the repo
+        $pkg_cmd list "$pkg" 2>/dev/null | grep -q "^${pkg} " || continue
+        missing="${missing} $pkg"
     done
 
     [ -z "$missing" ] && return 0
