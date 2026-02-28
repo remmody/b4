@@ -12,6 +12,7 @@ BINARY_NAME="b4"
 CONFIG_FILE="" # Will be set after CONFIG_DIR is determined
 TEMP_DIR="/tmp/b4_install_$$"
 QUIET_MODE="0"
+WGET_INSECURE="" # Set to "--no-check-certificate" if CA certs are missing
 GEOSITE_SRC=""
 GEOSITE_DST=""
 # Proxy configuration for GitHub fallback
