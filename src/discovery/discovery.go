@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -905,6 +906,7 @@ func (ds *DiscoverySuite) fetchWithTimeoutUsingIP(timeout time.Duration, ip stri
 	result.ContentSize = resp.ContentLength
 
 	buf := make([]byte, 16*1024)
+	tailBuf := make([]byte, 0, 64) // rolling tail for </body></html> detection
 	var bytesRead int64
 	lastProgress := time.Now()
 
@@ -924,6 +926,10 @@ func (ds *DiscoverySuite) fetchWithTimeoutUsingIP(timeout time.Duration, ip stri
 		if n > 0 {
 			bytesRead += int64(n)
 			lastProgress = time.Now()
+			tailBuf = append(tailBuf, buf[:n]...)
+			if len(tailBuf) > 64 {
+				tailBuf = tailBuf[len(tailBuf)-64:]
+			}
 		}
 
 		if err == io.EOF {
@@ -953,6 +959,14 @@ evaluate:
 
 	if duration.Seconds() > 0 {
 		result.Speed = float64(bytesRead) / duration.Seconds()
+	}
+
+	if len(tailBuf) > 0 {
+		tailLower := bytes.ToLower(tailBuf)
+		if bytes.Contains(tailLower, []byte("</body>")) && bytes.Contains(tailLower, []byte("</html>")) {
+			result.Status = CheckStatusComplete
+			return result
+		}
 	}
 
 	if result.ContentSize > 0 {
@@ -1051,10 +1065,6 @@ func (ds *DiscoverySuite) buildTestConfig(preset ConfigPreset) *config.Config {
 	mainSet.Faking = preset.Config.Faking
 	mainSet.DNS = ds.cfg.MainSet.DNS
 
-	// Apply the same defaults that handleAddPresetAsSet applies when the user
-	// adds the discovered config. This ensures the config tested during discovery
-	// is identical to what gets applied, preventing discrepancies (e.g. TTL=0
-	// during testing becoming TTL=7 after adding due to ApplySetDefaults).
 	config.ApplySetDefaults(&mainSet)
 
 	if mainSet.TCP.Win.Mode == "" {
