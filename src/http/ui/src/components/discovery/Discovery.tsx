@@ -62,6 +62,7 @@ const familyNames: Record<StrategyFamily, string> = {
 
 const phaseNames: Record<DiscoveryPhase, string> = {
   baseline: "Baseline Test",
+  cached: "Cached Strategies",
   strategy_detection: "Strategy Detection",
   optimization: "Optimization",
   combination: "Combination Test",
@@ -74,6 +75,7 @@ export const DiscoveryRunner = () => {
     cancelDiscovery,
     resetDiscovery,
     addPresetAsSet,
+    clearCache,
     discoveryRunning: running,
     suiteId,
     suite,
@@ -90,6 +92,7 @@ export const DiscoveryRunner = () => {
   const { captures, loadCaptures } = useCaptures();
   const [options, setOptions] = useState<DiscoveryOptions>(() => ({
     skipDNS: localStorage.getItem("b4_discovery_skipdns") === "true",
+    skipCache: localStorage.getItem("b4_discovery_skipcache") === "true",
     payloadFiles: [],
     validationTries: parseInt(localStorage.getItem("b4_discovery_validation_tries") || "1") || 1,
     tlsVersion: (localStorage.getItem("b4_discovery_tls_version") as DiscoveryOptions["tlsVersion"]) || "auto",
@@ -102,6 +105,10 @@ export const DiscoveryRunner = () => {
   useEffect(() => {
     localStorage.setItem("b4_discovery_skipdns", String(options.skipDNS));
   }, [options.skipDNS]);
+
+  useEffect(() => {
+    localStorage.setItem("b4_discovery_skipcache", String(options.skipCache));
+  }, [options.skipCache]);
 
   useEffect(() => {
     localStorage.setItem("b4_discovery_validation_tries", String(options.validationTries));
@@ -160,7 +167,7 @@ export const DiscoveryRunner = () => {
       if (e.key !== "Enter") return;
       if (!checkUrl.trim()) return;
       e.preventDefault();
-      void startDiscovery(checkUrl, options.skipDNS, options.payloadFiles, options.validationTries, options.tlsVersion);
+      void startDiscovery(checkUrl, options.skipDNS, options.skipCache, options.payloadFiles, options.validationTries, options.tlsVersion);
     },
     [checkUrl, options, startDiscovery]
   );
@@ -213,6 +220,7 @@ export const DiscoveryRunner = () => {
   const groupResultsByPhase = (results: Record<string, DomainPresetResult>) => {
     const grouped: Record<DiscoveryPhase, DomainPresetResult[]> = {
       baseline: [],
+      cached: [],
       strategy_detection: [],
       optimization: [],
       combination: [],
@@ -263,6 +271,7 @@ export const DiscoveryRunner = () => {
                   void startDiscovery(
                     checkUrl,
                     options.skipDNS,
+                    options.skipCache,
                     options.payloadFiles,
                     options.validationTries,
                     options.tlsVersion
@@ -308,6 +317,12 @@ export const DiscoveryRunner = () => {
         <DiscoveryOptionsPanel
           options={options}
           onChange={setOptions}
+          onClearCache={() => {
+            void clearCache().then((res) => {
+              if (res.success) showSuccess("Discovery cache cleared");
+              else showError("Failed to clear cache");
+            });
+          }}
           captures={captures}
           disabled={running || !!isReconnecting}
         />
@@ -592,6 +607,7 @@ export const DiscoveryRunner = () => {
                         {/* Results by Phase */}
                         {(
                           [
+                            "cached",
                             "baseline",
                             "strategy_detection",
                             "optimization",

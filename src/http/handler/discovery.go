@@ -19,6 +19,7 @@ func (api *API) RegisterDiscoveryApi() {
 	api.mux.HandleFunc("/api/discovery/cancel/{id}", api.handleCancelCheck)
 	api.mux.HandleFunc("/api/discovery/add", api.handleAddPresetAsSet)
 	api.mux.HandleFunc("/api/discovery/similar", api.handleFindSimilarSets)
+	api.mux.HandleFunc("/api/discovery/cache/clear", api.handleClearDiscoveryCache)
 }
 
 func (api *API) handleCheckStatus(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +94,7 @@ func (api *API) handleStartDiscovery(w http.ResponseWriter, r *http.Request) {
 		validationTries = 1
 	}
 
-	suite := discovery.NewDiscoverySuite(req.CheckURL, globalPool, req.SkipDNS, req.PayloadFiles, validationTries, req.TLSVersion)
+	suite := discovery.NewDiscoverySuite(req.CheckURL, globalPool, req.SkipDNS, req.SkipCache, req.PayloadFiles, validationTries, req.TLSVersion)
 
 	phase1Count := len(discovery.GetPhase1Presets())
 
@@ -257,4 +258,27 @@ func extractDomainName(domain string) string {
 		return strings.ToLower(parts[0])
 	}
 	return ""
+}
+
+func (api *API) handleClearDiscoveryCache(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	cache := discovery.LoadDiscoveryCache(api.cfg.ConfigPath)
+	cache.Entries = nil
+	if err := cache.Save(api.cfg.ConfigPath); err != nil {
+		log.Errorf("Failed to clear discovery cache: %v", err)
+		http.Error(w, "Failed to clear discovery cache", http.StatusInternalServerError)
+		return
+	}
+
+	log.Infof("Discovery cache cleared")
+
+	setJsonHeader(w)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Discovery cache cleared",
+	})
 }

@@ -57,6 +57,7 @@ export function useDiscovery() {
     async (
       url: string,
       skipDNS: boolean = false,
+      skipCache: boolean = false,
       payloadFiles: string[] = [],
       validationTries: number = 1,
       tlsVersion: string = "auto"
@@ -69,7 +70,7 @@ export function useDiscovery() {
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
           url = `https://${url}`;
         }
-        const res = await discoveryApi.start(url, skipDNS, payloadFiles, validationTries, tlsVersion);
+        const res = await discoveryApi.start(url, skipDNS, skipCache, payloadFiles, validationTries, tlsVersion);
         setSuiteId(res.id);
         return { success: true };
       } catch (e) {
@@ -116,6 +117,18 @@ export function useDiscovery() {
     []
   );
 
+  const clearCache = useCallback(async (): Promise<ApiResponse<void>> => {
+    try {
+      await discoveryApi.clearCache();
+      return { success: true };
+    } catch (e) {
+      if (e instanceof ApiError) {
+        return { success: false, error: JSON.stringify(e.body ?? e.message) };
+      }
+      return { success: false, error: String(e) };
+    }
+  }, []);
+
   return {
     discoveryRunning,
     suiteId,
@@ -125,6 +138,7 @@ export function useDiscovery() {
     cancelDiscovery,
     resetDiscovery,
     addPresetAsSet,
+    clearCache,
   };
 }
 

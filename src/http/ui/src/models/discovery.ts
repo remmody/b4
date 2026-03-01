@@ -21,6 +21,7 @@ export type StrategyFamily =
 
 export type DiscoveryPhase =
   | "baseline"
+  | "cached"
   | "strategy_detection"
   | "optimization"
   | "dns_detection"

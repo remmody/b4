@@ -28,7 +28,7 @@ const (
 	validationRetryDelay = 100 * time.Millisecond
 )
 
-func NewDiscoverySuite(input string, pool *nfq.Pool, skipDNS bool, payloadFiles []string, validationTries int, tlsVersion string) *DiscoverySuite {
+func NewDiscoverySuite(input string, pool *nfq.Pool, skipDNS bool, skipCache bool, payloadFiles []string, validationTries int, tlsVersion string) *DiscoverySuite {
 	suite := NewCheckSuite(input)
 
 	// Ensure validationTries is at least 1
@@ -50,6 +50,7 @@ func NewDiscoverySuite(input string, pool *nfq.Pool, skipDNS bool, payloadFiles 
 		workingPayloads: []PayloadTestResult{},
 		bestPayload:     config.FakePayloadDefault1,
 		skipDNS:         skipDNS,
+		skipCache:       skipCache,
 		validationTries: validationTries,
 		tlsVersion:      tlsVersion,
 	}
@@ -112,6 +113,9 @@ func (ds *DiscoverySuite) RunDiscovery() {
 		return
 	}
 
+	ds.discoveryCache = LoadDiscoveryCache(ds.cfg.ConfigPath)
+	defer ds.saveResultsToCache()
+
 	ds.networkBaseline = ds.measureNetworkBaseline()
 
 	log.DiscoveryLogf("Starting discovery for domain: %s", ds.Domain)
@@ -145,10 +149,40 @@ func (ds *DiscoverySuite) RunDiscovery() {
 		}
 	}
 
+	// Phase 0: Test previously successful cached configurations
+	var cachedPresets []ConfigPreset
+	if ds.skipCache {
+		log.DiscoveryLogf("Skipping cached strategies (user requested)")
+	} else {
+		cachedPresets = ds.discoveryCache.GetCachedPresets()
+	}
+	if len(cachedPresets) > 0 {
+		ds.setPhase(PhaseCached)
+		log.DiscoveryLogf("Phase 0: Testing %d cached configurations", len(cachedPresets))
+
+		for _, preset := range cachedPresets {
+			select {
+			case <-ds.cancel:
+				ds.restoreConfig()
+				ds.finalize()
+				ds.logDiscoverySummary()
+				return
+			default:
+			}
+
+			result := ds.testPresetWithBestPayload(preset)
+			ds.storeResult(preset, result)
+
+			if result.Status == CheckStatusComplete {
+				log.DiscoveryLogf("  ✓ Cached config '%s' works! (%.2f KB/s)", preset.Name, result.Speed/1024)
+			}
+		}
+	}
+
 	phase1Presets := GetPhase1Presets()
 
 	ds.CheckSuite.mu.Lock()
-	ds.TotalChecks = len(phase1Presets)
+	ds.TotalChecks = len(phase1Presets) + len(cachedPresets)
 	ds.CheckSuite.mu.Unlock()
 
 	ds.setPhase(PhaseStrategy)

@@ -26,6 +26,7 @@ const (
 	PhaseOptimize    DiscoveryPhase = "optimization"
 	PhaseCombination DiscoveryPhase = "combination"
 	PhaseDNS         DiscoveryPhase = "dns_detection"
+	PhaseCached      DiscoveryPhase = "cached"
 )
 
 type StrategyFamily string
@@ -158,8 +159,11 @@ type DiscoverySuite struct {
 
 	dnsResult       *DNSDiscoveryResult
 	skipDNS         bool
+	skipCache       bool
 	validationTries int
 	tlsVersion      string // "auto", "tls12", "tls13"
+
+	discoveryCache *DiscoveryCache
 }
 
 type CustomPayload struct {
