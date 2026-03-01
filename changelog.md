@@ -1,7 +1,8 @@
 # B4 - Bye Bye Big Bro
 
-## [1.39.0] - 2026-02-28
+## [1.39.0] - 2026-03-01
 
+- ADDED: **DPI Detector** — a new page in the sidebar that checks whether your ISP is tampering with your internet traffic. It runs three quick tests: DNS spoofing, blocked website detection, and connection dropping. Helps you see what your ISP is actually doing before and after enabling B4.
 - FIXED: **Custom payloads ignored during Discovery** — selecting custom payloads no longer silently falls back to built-in ones like duckduckgo. Your custom payloads are now properly used in the discovered configuration.
 - FIXED: **Discovery results not working after adding** — configurations that passed during Discovery could fail when actually applied. The tested config now matches exactly what gets saved.
 - FIXED: **TTL detection not working** — the optimal TTL search was not actually changing the fake packet's TTL, making all attempts look the same. Now correctly finds the minimum working TTL for your network.
