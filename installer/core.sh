@@ -96,7 +96,7 @@ print_web_interface_info() {
         web_port=$(jq -r '.system.web_server.port // 7000' "$CONFIG_FILE" 2>/dev/null)
     fi
 
-    if detect_tls_certs >/dev/null 2>&1; then
+    if [ "$tls_answer" = "y" ]; then
         protocol="https"
     fi
 
