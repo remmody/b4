@@ -382,6 +382,14 @@ func (n *NFTablesManager) ApplyMSSClamp() error {
 		return []string{"tcp", "option", "maxseg", "size", "set", fmt.Sprintf("%d", size)}
 	}
 
+	// Ensure forward chain exists if any MSS clamp rules need it
+	needsForward := global || len(deviceClamps) > 0
+	if needsForward && !n.chainExists("forward") {
+		if err := n.createChain("forward", "forward", -150, "accept"); err != nil {
+			return fmt.Errorf("failed to create forward chain for MSS clamp: %w", err)
+		}
+	}
+
 	// Global MSS clamp - applies to all TCP port 443 traffic
 	if global {
 		// Outgoing SYN (dport 443)
@@ -415,14 +423,14 @@ func (n *NFTablesManager) ApplyMSSClamp() error {
 				// Outgoing SYN from device (ether saddr MAC, dport 443)
 				args := append([]string{"ether", "saddr", mac, "tcp", "dport", "443"}, synMatch...)
 				args = append(args, mssSet(size)...)
-				if err := n.addRule("forward", args...); err != nil {
+				if err := n.addFilteredRule("forward", args...); err != nil {
 					return fmt.Errorf("failed to add per-device MSS clamp forward outgoing rule for %s: %w", mac, err)
 				}
 
 				// Incoming SYN-ACK to device (ether daddr MAC, sport 443)
 				args = append([]string{"ether", "daddr", mac, "tcp", "sport", "443"}, synMatch...)
 				args = append(args, mssSet(size)...)
-				if err := n.addRule("forward", args...); err != nil {
+				if err := n.addFilteredRule("forward", args...); err != nil {
 					return fmt.Errorf("failed to add per-device MSS clamp forward incoming rule for %s: %w", mac, err)
 				}
 			}
