@@ -1652,10 +1652,10 @@ print_web_interface_info() {
 
     if [ -f "$CONFIG_FILE" ] && command_exists jq; then
         web_port=$(jq -r '.system.web_server.port // 7000' "$CONFIG_FILE" 2>/dev/null)
-    fi
-
-    if detect_tls_certs >/dev/null 2>&1; then
-        protocol="https"
+        tls_cert=$(jq -r '.system.web_server.tls_cert // ""' "$CONFIG_FILE" 2>/dev/null)
+        if [ -n "$tls_cert" ]; then
+            protocol="https"
+        fi
     fi
 
     echo ""
