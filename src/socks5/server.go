@@ -15,6 +15,8 @@ import (
 
 	"github.com/daniellavrushin/b4/config"
 	"github.com/daniellavrushin/b4/log"
+	"github.com/daniellavrushin/b4/metrics"
+	"github.com/daniellavrushin/b4/sni"
 )
 
 // SOCKS5 protocol constants (RFC 1928, RFC 1929)
@@ -47,13 +49,13 @@ const (
 	maxConnections = 1024
 	handshakeTime  = 30 * time.Second
 	dialTimeout    = 10 * time.Second
+	bufferSize     = 32 * 1024
 )
 
 // Server is a SOCKS5 proxy server.
 type Server struct {
-	cfg      *config.Socks5Config
+	cfg      *config.Config
 	listener net.Listener
-	udpConn  *net.UDPConn
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -61,34 +63,38 @@ type Server struct {
 	activeConns atomic.Int64
 	connSem     chan struct{} // semaphore for connection limiting
 
-	udpAssocs   map[string]*udpAssoc
-	udpAssocsMu sync.Mutex
-}
-
-type udpAssoc struct {
-	clientAddr *net.UDPAddr
-	lastActive time.Time
-	cancel     context.CancelFunc
+	bufferPool sync.Pool
+	matcher    atomic.Value // stores *sni.SuffixSet
 }
 
 // NewServer creates a new SOCKS5 server.
-func NewServer(cfg *config.Socks5Config) *Server {
+func NewServer(cfg *config.Config) *Server {
 	return &Server{
-		cfg:       cfg,
-		connSem:   make(chan struct{}, maxConnections),
-		udpAssocs: make(map[string]*udpAssoc),
+		cfg:     cfg,
+		connSem: make(chan struct{}, maxConnections),
+		bufferPool: sync.Pool{
+			New: func() interface{} {
+				buf := make([]byte, bufferSize)
+				return &buf
+			},
+		},
 	}
 }
 
 // Start begins listening for SOCKS5 connections. Returns nil immediately if disabled.
 func (s *Server) Start() error {
-	if !s.cfg.Enabled {
+	if !s.cfg.System.Socks5.Enabled {
 		log.Infof("SOCKS5 server disabled")
 		return nil
 	}
 
-	addr := net.JoinHostPort(s.cfg.BindAddress, strconv.Itoa(s.cfg.Port))
+	addr := net.JoinHostPort(s.cfg.System.Socks5.BindAddress, strconv.Itoa(s.cfg.System.Socks5.Port))
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+
+	// Build initial matcher from current config
+	if m := buildMatcher(s.cfg); m != nil {
+		s.matcher.Store(m)
+	}
 
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -96,23 +102,9 @@ func (s *Server) Start() error {
 	}
 	s.listener = ln
 
-	udpAddr, err := net.ResolveUDPAddr("udp", addr)
-	if err != nil {
-		ln.Close()
-		return fmt.Errorf("SOCKS5 UDP resolve: %w", err)
-	}
-	uc, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		ln.Close()
-		return fmt.Errorf("SOCKS5 UDP listen: %w", err)
-	}
-	s.udpConn = uc
-
-	log.Infof("SOCKS5 server listening on %s (TCP+UDP)", addr)
+	log.Infof("SOCKS5 server listening on %s", addr)
 
 	go s.acceptLoop()
-	go s.udpReadLoop()
-	go s.cleanupLoop()
 
 	return nil
 }
@@ -123,26 +115,11 @@ func (s *Server) Stop() error {
 		s.cancel()
 	}
 
-	var firstErr error
 	if s.listener != nil {
-		if err := s.listener.Close(); err != nil {
-			firstErr = err
-		}
-	}
-	if s.udpConn != nil {
-		if err := s.udpConn.Close(); err != nil && firstErr == nil {
-			firstErr = err
-		}
+		return s.listener.Close()
 	}
 
-	s.udpAssocsMu.Lock()
-	for _, a := range s.udpAssocs {
-		a.cancel()
-	}
-	s.udpAssocs = make(map[string]*udpAssoc)
-	s.udpAssocsMu.Unlock()
-
-	return firstErr
+	return nil
 }
 
 // --- TCP accept loop ---
@@ -180,15 +157,22 @@ func (s *Server) acceptLoop() {
 }
 
 func (s *Server) handleConn(conn net.Conn) {
-	conn.SetDeadline(time.Now().Add(handshakeTime))
+	clientAddr := conn.RemoteAddr().String()
+	log.Debugf("SOCKS5 new connection from %s", clientAddr)
+
+	// Set deadline for handshake only
+	if err := conn.SetDeadline(time.Now().Add(handshakeTime)); err != nil {
+		log.Tracef("SOCKS5 failed to set deadline: %v", err)
+		return
+	}
 
 	if err := s.authenticate(conn); err != nil {
-		log.Tracef("SOCKS5 auth failed from %s: %v", conn.RemoteAddr(), err)
+		log.Tracef("SOCKS5 auth failed from %s: %v", clientAddr, err)
 		return
 	}
 
 	if err := s.handleRequest(conn); err != nil {
-		log.Tracef("SOCKS5 request failed from %s: %v", conn.RemoteAddr(), err)
+		log.Tracef("SOCKS5 request failed from %s: %v", clientAddr, err)
 	}
 }
 
@@ -209,7 +193,10 @@ func (s *Server) authenticate(conn net.Conn) error {
 		return fmt.Errorf("read methods: %w", err)
 	}
 
-	needAuth := s.cfg.Username != "" && s.cfg.Password != ""
+	log.Debugf("SOCKS5 auth from %s: methods=%v", conn.RemoteAddr(), methods)
+
+	socksCfg := &s.cfg.System.Socks5
+	needAuth := socksCfg.Username != "" && socksCfg.Password != ""
 	var chosen byte = authNoAccept
 
 	if needAuth {
@@ -237,6 +224,8 @@ func (s *Server) authenticate(conn net.Conn) error {
 	if chosen == authUserPass {
 		return s.subnegotiateUserPass(conn)
 	}
+
+	log.Debugf("SOCKS5 auth successful from %s (method: %d)", conn.RemoteAddr(), chosen)
 	return nil
 }
 
@@ -265,9 +254,10 @@ func (s *Server) subnegotiateUserPass(conn net.Conn) error {
 		return fmt.Errorf("read password: %w", err)
 	}
 
+	socksCfg := &s.cfg.System.Socks5
 	// Constant-time comparison to prevent timing attacks
-	userOK := subtle.ConstantTimeCompare(uname, []byte(s.cfg.Username)) == 1
-	passOK := subtle.ConstantTimeCompare(passwd, []byte(s.cfg.Password)) == 1
+	userOK := subtle.ConstantTimeCompare(uname, []byte(socksCfg.Username)) == 1
+	passOK := subtle.ConstantTimeCompare(passwd, []byte(socksCfg.Password)) == 1
 	ok := userOK && passOK
 
 	status := byte(0x00)
@@ -302,11 +292,13 @@ func (s *Server) handleRequest(conn net.Conn) error {
 		return fmt.Errorf("read address: %w", err)
 	}
 
+	log.Infof("SOCKS5 request from %s: cmd=%d, dest=%s", conn.RemoteAddr(), hdr[1], dest)
+
 	switch hdr[1] {
 	case cmdConnect:
 		return s.handleConnect(conn, dest)
 	case cmdUDPAssociate:
-		return s.handleUDPAssociate(conn)
+		return s.handleUDPAssociate(conn, dest)
 	default:
 		sendReply(conn, repCmdNotSupported, nil)
 		return fmt.Errorf("unsupported command %d", hdr[1])
@@ -328,36 +320,156 @@ func (s *Server) handleConnect(conn net.Conn, dest string) error {
 		return fmt.Errorf("send reply: %w", err)
 	}
 
-	log.Tracef("SOCKS5 TCP relay: %s <-> %s", conn.RemoteAddr(), dest)
-
 	// Clear handshake deadline for data relay
-	conn.SetDeadline(time.Time{})
+	if err := conn.SetDeadline(time.Time{}); err != nil {
+		return fmt.Errorf("clear deadline: %w", err)
+	}
 
-	return relay(conn, remote)
+	s.logAndRecordConnection("P-TCP", conn.RemoteAddr().String(), dest)
+
+	return s.relay(conn, remote)
 }
 
 // relay copies data bidirectionally until one side closes.
-func relay(a, b net.Conn) error {
-	errc := make(chan error, 2)
+func (s *Server) relay(a, b net.Conn) error {
+	errCh := make(chan error, 2)
+
 	cp := func(dst, src net.Conn) {
-		_, err := io.Copy(dst, src)
+		bufPtr := s.bufferPool.Get().(*[]byte)
+		buf := *bufPtr
+		defer s.bufferPool.Put(bufPtr)
+
+		_, err := io.CopyBuffer(dst, src, buf)
+
 		// Signal the other direction to stop by closing the write half
 		if tc, ok := dst.(*net.TCPConn); ok {
 			tc.CloseWrite()
 		}
-		errc <- err
+		errCh <- err
 	}
+
 	go cp(b, a)
 	go cp(a, b)
 
 	// Wait for both directions
-	err1 := <-errc
-	err2 := <-errc
+	err1 := <-errCh
+	err2 := <-errCh
 
-	if err1 != nil {
+	// Return first non-EOF error
+	if err1 != nil && !errors.Is(err1, io.EOF) {
 		return err1
 	}
-	return err2
+	if err2 != nil && !errors.Is(err2, io.EOF) {
+		return err2
+	}
+	return nil
+}
+
+// --- Set matching ---
+
+func (s *Server) getMatcher() *sni.SuffixSet {
+	if v := s.matcher.Load(); v != nil {
+		return v.(*sni.SuffixSet)
+	}
+	return nil
+}
+
+func buildMatcher(cfg *config.Config) *sni.SuffixSet {
+	if len(cfg.Sets) > 0 {
+		return sni.NewSuffixSet(cfg.Sets)
+	}
+	return nil
+}
+
+func (s *Server) UpdateConfig(newCfg *config.Config) {
+	newMatcher := buildMatcher(newCfg)
+	old := s.getMatcher()
+
+	if newMatcher != nil {
+		if old != nil {
+			newMatcher.TransferLearnedIPs(old)
+		}
+		s.matcher.Store(newMatcher)
+	} else if old != nil {
+		s.matcher.Store((*sni.SuffixSet)(nil))
+	}
+	log.Infof("SOCKS5 matcher refreshed from config update")
+}
+
+func (s *Server) matchDestination(dest string) (bool, string, bool, string) {
+	matcher := s.getMatcher()
+	if matcher == nil {
+		return false, "", false, ""
+	}
+
+	host, _, err := net.SplitHostPort(dest)
+	if err != nil {
+		return false, "", false, ""
+	}
+
+	var matchedSNI, matchedIP bool
+	var sniTarget, ipTarget string
+
+	if host != "" {
+		if matched, set := matcher.MatchSNI(host); matched && set != nil {
+			matchedSNI = true
+			sniTarget = set.Name
+		}
+	}
+
+	ip := net.ParseIP(host)
+	if ip != nil {
+		if matched, set := matcher.MatchIP(ip); matched && set != nil {
+			matchedIP = true
+			ipTarget = set.Name
+		}
+	}
+
+	return matchedSNI, sniTarget, matchedIP, ipTarget
+}
+
+// --- Logging and metrics ---
+
+// logAndRecordConnection logs the connection in CSV format for the UI and records metrics.
+// protocol should be "P-TCP" or "P-UDP" for the CSV log; base protocol is used for metrics counters.
+func (s *Server) logAndRecordConnection(protocol, clientAddr, dest string) {
+	clientHost, clientPortStr, _ := net.SplitHostPort(clientAddr)
+
+	domain := dest
+	destHost, destPortStr, _ := net.SplitHostPort(dest)
+	if destHost != "" {
+		domain = destHost
+	}
+
+	matchedSNI, sniTarget, matchedIP, ipTarget := s.matchDestination(dest)
+
+	// Log in CSV format for UI (matching nfq.go format)
+	// Use net.JoinHostPort for IPv6 safety
+	if !log.IsDiscoveryActive() {
+		source := net.JoinHostPort(clientHost, clientPortStr)
+		destination := net.JoinHostPort(destHost, destPortStr)
+		log.Infof(",%s,%s,%s,%s,%s,%s,", protocol, sniTarget, domain, source, ipTarget, destination)
+	}
+
+	setName := ""
+	if matchedSNI {
+		setName = sniTarget
+	} else if matchedIP {
+		setName = ipTarget
+	}
+
+	log.Tracef("SOCKS5 %s relay: %s <-> %s (Set: %s)", protocol, clientAddr, dest, setName)
+
+	// Record using base protocol so TCP/UDP counters work correctly
+	baseProtocol := "TCP"
+	if protocol == "P-UDP" {
+		baseProtocol = "UDP"
+	}
+
+	if m := metrics.GetMetricsCollector(); m != nil {
+		matched := matchedSNI || matchedIP
+		m.RecordConnection(baseProtocol, domain, clientAddr, dest, matched, "", setName)
+	}
 }
 
 // --- Address parsing ---

@@ -14,7 +14,7 @@ export type SortColumn =
 
 export interface ParsedLog {
   timestamp: string;
-  protocol: "TCP" | "UDP";
+  protocol: "TCP" | "UDP" | "P-TCP" | "P-UDP";
   hostSet: string;
   ipSet: string;
   domain: string;
@@ -116,7 +116,7 @@ function parseSniLogLine(line: string): ParsedLog | null {
 
   const result: ParsedLog = {
     timestamp: timestamp.replaceAll(" [INFO]", "").trim().split(".")[0],
-    protocol: protocol as "TCP" | "UDP",
+    protocol: protocol as "TCP" | "UDP" | "P-TCP" | "P-UDP",
     hostSet,
     domain,
     source,

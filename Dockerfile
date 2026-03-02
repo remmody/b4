@@ -44,7 +44,8 @@ RUN apk add --no-cache \
     ip6tables \
     nftables \
     kmod \
-    iproute2
+    iproute2 \
+    tzdata
 
 COPY --from=go-builder /b4 /usr/local/bin/b4
 
