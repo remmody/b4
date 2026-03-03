@@ -96,8 +96,7 @@ var DefaultSetConfig = SetConfig{
 			ShuffleMode:    "full",
 			FirstDelayMs:   30,
 			JitterMaxUs:    1000,
-			DecoyEnabled:   false,
-			DecoySNIs:      []string{"ya.ru", "vk.com", "mail.ru", "dzen.ru"},
+			DecoyEnabled: false,
 		},
 
 		Disorder: DisorderFragConfig{
@@ -135,6 +134,7 @@ var DefaultSetConfig = SetConfig{
 		IPs:               []string{},
 		GeoSiteCategories: []string{},
 		GeoIpCategories:   []string{},
+		SourceDevices:     []string{},
 	},
 }
 
@@ -154,6 +154,11 @@ var DefaultConfig = Config{
 			VendorLookup: false,
 			WhiteIsBlack: false,
 			Mac:          []string{},
+			MSSClamps:    []DeviceMSSClamp{},
+		},
+		MSSClamp: MSSClampConfig{
+			Enabled: false,
+			Size:    88,
 		},
 	},
 
@@ -170,8 +175,10 @@ var DefaultConfig = Config{
 		},
 
 		Tables: TablesConfig{
-			MonitorInterval: 10,
-			SkipSetup:       false,
+			MonitorInterval:     10,
+			SkipSetup:           false,
+			Masquerade:          false,
+			MasqueradeInterface: "",
 		},
 
 		WebServer: WebServerConfig{
@@ -217,7 +224,7 @@ func NewSetConfig() SetConfig {
 	cfg.Targets.IPs = append(make([]string, 0), DefaultSetConfig.Targets.IPs...)
 	cfg.Targets.GeoSiteCategories = append(make([]string, 0), DefaultSetConfig.Targets.GeoSiteCategories...)
 	cfg.Targets.GeoIpCategories = append(make([]string, 0), DefaultSetConfig.Targets.GeoIpCategories...)
-	cfg.Fragmentation.Combo.DecoySNIs = append(make([]string, 0), DefaultSetConfig.Fragmentation.Combo.DecoySNIs...)
+	cfg.Targets.SourceDevices = append(make([]string, 0), DefaultSetConfig.Targets.SourceDevices...)
 	cfg.Fragmentation.SeqOverlapPattern = append(make([]string, 0), DefaultSetConfig.Fragmentation.SeqOverlapPattern...)
 	cfg.Faking.TLSMod = append(make([]string, 0), DefaultSetConfig.Faking.TLSMod...)
 

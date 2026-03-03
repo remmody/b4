@@ -434,6 +434,174 @@ func TestApplyLogLevel(t *testing.T) {
 	}
 }
 
+func TestHasGlobalMSSClamp(t *testing.T) {
+	t.Run("disabled returns false", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.Validate()
+		ok, _ := cfg.HasGlobalMSSClamp()
+		if ok {
+			t.Error("expected false when MSS clamp is disabled")
+		}
+	})
+
+	t.Run("enabled returns true with size", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.Queue.MSSClamp.Enabled = true
+		cfg.Queue.MSSClamp.Size = 88
+		cfg.Validate()
+
+		ok, size := cfg.HasGlobalMSSClamp()
+		if !ok {
+			t.Error("expected true for enabled global MSS clamp")
+		}
+		if size != 88 {
+			t.Errorf("expected size 88, got %d", size)
+		}
+	})
+
+	t.Run("size zero returns false", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.Validate()
+		// Set size to 0 after Validate() since Validate() clamps size to min 10
+		cfg.Queue.MSSClamp.Enabled = true
+		cfg.Queue.MSSClamp.Size = 0
+
+		ok, _ := cfg.HasGlobalMSSClamp()
+		if ok {
+			t.Error("expected false when size is 0")
+		}
+	})
+}
+
+func TestCollectDeviceMSSClamps(t *testing.T) {
+	t.Run("works regardless of devices enabled", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.Queue.Devices.Enabled = false
+		cfg.Queue.Devices.MSSClamps = []DeviceMSSClamp{
+			{Mac: "AA:BB:CC:DD:EE:FF", Size: 88},
+		}
+		cfg.Validate()
+
+		result := cfg.CollectDeviceMSSClamps()
+		if len(result) != 1 || len(result[88]) != 1 {
+			t.Error("expected MSS clamps to work even with devices disabled")
+		}
+	})
+
+	t.Run("collects and groups by size", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.Queue.Devices.Enabled = false
+		cfg.Queue.Devices.MSSClamps = []DeviceMSSClamp{
+			{Mac: "AA:BB:CC:DD:EE:01", Size: 88},
+			{Mac: "AA:BB:CC:DD:EE:02", Size: 88},
+			{Mac: "AA:BB:CC:DD:EE:03", Size: 200},
+		}
+		cfg.Validate()
+
+		result := cfg.CollectDeviceMSSClamps()
+		if len(result[88]) != 2 {
+			t.Errorf("expected 2 MACs for size 88, got %d", len(result[88]))
+		}
+		if len(result[200]) != 1 {
+			t.Errorf("expected 1 MAC for size 200, got %d", len(result[200]))
+		}
+	})
+
+	t.Run("skips empty mac and zero size", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.Validate()
+		// Set values after Validate() since Validate() clamps size to min 10
+		cfg.Queue.Devices.Enabled = true
+		cfg.Queue.Devices.MSSClamps = []DeviceMSSClamp{
+			{Mac: "", Size: 88},
+			{Mac: "AA:BB:CC:DD:EE:FF", Size: 0},
+		}
+
+		result := cfg.CollectDeviceMSSClamps()
+		if len(result) != 0 {
+			t.Error("expected empty when MAC is empty or size is 0")
+		}
+	})
+}
+
+func TestMSSClampFingerprint(t *testing.T) {
+	t.Run("stable ordering", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.Queue.MSSClamp.Enabled = true
+		cfg.Queue.MSSClamp.Size = 88
+		cfg.Queue.Devices.Enabled = true
+		cfg.Queue.Devices.MSSClamps = []DeviceMSSClamp{
+			{Mac: "BB:BB:CC:DD:EE:FF", Size: 100},
+			{Mac: "AA:BB:CC:DD:EE:FF", Size: 100},
+		}
+		cfg.Validate()
+
+		fp1 := cfg.MSSClampFingerprint()
+		fp2 := cfg.MSSClampFingerprint()
+		if fp1 != fp2 {
+			t.Errorf("fingerprint not stable: %q vs %q", fp1, fp2)
+		}
+	})
+
+	t.Run("changes when config changes", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.Queue.MSSClamp.Enabled = true
+		cfg.Queue.MSSClamp.Size = 88
+		cfg.Validate()
+
+		fp1 := cfg.MSSClampFingerprint()
+
+		cfg.Queue.MSSClamp.Size = 100
+		fp2 := cfg.MSSClampFingerprint()
+
+		if fp1 == fp2 {
+			t.Error("fingerprint should change when size changes")
+		}
+	})
+
+	t.Run("includes global", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.Queue.MSSClamp.Enabled = true
+		cfg.Queue.MSSClamp.Size = 88
+		cfg.Validate()
+
+		fp := cfg.MSSClampFingerprint()
+		if fp == "" {
+			t.Error("fingerprint should not be empty for global MSS clamp")
+		}
+		if !contains(fp, "global:88") {
+			t.Errorf("fingerprint should contain 'global:88', got %q", fp)
+		}
+	})
+
+	t.Run("includes per-device", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.Queue.Devices.Enabled = true
+		cfg.Queue.Devices.MSSClamps = []DeviceMSSClamp{
+			{Mac: "AA:BB:CC:DD:EE:FF", Size: 88},
+		}
+		cfg.Validate()
+
+		fp := cfg.MSSClampFingerprint()
+		if !contains(fp, "dev:88:AA:BB:CC:DD:EE:FF") {
+			t.Errorf("fingerprint should contain device entry, got %q", fp)
+		}
+	})
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsSubstr(s, substr))
+}
+
+func containsSubstr(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
 func TestResetToDefaults(t *testing.T) {
 	set := NewSetConfig()
 	set.Id = "custom"

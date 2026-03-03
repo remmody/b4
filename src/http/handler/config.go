@@ -327,6 +327,10 @@ func (a *API) saveAndPushConfig(newCfg *config.Config) error {
 		}
 	}
 
+	if globalSocks5Server != nil {
+		globalSocks5Server.UpdateConfig(newCfg)
+	}
+
 	err := newCfg.SaveToFile(newCfg.ConfigPath)
 	if err != nil {
 		return fmt.Errorf("failed to save config to file: %v", err)
@@ -376,6 +380,18 @@ func (a *API) PerformSoftRestart(newCfg *config.Config, oldCfg *config.Config) b
 	}
 	if oldCfg.Queue.IPv6Enabled != newCfg.Queue.IPv6Enabled {
 		shouldUpdate = true
+	}
+
+	if oldCfg.System.Tables.Masquerade != newCfg.System.Tables.Masquerade {
+		shouldUpdate = true
+	}
+	if oldCfg.System.Tables.MasqueradeInterface != newCfg.System.Tables.MasqueradeInterface {
+		shouldUpdate = true
+	}
+
+	if oldCfg.MSSClampFingerprint() != newCfg.MSSClampFingerprint() {
+		shouldUpdate = true
+		log.Infof("MSS clamp settings changed, refreshing firewall rules")
 	}
 
 	if shouldUpdate {

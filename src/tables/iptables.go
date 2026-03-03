@@ -378,6 +378,71 @@ func (manager *IPTablesManager) buildManifest() (Manifest, error) {
 		)
 	}
 
+	if cfg.System.Tables.Masquerade {
+		for _, ipt := range ipts {
+			masqSpec := []string{"-j", "MASQUERADE"}
+			if iface := cfg.System.Tables.MasqueradeInterface; iface != "" {
+				masqSpec = []string{"-o", iface, "-j", "MASQUERADE"}
+			}
+			rules = append(rules,
+				Rule{manager: manager, IPT: ipt, Table: "nat", Chain: "POSTROUTING", Action: "A", Spec: masqSpec},
+			)
+		}
+	}
+
+	// MSS Clamp rules
+	global, globalSize := cfg.HasGlobalMSSClamp()
+	deviceClamps := cfg.CollectDeviceMSSClamps()
+	if global || len(deviceClamps) > 0 {
+		log.Infof("IPTABLES: adding MSS clamp rules")
+
+		for _, ipt := range ipts {
+			// Global MSS clamp - all TCP port 443
+			if global {
+				tcpMSSSpec := fmt.Sprintf("%d", globalSize)
+				rules = append(rules,
+					Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "OUTPUT", Action: "I",
+						Spec: []string{"-p", "tcp", "--dport", "443", "--tcp-flags", "SYN,RST", "SYN", "-j", "TCPMSS", "--set-mss", tcpMSSSpec}},
+					Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "FORWARD", Action: "I",
+						Spec: []string{"-p", "tcp", "--dport", "443", "--tcp-flags", "SYN,RST", "SYN", "-j", "TCPMSS", "--set-mss", tcpMSSSpec}},
+					Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "PREROUTING", Action: "I",
+						Spec: []string{"-p", "tcp", "--sport", "443", "--tcp-flags", "SYN,RST", "SYN", "-j", "TCPMSS", "--set-mss", tcpMSSSpec}},
+				)
+				log.Infof("IPTABLES[%s]: global MSS clamp enabled (size: %d)", ipt, globalSize)
+			}
+
+			// Per-device MSS clamp rules (FORWARD chain with MAC matching)
+			if len(deviceClamps) > 0 {
+				minSize := 1460
+				for size, macs := range deviceClamps {
+					if size < minSize {
+						minSize = size
+					}
+					tcpMSSSpec := fmt.Sprintf("%d", size)
+					for _, mac := range macs {
+						// Outgoing SYN from device (mac-source match, dport 443)
+						rules = append(rules,
+							Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "FORWARD", Action: "I",
+								Spec: []string{"-m", "mac", "--mac-source", mac, "-p", "tcp", "--dport", "443",
+									"--tcp-flags", "SYN,RST", "SYN", "-j", "TCPMSS", "--set-mss", tcpMSSSpec}},
+						)
+					}
+					log.Infof("IPTABLES[%s]: per-device MSS clamp for %d devices (size: %d)", ipt, len(macs), size)
+				}
+
+				// iptables cannot match destination MAC. Add a broad FORWARD rule
+				// for incoming SYN-ACK using the smallest per-device size.
+				if !global {
+					rules = append(rules,
+						Rule{manager: manager, IPT: ipt, Table: "mangle", Chain: "FORWARD", Action: "I",
+							Spec: []string{"-p", "tcp", "--sport", "443",
+								"--tcp-flags", "SYN,RST", "SYN", "-j", "TCPMSS", "--set-mss", fmt.Sprintf("%d", minSize)}},
+					)
+				}
+			}
+		}
+	}
+
 	sysctls := []SysctlSetting{
 		{Name: "net.netfilter.nf_conntrack_checksum", Desired: "0", Revert: "1"},
 		{Name: "net.netfilter.nf_conntrack_tcp_be_liberal", Desired: "1", Revert: "0"},
@@ -529,6 +594,53 @@ func (ipt *IPTablesManager) clearB4JumpRules() {
 			_, err := run(iptBin, "-w", "-t", "mangle", "-D", "OUTPUT", "-j", "B4")
 			if err != nil {
 				break
+			}
+		}
+
+		// Clean nat POSTROUTING masquerade rules
+		for {
+			_, err := run(iptBin, "-w", "-t", "nat", "-D", "POSTROUTING", "-j", "MASQUERADE")
+			if err != nil {
+				break
+			}
+		}
+		if iface := ipt.cfg.System.Tables.MasqueradeInterface; iface != "" {
+			for {
+				_, err := run(iptBin, "-w", "-t", "nat", "-D", "POSTROUTING", "-o", iface, "-j", "MASQUERADE")
+				if err != nil {
+					break
+				}
+			}
+		}
+
+		// Clean MSS clamp rules (TCPMSS target) from OUTPUT, FORWARD, PREROUTING
+		for _, chain := range []string{"OUTPUT", "FORWARD", "PREROUTING"} {
+			for {
+				out, _ := run(iptBin, "-w", "-t", "mangle", "-S", chain)
+				if !strings.Contains(out, "TCPMSS") {
+					break
+				}
+				removed := false
+				lines := strings.Split(out, "\n")
+				for _, line := range lines {
+					if !strings.Contains(line, "TCPMSS") || !strings.Contains(line, "--set-mss") {
+						continue
+					}
+					// Parse the rule spec from "-A CHAIN ..." format
+					parts := strings.Fields(line)
+					if len(parts) < 3 {
+						continue
+					}
+					// Remove "-A CHAIN" prefix to get the spec
+					spec := parts[2:]
+					if _, err := run(append([]string{iptBin, "-w", "-t", "mangle", "-D", chain}, spec...)...); err == nil {
+						removed = true
+						break
+					}
+				}
+				if !removed {
+					break
+				}
 			}
 		}
 	}

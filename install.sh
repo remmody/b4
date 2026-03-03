@@ -1652,10 +1652,10 @@ print_web_interface_info() {
 
     if [ -f "$CONFIG_FILE" ] && command_exists jq; then
         web_port=$(jq -r '.system.web_server.port // 7000' "$CONFIG_FILE" 2>/dev/null)
-    fi
-
-    if detect_tls_certs >/dev/null 2>&1; then
-        protocol="https"
+        tls_cert=$(jq -r '.system.web_server.tls_cert // ""' "$CONFIG_FILE" 2>/dev/null)
+        if [ -n "$tls_cert" ]; then
+            protocol="https"
+        fi
     fi
 
     echo ""
@@ -2598,8 +2598,23 @@ show_system_info() {
     fi
 
     # Check for missing kernel modules
-    if [ "$(check_kernel_module nf_conntrack)" = "missing" ]; then
-        printf "  ${YELLOW}⚠${NC}  nf_conntrack module not found - may need kernel rebuild"
+    if [ "$(check_kernel_module nf_conntrack)" = "unknown" ]; then
+        printf "  ${RED}✗${NC}  nf_conntrack module not found"
+        recommendations=$((recommendations + 1))
+    fi
+
+    if [ "$(check_kernel_module xt_connbytes)" = "unknown" ]; then
+        printf "  ${RED}✗${NC}  xt_connbytes module not found"
+        recommendations=$((recommendations + 1))
+    fi
+
+    if [ "$(check_kernel_module xt_NFQUEUE)" = "unknown" ]; then
+        printf "  ${RED}✗${NC}  xt_NFQUEUE module not found"
+        recommendations=$((recommendations + 1))
+    fi
+
+    if [ "$(check_kernel_module xt_multiport)" = "unknown" ]; then
+        printf "  ${RED}✗${NC}  xt_multiport module not found"
         recommendations=$((recommendations + 1))
     fi
 
@@ -2632,6 +2647,7 @@ show_system_info() {
     echo ""
 
 }
+
 
 # --- END sysinfo.sh ---
 

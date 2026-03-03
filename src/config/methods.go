@@ -31,6 +31,12 @@ func (c *Config) SaveToFile(path string) error {
 		return log.Errorf("failed to marshal config: %v", err)
 	}
 
+	if dir := filepath.Dir(path); dir != "" {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return log.Errorf("failed to create config directory: %v", err)
+		}
+	}
+
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return log.Errorf("failed to create config file: %v", err)
@@ -165,6 +171,28 @@ func (c *Config) Validate() error {
 
 	if len(c.MainSet.Targets.GeoIpCategories) > 0 && c.System.Geo.GeoIpPath == "" {
 		return fmt.Errorf("--geoip must be specified when using --geoip-categories")
+	}
+
+	// Validate global MSS clamp
+	if c.Queue.MSSClamp.Enabled {
+		if c.Queue.MSSClamp.Size < 10 {
+			c.Queue.MSSClamp.Size = 10
+		}
+		if c.Queue.MSSClamp.Size > 1460 {
+			c.Queue.MSSClamp.Size = 1460
+		}
+	}
+
+	// Validate per-device MSS clamps
+	for i := range c.Queue.Devices.MSSClamps {
+		dc := &c.Queue.Devices.MSSClamps[i]
+		if dc.Size < 10 {
+			dc.Size = 10
+		}
+		if dc.Size > 1460 {
+			dc.Size = 1460
+		}
+		dc.Mac = strings.ToUpper(strings.TrimSpace(dc.Mac))
 	}
 
 	if c.Queue.Threads < 1 {
@@ -317,9 +345,6 @@ func (set *SetConfig) ResetToDefaults() {
 	set.Faking.SNIMutation.FakeSNIs = make([]string, len(defaultSet.Faking.SNIMutation.FakeSNIs))
 	copy(set.Faking.SNIMutation.FakeSNIs, defaultSet.Faking.SNIMutation.FakeSNIs)
 
-	set.Fragmentation.Combo.DecoySNIs = make([]string, len(defaultSet.Fragmentation.Combo.DecoySNIs))
-	copy(set.Fragmentation.Combo.DecoySNIs, defaultSet.Fragmentation.Combo.DecoySNIs)
-
 	set.Fragmentation.SeqOverlapPattern = make([]string, len(defaultSet.Fragmentation.SeqOverlapPattern))
 	copy(set.Fragmentation.SeqOverlapPattern, defaultSet.Fragmentation.SeqOverlapPattern)
 
@@ -398,6 +423,46 @@ func (cfg *Config) CollectUDPPorts() []string {
 	sort.Strings(ports)
 	ports = mergeAndNormalizePorts(ports)
 	return ports
+}
+
+// CollectDeviceMSSClamps returns per-device MSS clamp entries grouped by size.
+// The key is the MSS size, and the value is a slice of MAC addresses.
+func (cfg *Config) CollectDeviceMSSClamps() map[int][]string {
+	result := make(map[int][]string)
+	for _, dc := range cfg.Queue.Devices.MSSClamps {
+		mac := strings.ToUpper(strings.TrimSpace(dc.Mac))
+		if mac == "" || dc.Size <= 0 {
+			continue
+		}
+		result[dc.Size] = append(result[dc.Size], mac)
+	}
+	return result
+}
+
+func (cfg *Config) HasGlobalMSSClamp() (bool, int) {
+	if cfg.Queue.MSSClamp.Enabled && cfg.Queue.MSSClamp.Size > 0 {
+		return true, cfg.Queue.MSSClamp.Size
+	}
+	return false, 0
+}
+
+// MSSClampFingerprint returns a string representation of the MSS clamp configuration for comparison.
+func (cfg *Config) MSSClampFingerprint() string {
+	parts := []string{}
+
+	global, globalSize := cfg.HasGlobalMSSClamp()
+	if global {
+		parts = append(parts, fmt.Sprintf("global:%d", globalSize))
+	}
+
+	deviceClamps := cfg.CollectDeviceMSSClamps()
+	for size, macs := range deviceClamps {
+		sort.Strings(macs)
+		parts = append(parts, fmt.Sprintf("dev:%d:%s", size, strings.Join(macs, ",")))
+	}
+
+	sort.Strings(parts)
+	return strings.Join(parts, ";")
 }
 
 // CollectDuplicateIPs returns IPv4 and IPv6 IPs/CIDRs from sets with duplication enabled.

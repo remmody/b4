@@ -24,20 +24,22 @@ type ApiConfig struct {
 }
 
 type QueueConfig struct {
-	StartNum    int           `json:"start_num" bson:"start_num"`
-	Threads     int           `json:"threads" bson:"threads"`
-	Mark        uint          `json:"mark" bson:"mark"`
-	IPv4Enabled bool          `json:"ipv4" bson:"ipv4"`
-	IPv6Enabled bool          `json:"ipv6" bson:"ipv6"`
-	Interfaces  []string      `json:"interfaces" bson:"interfaces"`
-	Devices     DevicesConfig `json:"devices" bson:"devices"`
+	StartNum    int            `json:"start_num" bson:"start_num"`
+	Threads     int            `json:"threads" bson:"threads"`
+	Mark        uint           `json:"mark" bson:"mark"`
+	IPv4Enabled bool           `json:"ipv4" bson:"ipv4"`
+	IPv6Enabled bool           `json:"ipv6" bson:"ipv6"`
+	Interfaces  []string       `json:"interfaces" bson:"interfaces"`
+	Devices     DevicesConfig  `json:"devices" bson:"devices"`
+	MSSClamp    MSSClampConfig `json:"mss_clamp" bson:"mss_clamp"`
 }
 
 type DevicesConfig struct {
-	Enabled      bool     `json:"enabled" bson:"enabled"`
-	VendorLookup bool     `json:"vendor_lookup" bson:"vendor_lookup"`
-	WhiteIsBlack bool     `json:"wisb" bson:"wisb"`
-	Mac          []string `json:"mac" bson:"mac"`
+	Enabled      bool             `json:"enabled" bson:"enabled"`
+	VendorLookup bool             `json:"vendor_lookup" bson:"vendor_lookup"`
+	WhiteIsBlack bool             `json:"wisb" bson:"wisb"`
+	Mac          []string         `json:"mac" bson:"mac"`
+	MSSClamps    []DeviceMSSClamp `json:"mss_clamps" bson:"mss_clamps"`
 }
 
 type TCPConfig struct {
@@ -138,6 +140,7 @@ type TargetsConfig struct {
 	IPs               []string `json:"ip" bson:"ip"`
 	GeoSiteCategories []string `json:"geosite_categories" bson:"geosite_categories"`
 	GeoIpCategories   []string `json:"geoip_categories" bson:"geoip_categories"`
+	SourceDevices     []string `json:"source_devices" bson:"source_devices"`
 	DomainsToMatch    []string `json:"-" bson:"-"`
 	IpsToMatch        []string `json:"-" bson:"-"`
 }
@@ -163,8 +166,10 @@ type Socks5Config struct {
 }
 
 type TablesConfig struct {
-	MonitorInterval int  `json:"monitor_interval" bson:"monitor_interval"`
-	SkipSetup       bool `json:"skip_setup" bson:"skip_setup"`
+	MonitorInterval     int    `json:"monitor_interval" bson:"monitor_interval"`
+	SkipSetup           bool   `json:"skip_setup" bson:"skip_setup"`
+	Masquerade          bool   `json:"masquerade" bson:"masquerade"`
+	MasqueradeInterface string `json:"masquerade_interface" bson:"masquerade_interface"`
 }
 
 type WebServerConfig struct {
@@ -215,8 +220,7 @@ type ComboFragConfig struct {
 	ShuffleMode    string   `json:"shuffle_mode" bson:"shuffle_mode"` // "middle", "full", "reverse"
 	FirstDelayMs   int      `json:"first_delay_ms" bson:"first_delay_ms"`
 	JitterMaxUs    int      `json:"jitter_max_us" bson:"jitter_max_us"`
-	DecoyEnabled   bool     `json:"decoy_enabled" bson:"decoy_enabled"`
-	DecoySNIs      []string `json:"decoy_snis" bson:"decoy_snis"`
+	DecoyEnabled bool `json:"decoy_enabled" bson:"decoy_enabled"`
 }
 
 type DisorderFragConfig struct {
@@ -243,4 +247,14 @@ type DNSConfig struct {
 type DuplicateConfig struct {
 	Enabled bool `json:"enabled" bson:"enabled"`
 	Count   int  `json:"count" bson:"count"` // Number of packet copies to send (original is dropped)
+}
+
+type MSSClampConfig struct {
+	Enabled bool `json:"enabled" bson:"enabled"`
+	Size    int  `json:"size" bson:"size"` // MSS value in bytes (e.g., 88)
+}
+
+type DeviceMSSClamp struct {
+	Mac  string `json:"mac" bson:"mac"`
+	Size int    `json:"size" bson:"size"`
 }

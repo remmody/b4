@@ -90,6 +90,7 @@ export interface TargetsConfig {
   ip: string[];
   geosite_categories: string[];
   geoip_categories: string[];
+  source_devices?: string[];
 }
 
 export interface DomainStatisticsConfig {
@@ -131,6 +132,7 @@ export interface QueueConfig {
   ipv6: boolean;
   interfaces: string[];
   devices: DevicesConfig;
+  mss_clamp: MSSClampConfig;
 }
 
 export interface DevicesConfig {
@@ -138,6 +140,12 @@ export interface DevicesConfig {
   enabled: boolean;
   vendor_lookup: boolean;
   wisb: boolean;
+  mss_clamps: DeviceMSSClamp[];
+}
+
+export interface DeviceMSSClamp {
+  mac: string;
+  size: number;
 }
 
 export interface DiscoveryConfig {
@@ -197,7 +205,9 @@ export interface WebServerConfig {
 }
 export interface TableConfig {
   monitor_interval: number;
-  skip_setup: false;
+  skip_setup: boolean;
+  masquerade: boolean;
+  masquerade_interface: string;
 }
 
 export interface GeoConfig {
@@ -259,7 +269,6 @@ export interface ComboFragConfig {
   first_delay_ms: number;
   jitter_max_us: number;
   decoy_enabled: boolean;
-  decoy_snis: string[];
 }
 
 export type DisorderShuffleMode = "full" | "reverse";
@@ -278,6 +287,11 @@ export interface DNSConfig {
 export interface DuplicateConfig {
   enabled: boolean;
   count: number;
+}
+
+export interface MSSClampConfig {
+  enabled: boolean;
+  size: number;
 }
 
 export const MAIN_SET_ID = "11111111-1111-1111-1111-111111111111";
