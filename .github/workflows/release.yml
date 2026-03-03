@@ -104,9 +104,44 @@ jobs:
           name: ui-build
           path: src/http/ui/dist
 
+      - name: Install UPX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y upx-ucl
+
       - name: Build using Makefile
         run: |
           make linux-${{ matrix.arch }} VERSION="$VERSION"
+
+      - name: Compress with UPX
+        run: |
+          ARCH="${{ matrix.arch }}"
+          BINARY_PATH="out/linux-${ARCH}/${{ env.BINARY_NAME }}"
+          
+          if [ -f "$BINARY_PATH" ]; then
+            echo "Compressing $BINARY_PATH with UPX..."
+            upx --ultra-brute --lzma "$BINARY_PATH" -o "${BINARY_PATH}.upx"
+            
+            # Test compressed binary
+            if upx -t "${BINARY_PATH}.upx"; then
+              echo "UPX compression successful, replacing original binary"
+              mv "${BINARY_PATH}.upx" "$BINARY_PATH"
+            else
+              echo "UPX test failed, keeping original binary"
+              rm -f "${BINARY_PATH}.upx"
+            fi
+          else
+            echo "Binary not found at $BINARY_PATH"
+            exit 1
+          fi
+
+      - name: Repackage with compressed binary
+        run: |
+          ARCH="${{ matrix.arch }}"
+          cd out/linux-${ARCH}
+          tar -czf "../assets/${{ env.BINARY_NAME }}-linux-${ARCH}.tar.gz" "${{ env.BINARY_NAME }}"
+          cd ../assets
+          sha256sum "${{ env.BINARY_NAME }}-linux-${ARCH}.tar.gz" > "${{ env.BINARY_NAME }}-linux-${ARCH}.tar.gz.sha256"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

@@ -33,21 +33,26 @@ RUN COMMIT=$(echo "docker" ) && \
     GOARM=${TARGETVARIANT#v} \
     CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go -C src build \
     -trimpath \
+    -buildvcs=false \
     -ldflags "-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.Date=${DATE}" \
     -o /b4
+
+# Stage 2.5: UPX compression 
+FROM --platform=$TARGETPLATFORM alpine:3.23.3 AS upx-compressor
+
+RUN apk add --no-cache upx
+
+COPY --from=go-builder /b4 /b4
+RUN upx --ultra-brute --lzma /b4 -o /b4.upx && upx -t /b4.upx
 
 # Stage 3: Runtime image
 FROM alpine:3.23.3
 
 RUN apk add --no-cache \
-    iptables \
-    ip6tables \
-    nftables \
-    kmod \
-    iproute2 \
-    tzdata
+    iptables ip6tables nftables kmod iproute2 tzdata \
+    && rm -rf /var/cache/apk/*
 
-COPY --from=go-builder /b4 /usr/local/bin/b4
+COPY --from=upx-compressor /b4.upx /usr/local/bin/b4
 
 VOLUME /etc/b4
 EXPOSE 7000
